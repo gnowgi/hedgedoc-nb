@@ -3012,6 +3012,7 @@ __metadata:
     "@testing-library/react": "npm:16.0.1"
     "@testing-library/react-hooks": "npm:8.0.1"
     "@testing-library/user-event": "npm:14.5.2"
+    "@types/cytoscape": "npm:^3.21.8"
     "@types/d3-graphviz": "npm:2.6.10"
     "@types/dompurify": "npm:3.2.0"
     "@types/jest": "npm:29.5.14"
@@ -3033,6 +3034,9 @@ __metadata:
     cypress: "npm:13.17.0"
     cypress-commands: "npm:3.0.0"
     cypress-fill-command: "npm:1.0.2"
+    cytoscape: "npm:^3.30.4"
+    cytoscape-dagre: "npm:^2.5.0"
+    cytoscape-svg: "npm:^0.4.0"
     d3-graphviz: "npm:5.6.0"
     d3-selection: "npm:3.0.0"
     deepmerge: "npm:4.3.1"
@@ -5608,6 +5612,13 @@ __metadata:
   version: 2.1.5
   resolution: "@types/cookiejar@npm:2.1.5"
   checksum: 10c0/af38c3d84aebb3ccc6e46fb6afeeaac80fb26e63a487dd4db5a8b87e6ad3d4b845ba1116b2ae90d6f886290a36200fa433d8b1f6fe19c47da6b81872ce9a2764
+  languageName: node
+  linkType: hard
+
+"@types/cytoscape@npm:^3.21.8":
+  version: 3.21.9
+  resolution: "@types/cytoscape@npm:3.21.9"
+  checksum: 10c0/49c25b18322c405166982ae60ea6618e07329931e7b8824c84ee418ba705ac178d6a47886089bc3087167493c4dfe297a1b20fbc964fc22d662ee83f377d8f5b
   languageName: node
   linkType: hard
 
@@ -8509,6 +8520,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cytoscape-dagre@npm:^2.5.0":
+  version: 2.5.0
+  resolution: "cytoscape-dagre@npm:2.5.0"
+  dependencies:
+    dagre: "npm:^0.8.5"
+  peerDependencies:
+    cytoscape: ^3.2.22
+  checksum: 10c0/f280c6edf6e85aff6dc564b3f35675a3b2b03a44e7177edebb8808c97bddf407c7599334950aca8d1a7cf8fda0fecffb341a12aac08d9977ffec932f5af1f0d9
+  languageName: node
+  linkType: hard
+
 "cytoscape-fcose@npm:^2.2.0":
   version: 2.2.0
   resolution: "cytoscape-fcose@npm:2.2.0"
@@ -8520,7 +8542,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cytoscape@npm:^3.29.3":
+"cytoscape-svg@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "cytoscape-svg@npm:0.4.0"
+  peerDependencies:
+    cytoscape: ^3.2.0
+  checksum: 10c0/4c9a098464af489019371055dcaed0df5bef3f124eb72c548b292f898ff55ebe752d9c1154c152718f335062e721e4fb1a82c4921f327013127eda47f2d17dca
+  languageName: node
+  linkType: hard
+
+"cytoscape@npm:^3.29.3, cytoscape@npm:^3.30.4":
   version: 3.33.1
   resolution: "cytoscape@npm:3.33.1"
   checksum: 10c0/dffcf5f74df4d91517c4faf394df880d8283ce76edef19edba0c762941cf4f18daf7c4c955ec50c794f476ace39ad4394f8c98483222bd2682e1fd206e976411
@@ -8942,6 +8973,16 @@ __metadata:
     d3: "npm:^7.9.0"
     lodash-es: "npm:^4.17.21"
   checksum: 10c0/4eca80dbbad4075311e3853930f99486024785b54210541796d4216140d91744738ee51125e2692c3532af148fbc2e690171750583916ed2ad553150abb198c7
+  languageName: node
+  linkType: hard
+
+"dagre@npm:^0.8.5":
+  version: 0.8.5
+  resolution: "dagre@npm:0.8.5"
+  dependencies:
+    graphlib: "npm:^2.1.8"
+    lodash: "npm:^4.17.15"
+  checksum: 10c0/1c021b66961aa9a700bb6ec51747bcc214720a661ad6cb1878eab7316ecb550a759664a6754081a315b37d0355e3c19ff162813b36f20cbeb2e37f7440364d62
   languageName: node
   linkType: hard
 
@@ -10862,6 +10903,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"graphlib@npm:^2.1.8":
+  version: 2.1.8
+  resolution: "graphlib@npm:2.1.8"
+  dependencies:
+    lodash: "npm:^4.17.15"
+  checksum: 10c0/41c525e4d91a6d8b4e8da1883bf4e85689a547e908557ccc53f64db9141bdfb351b9162a79f13cae81c5b3a410027f59e4fc1edc1ea442234ec08e629859b188
+  languageName: node
+  linkType: hard
+
 "gzip-size@npm:^6.0.0":
   version: 6.0.0
   resolution: "gzip-size@npm:6.0.0"
@@ -12762,6 +12812,13 @@ __metadata:
   version: 4.17.21
   resolution: "lodash@npm:4.17.21"
   checksum: 10c0/d8cbea072bb08655bb4c989da418994b073a608dffa608b09ac04b43a791b12aeae7cd7ad919aa4c925f33b48490b5cfe6c1f71d827956071dae2e7bb3a6b74c
+  languageName: node
+  linkType: hard
+
+"lodash@npm:^4.17.15":
+  version: 4.17.23
+  resolution: "lodash@npm:4.17.23"
+  checksum: 10c0/1264a90469f5bb95d4739c43eb6277d15b6d9e186df4ac68c3620443160fc669e2f14c11e7d8b2ccf078b81d06147c01a8ccced9aab9f9f63d50dcf8cace6bf6
   languageName: node
   linkType: hard
 
