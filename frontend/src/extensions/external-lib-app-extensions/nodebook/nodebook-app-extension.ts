@@ -24,10 +24,19 @@ export class NodeBookAppExtension extends AppExtension {
   }
 
   buildCheatsheetExtensions(): CheatsheetExtension[] {
-    return [{ i18nKey: 'nodeBook', categoryI18nKey: 'charts', readMoreUrl: new URL('https://github.com/nodeBook') }]
+    return [
+      { i18nKey: 'nodeBook', categoryI18nKey: 'charts', readMoreUrl: new URL('https://github.com/nodeBook') },
+      { i18nKey: 'nodeBook-schema', categoryI18nKey: 'charts', readMoreUrl: new URL('https://github.com/nodeBook') }
+    ]
   }
 
   buildAutocompletion(): CompletionSource[] {
-    return [basicCompletion(codeFenceRegex, '```nodeBook\n# Node Name [Type]\nhas attribute: value;\n<relation> Target;\n```')]
+    return [
+      basicCompletion(codeFenceRegex, '```nodeBook\n# Node Name [Type]\nhas attribute: value;\n<relation> Target;\n```'),
+      basicCompletion(
+        codeFenceRegex,
+        '```nodeBook-schema\n# Define custom schema types\nnodeType: Planet, A celestial body, parent: Object\nrelationType: orbits, One body orbits another, domain: Planet, range: Star\nattributeType: diameter, float, Size measurement, unit: km, domain: Planet\n```'
+      )
+    ]
   }
 }

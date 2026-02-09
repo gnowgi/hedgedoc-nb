@@ -75,6 +75,12 @@ export interface RelationTypeSchema {
   aliases?: string[]
 }
 
+export interface AttributeTypeStructureField {
+  type: string
+  unit: string | null
+  description: string
+}
+
 export interface AttributeTypeSchema {
   name: string
   description: string
@@ -84,6 +90,8 @@ export interface AttributeTypeSchema {
   allowed_values: string[] | null
   required?: boolean
   validation?: string
+  complex_type?: string
+  structure?: Record<string, AttributeTypeStructureField>
 }
 
 export interface TransitionTypeSchema {

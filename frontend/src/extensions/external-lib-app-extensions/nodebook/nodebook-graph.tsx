@@ -11,10 +11,11 @@ import { Logger } from '../../../utils/logger'
 import { getOperationsFromCnl } from './nodebook-parser/cnl-parser'
 import { MorphRegistry } from './nodebook-parser/morph-registry'
 import { operationsToGraph } from './nodebook-parser/operations-to-graph'
-import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode } from './nodebook-parser/types'
+import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode, CnlParseError } from './nodebook-parser/types'
 import { validateOperations } from './nodebook-parser/validate-operations'
+import { getMergedSchemas } from './nodebook-parser/schema-store'
 import styles from './nodebook-graph.module.scss'
-import React, { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAsync } from 'react-use'
 
 const log = new Logger('NodeBookGraph')
@@ -35,22 +36,36 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const cyRef = useRef<cytoscape.Core | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [inMemoryGraph, setInMemoryGraph] = useState<InMemoryGraph | null>(null)
+  const [validationWarnings, setValidationWarnings] = useState<CnlParseError[]>([])
+  const [hasValidated, setHasValidated] = useState(false)
 
   // Parse CNL synchronously (pure regex, microsecond-fast)
-  const { graphData, warnings } = useMemo(() => {
+  const { graphData, operations } = useMemo(() => {
     try {
-      const operations = getOperationsFromCnl(code)
-      const data = operationsToGraph(operations)
-      const warns = validateOperations(operations)
-      return { graphData: data, warnings: warns }
+      const ops = getOperationsFromCnl(code)
+      const data = operationsToGraph(ops)
+      return { graphData: data, operations: ops }
     } catch (error) {
       log.error('Error parsing CNL', error)
       return {
         graphData: { nodes: [], edges: [], attributes: [], description: null, errors: [{ message: String(error) }] } as CnlGraphData,
-        warnings: []
+        operations: []
       }
     }
   }, [code])
+
+  // Reset validation state when code changes
+  useEffect(() => {
+    setValidationWarnings([])
+    setHasValidated(false)
+  }, [code])
+
+  const handleValidate = useCallback(() => {
+    const merged = getMergedSchemas()
+    const warns = validateOperations(operations, merged)
+    setValidationWarnings(warns)
+    setHasValidated(true)
+  }, [operations])
 
   // Build morph registry from parsed graph
   const morphRegistry = useMemo(() => {
@@ -431,12 +446,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   return (
     <AsyncLoadingBoundary loading={isLibLoading || !cytoscapeModules} componentName={'nodeBook'} error={libLoadingError}>
       <div className={styles['nodebook-container']} {...cypressId('nodebook-frame')}>
-        {warnings.length > 0 && (
+        {hasValidated && validationWarnings.length === 0 && (
+          <div className={styles['validation-pass-banner']}>Validation passed - no schema warnings</div>
+        )}
+        {hasValidated && validationWarnings.length > 0 && (
           <div className={styles['warning-banner']}>
             <details>
-              <summary>{warnings.length} schema warning(s)</summary>
+              <summary>{validationWarnings.length} schema warning(s)</summary>
               <ul>
-                {warnings.map((w, i) => (
+                {validationWarnings.map((w, i) => (
                   <li key={i}>{w.message}</li>
                 ))}
               </ul>
@@ -445,6 +463,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         )}
 
         <div className={styles['export-buttons']}>
+          <button onClick={handleValidate} title='Validate against schemas'>
+            Validate
+          </button>
           <button onClick={handleExportPng} title='Export as PNG'>
             PNG
           </button>

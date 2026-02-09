@@ -3,15 +3,20 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { attributeTypes, nodeTypes, relationTypes } from './schemas'
+import { attributeTypes as defaultAttributeTypes, nodeTypes as defaultNodeTypes, relationTypes as defaultRelationTypes } from './schemas'
+import type { MergedSchemas } from './schema-store'
 import type { CnlOperation, CnlParseError } from './types'
 
 /**
- * Validate parsed operations against the embedded schemas.
+ * Validate parsed operations against schemas.
+ * If schemas are provided, uses those; otherwise falls back to defaults.
  * Returns advisory warnings (does not block rendering).
  */
-export function validateOperations(operations: CnlOperation[]): CnlParseError[] {
+export function validateOperations(operations: CnlOperation[], schemas?: MergedSchemas): CnlParseError[] {
   const errors: CnlParseError[] = []
+  const nodeTypes = schemas?.nodeTypes ?? defaultNodeTypes
+  const attributeTypes = schemas?.attributeTypes ?? defaultAttributeTypes
+  const relationTypes = schemas?.relationTypes ?? defaultRelationTypes
 
   for (const op of operations) {
     if (op.type === 'addNode') {
