@@ -4,17 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This workspace contains two integrated projects for a collaborative knowledge graph system:
-
-- **hedgedoc/** — HedgeDoc 2.0 (alpha), a real-time collaborative markdown editor. Branch: `feat/nodebook-extension`
-- **nodeBook/** — A federated knowledge graph authoring tool using Controlled Natural Language (CNL). Branch: `libp2p-migration` (commit `de2bb2e`)
-- **execution-plan.md** — The integration plan for embedding nodeBook's CNL graph rendering into HedgeDoc as a code fence extension
-
-The root directory is **not** a git repo. Each subdirectory has its own git repository.
+This is **HedgeDoc 2.0** (alpha), a real-time collaborative markdown editor, with a custom **nodeBook** extension that renders Controlled Natural Language (CNL) knowledge graphs inline via ` ```nodeBook ` code fences.
 
 ## Build & Development Commands
-
-### HedgeDoc (hedgedoc/)
 
 Requires **Node 24** (see `.nvmrc`) and **Yarn 4.12.0** (via `.yarn/releases/yarn-4.12.0.cjs`).
 
@@ -34,17 +26,6 @@ yarn test:e2e:open        # Cypress interactive mode
 
 Frontend dev server: port **3001**. Backend: NestJS with Fastify.
 
-### nodeBook (nodeBook/)
-
-```bash
-npm run install:all       # Install root + backend + frontend deps
-npm run dev:frontend      # Vite dev server (port 5173)
-npm run dev:backend       # NestJS watch mode (port 3000)
-npm test                  # Jest tests (from nodebook-base/)
-npm run build:frontend    # Production frontend build
-npm run build:docker      # Docker image build
-```
-
 ## Architecture
 
 ### HedgeDoc Monorepo (8 Yarn workspaces)
@@ -61,16 +42,6 @@ npm run build:docker      # Docker image build
 | `docs` | MkDocs | Documentation site |
 
 Linting uses **oxlint/oxfmt** (Rust-based), not eslint/prettier. Task orchestration via **Turbo**.
-
-### nodeBook
-
-- **Backend**: NestJS + Fastify (`nodebook-base/src/`) with legacy Fastify server fallback (`nodebook-base/server.js`)
-- **Frontend**: React + Vite + Cytoscape.js (`nodebook-base/frontend/`)
-- **CNL Parser**: `nodebook-base/cnl-parser.js` — parses Controlled Natural Language into graph operations
-- **Morph Registry**: `nodebook-base/morph-registry.js` — O(1) lookups for polymorphic node states
-- **Storage**: File system per-user per-graph with Git versioning
-- **Auth**: Keycloak (OAuth2/OIDC)
-- **P2P**: libp2p with Gossipsub for decentralized collaboration
 
 ### HedgeDoc Extension System
 
@@ -90,11 +61,11 @@ Key base classes in `frontend/src/`:
 
 **Registration flow**: Extensions listed in `all-app-extensions.ts` (essential + external) → loaded via `useMarkdownExtensions()` → dynamic imports with webpack code splitting.
 
-### nodeBook-HedgeDoc Integration (12 files)
+### nodeBook Extension (12 files)
 
-All files use the `nodebook-*` prefix, located in `hedgedoc/frontend/src/`:
+All files use the `nodebook-*` prefix, located in `frontend/src/`:
 
-- **Parser** (`extensions/external-lib-app-extensions/nodebook-parser/`): `types.ts`, `schemas.ts`, `cnl-parser.ts` (ported JS→TS with FNV-1a hash), `operations-to-graph.ts` (3-pass: nodes→morphs→neighborhood), `morph-registry.ts`, `validate-operations.ts`
+- **Parser** (`extensions/external-lib-app-extensions/nodebook-parser/`): `types.ts`, `schemas.ts`, `cnl-parser.ts` (FNV-1a hash for IDs), `operations-to-graph.ts` (3-pass: nodes→morphs→neighborhood), `morph-registry.ts`, `validate-operations.ts`
 - **UI** (`components/markdown-renderer/extensions/nodebook/`): `nodebook-graph.tsx` (Cytoscape.js component with morph switching + transition simulation), `nodebook-graph.module.scss`
 - **Extension glue**: `nodebook-markdown-extension.ts`, `nodebook-app-extension.ts` (cheatsheet + autocompletion)
 - **Registration**: `external-lib-app-extensions.ts` (modified to include NodeBookAppExtension)
@@ -119,6 +90,6 @@ Graph modes: `markdown`, `mindmap`, `richgraph`, `strictgraph`.
 
 ## Environment Notes
 
-- System Node.js is v12 (too old for HedgeDoc). Use `nvm` to switch to Node 24.
-- HedgeDoc build has not been tested yet due to the Node version mismatch.
+- The nodeBook extension build has not been tested yet — build errors are expected, most likely in the parser files (ported from JS to TS).
 - Each code fence extension uses dynamic `import()` with `webpackChunkName` for code splitting, `useAsync` from `react-use` for async loading, and `AsyncLoadingBoundary` for loading states.
+- Docker builds use Node 24.12.0-alpine internally.
