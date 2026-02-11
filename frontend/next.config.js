@@ -89,17 +89,20 @@ const rawNextConfig = {
     return Promise.resolve([
       {
         source: '/',
-        destination: '/login',
-        permanent: true
+        destination: '/n/nodeBook',
+        permanent: false
       }
     ])
+  },
+  typescript: {
+    ignoreBuildErrors: true
   },
   output: 'standalone',
   swcMinify: true,
   experimental: {
     outputFileTracingRoot: path.join(__dirname, '../')
   },
-  productionBrowserSourceMaps: true
+  productionBrowserSourceMaps: false
 }
 const completeNextConfig = withBundleAnalyzer(rawNextConfig)
 

@@ -15,6 +15,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 ENV YARN_CACHE_FOLDER=/tmp/.yarn
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 USER node
 WORKDIR /usr/src/app
 
@@ -29,9 +30,9 @@ FROM base
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-LABEL org.opencontainers.image.title='HedgeDoc production frontend image'
+LABEL org.opencontainers.image.title='HedgeDoc-NB production frontend image'
 LABEL org.opencontainers.image.url='https://hedgedoc.org'
-LABEL org.opencontainers.image.source='https://github.com/hedgedoc/hedgedoc'
+LABEL org.opencontainers.image.source='https://github.com/gnowgi/hedgedoc-nb'
 LABEL org.opencontainers.image.documentation='https://github.com/hedgedoc/hedgedoc/blob/develop/docs/content/how-to/develop/docker.md'
 LABEL org.opencontainers.image.licenses='AGPL-3.0'
 

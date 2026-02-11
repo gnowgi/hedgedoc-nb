@@ -40,14 +40,20 @@ export async function seed(knex: Knex): Promise<void> {
   const guestNoteRevisionUuid = '0196a6e7-9669-7ef3-9c10-520734c61593';
   const userNoteRevisionUuid = '0196a6e8-f63e-7473-bf58-ea97e937fde2';
   const userSlideRevisionUuid = '0196a6e9-1152-7940-a531-01b9527321c0';
+  const featuresRevisionUuid = 'a8cd9610-a0ed-42d1-b4f3-c8c46f329cd8';
+  const nodeBookRevisionUuid = '4c212d13-22b1-4023-be1f-26ef0b720bbe';
 
   const guestNoteAlias = 'guest-note';
   const userNoteAlias = 'user-note';
   const userSlideAlias = 'user-slide';
+  const featuresAlias = 'features';
+  const nodeBookAlias = 'nodeBook';
 
   const guestNoteContent = readFileSync('./notes/guest_note.md', 'utf-8');
   const userNoteContent = readFileSync('./notes/local_user_note.md', 'utf-8');
   const userSlideContent = readFileSync('./notes/local_user_slide.md', 'utf-8');
+  const featuresContent = readFileSync('./notes/features.md', 'utf-8');
+  const nodeBookContent = readFileSync('./notes/nodebook_demo.md', 'utf-8');
 
   const {
     title: guestNoteTitle,
@@ -64,6 +70,16 @@ export async function seed(knex: Knex): Promise<void> {
     description: userSlideDescription,
     tags: userSlideTags,
   } = extractRevisionMetadataFromContent(userSlideContent);
+  const {
+    title: featuresTitle,
+    description: featuresDescription,
+    tags: featuresTags,
+  } = extractRevisionMetadataFromContent(featuresContent);
+  const {
+    title: nodeBookTitle,
+    description: nodeBookDescription,
+    tags: nodeBookTags,
+  } = extractRevisionMetadataFromContent(nodeBookContent);
 
   // Insert a few notes and revisions
   await knex(TableNote).insert([
@@ -85,6 +101,18 @@ export async function seed(knex: Knex): Promise<void> {
       [FieldNameNote.createdAt]: dateTimeToDB(getCurrentDateTime()),
       [FieldNameNote.publiclyVisible]: false,
     },
+    {
+      [FieldNameNote.ownerId]: 1,
+      [FieldNameNote.version]: 2,
+      [FieldNameNote.createdAt]: dateTimeToDB(getCurrentDateTime()),
+      [FieldNameNote.publiclyVisible]: true,
+    },
+    {
+      [FieldNameNote.ownerId]: 1,
+      [FieldNameNote.version]: 2,
+      [FieldNameNote.createdAt]: dateTimeToDB(getCurrentDateTime()),
+      [FieldNameNote.publiclyVisible]: true,
+    },
   ]);
   await knex(TableAlias).insert([
     {
@@ -98,8 +126,18 @@ export async function seed(knex: Knex): Promise<void> {
       [FieldNameAlias.isPrimary]: true,
     },
     {
-      [FieldNameAlias.noteId]: 1,
+      [FieldNameAlias.noteId]: 3,
       [FieldNameAlias.alias]: userSlideAlias,
+      [FieldNameAlias.isPrimary]: true,
+    },
+    {
+      [FieldNameAlias.noteId]: 4,
+      [FieldNameAlias.alias]: featuresAlias,
+      [FieldNameAlias.isPrimary]: true,
+    },
+    {
+      [FieldNameAlias.noteId]: 5,
+      [FieldNameAlias.alias]: nodeBookAlias,
       [FieldNameAlias.isPrimary]: true,
     },
   ]);
@@ -128,13 +166,35 @@ export async function seed(knex: Knex): Promise<void> {
     },
     {
       [FieldNameRevision.uuid]: userSlideRevisionUuid,
-      [FieldNameRevision.noteId]: 1,
+      [FieldNameRevision.noteId]: 3,
       [FieldNameRevision.patch]: createPatch(userSlideAlias, '', userSlideContent),
       [FieldNameRevision.content]: userSlideContent,
       [FieldNameRevision.yjsStateVector]: null,
       [FieldNameRevision.noteType]: NoteType.SLIDE,
       [FieldNameRevision.title]: userSlideTitle,
       [FieldNameRevision.description]: userSlideDescription,
+      [FieldNameRevision.createdAt]: dateTimeToDB(getCurrentDateTime()),
+    },
+    {
+      [FieldNameRevision.uuid]: featuresRevisionUuid,
+      [FieldNameRevision.noteId]: 4,
+      [FieldNameRevision.patch]: createPatch(featuresAlias, '', featuresContent),
+      [FieldNameRevision.content]: featuresContent,
+      [FieldNameRevision.yjsStateVector]: null,
+      [FieldNameRevision.noteType]: NoteType.DOCUMENT,
+      [FieldNameRevision.title]: featuresTitle,
+      [FieldNameRevision.description]: featuresDescription,
+      [FieldNameRevision.createdAt]: dateTimeToDB(getCurrentDateTime()),
+    },
+    {
+      [FieldNameRevision.uuid]: nodeBookRevisionUuid,
+      [FieldNameRevision.noteId]: 5,
+      [FieldNameRevision.patch]: createPatch(nodeBookAlias, '', nodeBookContent),
+      [FieldNameRevision.content]: nodeBookContent,
+      [FieldNameRevision.yjsStateVector]: null,
+      [FieldNameRevision.noteType]: NoteType.DOCUMENT,
+      [FieldNameRevision.title]: nodeBookTitle,
+      [FieldNameRevision.description]: nodeBookDescription,
       [FieldNameRevision.createdAt]: dateTimeToDB(getCurrentDateTime()),
     },
   ]);
@@ -149,6 +209,14 @@ export async function seed(knex: Knex): Promise<void> {
     })),
     ...userSlideTags.map((tag) => ({
       [FieldNameRevisionTag.revisionUuid]: userSlideRevisionUuid,
+      [FieldNameRevisionTag.tag]: tag,
+    })),
+    ...featuresTags.map((tag) => ({
+      [FieldNameRevisionTag.revisionUuid]: featuresRevisionUuid,
+      [FieldNameRevisionTag.tag]: tag,
+    })),
+    ...nodeBookTags.map((tag) => ({
+      [FieldNameRevisionTag.revisionUuid]: nodeBookRevisionUuid,
       [FieldNameRevisionTag.tag]: tag,
     })),
   ]);
@@ -174,6 +242,20 @@ export async function seed(knex: Knex): Promise<void> {
       [FieldNameAuthorshipInfo.endPosition]: userSlideContent.length,
       [FieldNameAuthorshipInfo.createdAt]: dateTimeToDB(getCurrentDateTime()),
     },
+    {
+      [FieldNameAuthorshipInfo.revisionUuid]: featuresRevisionUuid,
+      [FieldNameAuthorshipInfo.authorId]: 1,
+      [FieldNameAuthorshipInfo.startPosition]: 0,
+      [FieldNameAuthorshipInfo.endPosition]: featuresContent.length,
+      [FieldNameAuthorshipInfo.createdAt]: dateTimeToDB(getCurrentDateTime()),
+    },
+    {
+      [FieldNameAuthorshipInfo.revisionUuid]: nodeBookRevisionUuid,
+      [FieldNameAuthorshipInfo.authorId]: 1,
+      [FieldNameAuthorshipInfo.startPosition]: 0,
+      [FieldNameAuthorshipInfo.endPosition]: nodeBookContent.length,
+      [FieldNameAuthorshipInfo.createdAt]: dateTimeToDB(getCurrentDateTime()),
+    },
   ]);
   await knex(TableNoteGroupPermission).insert([
     {
@@ -188,6 +270,16 @@ export async function seed(knex: Knex): Promise<void> {
     },
     {
       [FieldNameNoteGroupPermission.noteId]: 3,
+      [FieldNameNoteGroupPermission.groupId]: 1,
+      [FieldNameNoteGroupPermission.canEdit]: false,
+    },
+    {
+      [FieldNameNoteGroupPermission.noteId]: 4,
+      [FieldNameNoteGroupPermission.groupId]: 1,
+      [FieldNameNoteGroupPermission.canEdit]: false,
+    },
+    {
+      [FieldNameNoteGroupPermission.noteId]: 5,
       [FieldNameNoteGroupPermission.groupId]: 1,
       [FieldNameNoteGroupPermission.canEdit]: false,
     },
