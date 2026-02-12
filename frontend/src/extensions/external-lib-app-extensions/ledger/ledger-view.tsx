@@ -4,13 +4,16 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import type { CodeProps } from '../../../components/markdown-renderer/replace-components/code-block-component-replacer'
+import { Logger } from '../../../utils/logger'
 import { parseLedger } from './ledger-parser'
 import type { ChartDirective, SummaryDirective } from './ledger-parser'
-import { aggregateByPeriod, computeLedger, filterByCategories } from './ledger-compute'
+import { aggregateByPeriod, computeLedger } from './ledger-compute'
 import type { CategorySummary, PeriodSummary } from './ledger-compute'
 import styles from './ledger.module.scss'
 import React, { useMemo, useRef } from 'react'
 import { useAsync } from 'react-use'
+
+const log = new Logger('LedgerChart')
 
 const formatAmount = (amount: number): string => {
   return amount.toFixed(2)
@@ -126,81 +129,79 @@ const SummaryTable: React.FC<{ summaries: CategorySummary[]; directive: SummaryD
   )
 }
 
-function buildPieSpec(summaries: CategorySummary[]): object {
-  const expenseData = summaries
-    .filter((s) => s.total < 0)
-    .map((s) => ({ category: s.category, amount: Math.abs(s.total) }))
-
-  return {
-    $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-    width: 'container',
-    height: 250,
-    data: { values: expenseData },
-    mark: { type: 'arc', innerRadius: 40 },
-    encoding: {
-      theta: { field: 'amount', type: 'quantitative', stack: true },
-      color: { field: 'category', type: 'nominal', legend: { title: 'Category' } },
-      tooltip: [
-        { field: 'category', type: 'nominal' },
-        { field: 'amount', type: 'quantitative', format: '.2f' }
-      ]
+function buildPieMermaid(summaries: CategorySummary[]): string {
+  const lines = ['pie title "Expense Breakdown"']
+  for (const s of summaries) {
+    if (s.total < 0) {
+      lines.push(`    "${s.category}" : ${Math.abs(s.total).toFixed(2)}`)
     }
+  }
+  return lines.join('\n')
+}
+
+function buildBarMermaid(periods: PeriodSummary[], subject: string): string {
+  const title = subject.charAt(0).toUpperCase() + subject.slice(1) + ' Trends'
+  const lines = [
+    'xychart-beta',
+    `    title "${title}"`,
+    `    x-axis [${periods.map((p) => `"${p.period}"`).join(', ')}]`,
+    `    y-axis "Amount"`,
+    `    bar [${periods.map((p) => p.income.toFixed(2)).join(', ')}]`,
+    `    bar [${periods.map((p) => p.expenses.toFixed(2)).join(', ')}]`
+  ]
+  return lines.join('\n')
+}
+
+let mermaidInitialized = false
+
+const loadMermaid = async (): Promise<(typeof import('mermaid'))['default']> => {
+  try {
+    return (await import(/* webpackChunkName: "mermaid" */ 'mermaid')).default
+  } catch (error) {
+    log.error('Error while loading mermaid', error)
+    throw new Error('Error while loading mermaid')
   }
 }
 
-function buildBarSpec(periods: PeriodSummary[], subject: string): object {
-  const data: Array<{ period: string; type: string; amount: number }> = []
-  for (const p of periods) {
-    if (p.income > 0) {
-      data.push({ period: p.period, type: 'Income', amount: p.income })
-    }
-    if (p.expenses > 0) {
-      data.push({ period: p.period, type: 'Expenses', amount: p.expenses })
-    }
-  }
-
-  return {
-    $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-    width: 'container',
-    height: 250,
-    data: { values: data },
-    mark: 'bar',
-    encoding: {
-      x: { field: 'period', type: 'ordinal', title: subject },
-      y: { field: 'amount', type: 'quantitative', title: 'Amount' },
-      color: {
-        field: 'type',
-        type: 'nominal',
-        scale: { domain: ['Income', 'Expenses'], range: ['#198754', '#dc3545'] }
-      },
-      xOffset: { field: 'type' },
-      tooltip: [
-        { field: 'period', type: 'ordinal' },
-        { field: 'type', type: 'nominal' },
-        { field: 'amount', type: 'quantitative', format: '.2f' }
-      ]
-    }
-  }
-}
-
-const VegaChart: React.FC<{ spec: object }> = ({ spec }) => {
+/**
+ * Renders a mermaid chart from a generated DSL string.
+ * Uses the same dynamic import of mermaid as the mermaid extension.
+ */
+const MermaidChartInline: React.FC<{ code: string }> = ({ code }) => {
   const containerRef = useRef<HTMLDivElement>(null)
 
   const { error } = useAsync(async () => {
     if (!containerRef.current) {
       return
     }
-    const vegaEmbed = (await import(/* webpackChunkName: "vega" */ 'vega-embed')).default
-    await vegaEmbed(containerRef.current, spec as Parameters<typeof vegaEmbed>[1], {
-      actions: false,
-      renderer: 'svg'
-    })
-  }, [spec])
+
+    const mermaid = await loadMermaid()
+
+    if (!mermaidInitialized) {
+      mermaid.initialize({ startOnLoad: false, securityLevel: 'sandbox' })
+      mermaidInitialized = true
+    }
+
+    try {
+      if (!containerRef.current) {
+        return
+      }
+      await mermaid.parse(code)
+      delete containerRef.current.dataset.processed
+      containerRef.current.textContent = code
+      await mermaid.init(undefined, containerRef.current)
+    } catch (error) {
+      const message = (error as Error).message
+      log.error(error)
+      containerRef.current?.querySelectorAll('iframe').forEach((child) => child.remove())
+      throw new Error(message)
+    }
+  }, [code])
 
   return (
     <div className={styles['chart-container']}>
       {error && <div className={styles['ledger-errors']}>Chart error: {error.message}</div>}
-      <div ref={containerRef} />
+      <div className={'text-center'} ref={containerRef} />
     </div>
   )
 }
@@ -212,24 +213,24 @@ const ChartView: React.FC<{ directive: ChartDirective; data: ReturnType<typeof p
   const computed = useMemo(() => computeLedger(data), [data])
 
   if (directive.kind === 'pie') {
-    const spec = buildPieSpec(computed.categorySummaries)
+    const mermaidCode = buildPieMermaid(computed.categorySummaries)
     return (
       <div className={styles['ledger-section']}>
         <h4 className={styles['section-title']}>Expense Breakdown</h4>
-        <VegaChart spec={spec} />
+        <MermaidChartInline code={mermaidCode} />
       </div>
     )
   }
 
   if (directive.kind === 'bar') {
     const periods = aggregateByPeriod(data.transactions, directive.subject)
-    const spec = buildBarSpec(periods, directive.subject)
+    const mermaidCode = buildBarMermaid(periods, directive.subject)
     return (
       <div className={styles['ledger-section']}>
         <h4 className={styles['section-title']}>
           {directive.subject.charAt(0).toUpperCase() + directive.subject.slice(1)} Trends
         </h4>
-        <VegaChart spec={spec} />
+        <MermaidChartInline code={mermaidCode} />
       </div>
     )
   }

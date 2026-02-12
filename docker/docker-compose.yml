@@ -24,6 +24,8 @@ services:
       POSTGRES_USER: "${HD_DATABASE_USERNAME}"
       POSTGRES_PASSWORD: "${HD_DATABASE_PASSWORD}"
       POSTGRES_DB: "${HD_DATABASE_NAME}"
+    volumes:
+      - hedgedoc_db:/var/lib/postgresql/data
 
   proxy:
     image: caddy:latest
@@ -39,5 +41,6 @@ services:
       - caddy_data:/data
 
 volumes:
+  hedgedoc_db:
   hedgedoc_uploads:
   caddy_data:
