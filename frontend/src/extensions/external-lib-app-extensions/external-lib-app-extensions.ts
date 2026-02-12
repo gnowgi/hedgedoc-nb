@@ -10,6 +10,7 @@ import { FlowchartAppExtension } from './flowchart/flowchart-app-extension'
 import { GistAppExtension } from './gist/gist-app-extension'
 import { GraphvizAppExtension } from './graphviz/graphviz-app-extension'
 import { KatexAppExtension } from './katex/katex-app-extension'
+import { LedgerAppExtension } from './ledger/ledger-app-extension'
 import { MermaidAppExtension } from './mermaid/mermaid-app-extension'
 import { NodeBookAppExtension } from './nodebook/nodebook-app-extension'
 import { PlantumlAppExtension } from './plantuml/plantuml-app-extension'
@@ -26,6 +27,7 @@ export const externalLibAppExtensions: AppExtension[] = [
   new GistAppExtension(),
   new GraphvizAppExtension(),
   new KatexAppExtension(),
+  new LedgerAppExtension(),
   new AsciinemaAppExtension(),
   new MermaidAppExtension(),
   new NodeBookAppExtension(),
