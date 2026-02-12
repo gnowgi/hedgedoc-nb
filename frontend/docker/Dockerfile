@@ -15,7 +15,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 ENV YARN_CACHE_FOLDER=/tmp/.yarn
-ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 USER node
 WORKDIR /usr/src/app
 
