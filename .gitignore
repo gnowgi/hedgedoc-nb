@@ -26,6 +26,7 @@ backups/
 *.sqlite
 .turbo
 .env
+docker/.env
 dist/
 frontend/cypress/downloads
 frontend/cypress/screenshots
