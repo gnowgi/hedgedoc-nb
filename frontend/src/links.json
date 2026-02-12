@@ -1,9 +1,9 @@
 {
   "chat": "https://matrix.to/#/#hedgedoc:matrix.org",
   "community": "https://community.hedgedoc.org",
-  "githubOrg": "https://github.com/hedgedoc/",
-  "sourceCode": "https://github.com/hedgedoc/hedgedoc",
-  "issues": "https://github.com/hedgedoc/hedgedoc/issues",
+  "githubOrg": "https://github.com/gnowgi/hedgedoc-nb",
+  "sourceCode": "https://github.com/gnowgi/hedgedoc-nb",
+  "issues": "https://github.com/gnowgi/hedgedoc-nb/issues",
   "mastodon": "https://social.hedgedoc.org",
   "translate": "https://translate.hedgedoc.org",
   "webpage": "https://hedgedoc.org"

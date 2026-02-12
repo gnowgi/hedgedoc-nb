@@ -507,9 +507,14 @@
         "termsOfUse": "Terms of use",
         "imprint": "Imprint"
       },
+      "demoNotes": {
+        "header": "Demo Notes",
+        "nodeBook": "nodeBook & Ledger",
+        "features": "Features Demo"
+      },
       "project": {
         "header": "Project",
-        "github": "Project on GitHub",
+        "github": "Source Code on GitHub",
         "reportIssue": "Report an issue",
         "helpTranslating": "Help us translating"
       },

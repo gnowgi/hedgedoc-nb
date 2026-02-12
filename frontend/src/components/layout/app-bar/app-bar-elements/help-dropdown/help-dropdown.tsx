@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { UiIcon } from '../../../../common/icons/ui-icon'
+import { DemoNotesSubmenu } from './submenues/demo-notes-submenu'
 import { HelpSubmenu } from './submenues/help-submenu'
 import { InstanceSubmenu } from './submenues/instance-submenu'
 import { LegalSubmenu } from './submenues/legal-submenu'
@@ -26,6 +27,8 @@ export const HelpDropdown: React.FC = () => {
         <UiIcon icon={IconQuestion} />
       </Dropdown.Toggle>
       <Dropdown.Menu>
+        <DemoNotesSubmenu />
+        <Dropdown.Divider />
         <HelpSubmenu />
         <Dropdown.Divider />
         <InstanceSubmenu />
