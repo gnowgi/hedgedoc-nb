@@ -3,6 +3,7 @@
 ---
 services:
   backend:
+    restart: unless-stopped
     build:
       context: ..
       dockerfile: backend/docker/Dockerfile
@@ -11,6 +12,7 @@ services:
       - hedgedoc_uploads:/usr/src/app/backend/uploads
 
   frontend:
+    restart: unless-stopped
     build:
       context: ..
       dockerfile: frontend/docker/Dockerfile
@@ -19,6 +21,7 @@ services:
       HD_INTERNAL_API_URL: "http://backend:3000/"
 
   db:
+    restart: unless-stopped
     image: postgres:15
     environment:
       POSTGRES_USER: "${HD_DATABASE_USERNAME}"
