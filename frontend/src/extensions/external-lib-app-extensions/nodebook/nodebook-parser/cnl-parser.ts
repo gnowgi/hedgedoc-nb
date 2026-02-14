@@ -11,6 +11,8 @@ const RELATION_REGEX = /^\s*<(.+?)>\s*([^;\n]*?)(?:;|$)/gm
 const FUNCTION_REGEX = /^\s*has\s+function\s+"([^"]+)"\s*;/gm
 const DESCRIPTION_REGEX = /```description\n([\s\S]*?)\n```/
 const GRAPH_DESCRIPTION_REGEX = /```graph-description\n([\s\S]*?)\n```/
+const MINDMAP_HEADING_REGEX = /^\s*#\s+(.+?)\s+<([^>]+)>\s*$/
+const MINDMAP_ITEM_REGEX = /^(\s*)-\s+(.+)$/
 
 interface NodeBlock {
   heading: string
@@ -44,6 +46,136 @@ function generateMorphId(nodeId: string, morphName: string): string {
  */
 function resetMorphCounter(): void {
   morphCounter = 0
+}
+
+/**
+ * Generate a clean node ID from a display name.
+ */
+function cleanName(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '_')
+}
+
+interface ParsedBlock {
+  type: 'mindmap' | 'cnl'
+  lines: string[]
+}
+
+/**
+ * Pre-scan CNL text to separate mindmap blocks from regular CNL blocks.
+ * A mindmap block starts with a line matching MINDMAP_HEADING_REGEX and
+ * continues while subsequent non-empty lines match MINDMAP_ITEM_REGEX.
+ */
+function parseAllBlocks(cnlText: string): ParsedBlock[] {
+  const lines = cnlText.split('\n')
+  const blocks: ParsedBlock[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i]
+
+    if (MINDMAP_HEADING_REGEX.test(line)) {
+      const mindmapLines: string[] = [line]
+      i++
+      while (i < lines.length) {
+        const nextLine = lines[i]
+        if (nextLine.trim() === '') {
+          // skip blank lines within mindmap block
+          i++
+          continue
+        }
+        if (MINDMAP_ITEM_REGEX.test(nextLine)) {
+          mindmapLines.push(nextLine)
+          i++
+        } else {
+          break
+        }
+      }
+      blocks.push({ type: 'mindmap', lines: mindmapLines })
+    } else {
+      // Collect regular CNL lines until we hit a mindmap heading
+      const cnlLines: string[] = [line]
+      i++
+      while (i < lines.length && !MINDMAP_HEADING_REGEX.test(lines[i])) {
+        cnlLines.push(lines[i])
+        i++
+      }
+      blocks.push({ type: 'cnl', lines: cnlLines })
+    }
+  }
+
+  return blocks
+}
+
+/**
+ * Parse a mindmap block (# Root <relation> + indented list items) into operations.
+ */
+function parseMindmapBlock(lines: string[]): CnlOperation[] {
+  const ops: CnlOperation[] = []
+
+  // First line is the heading: # Topic <relation>
+  const headingMatch = lines[0].match(MINDMAP_HEADING_REGEX)
+  if (!headingMatch) return ops
+
+  const rootName = headingMatch[1].trim()
+  const relationLabel = headingMatch[2].trim()
+  const rootId = cleanName(rootName)
+
+  ops.push({
+    type: 'addNode',
+    payload: {
+      base_name: rootName,
+      displayName: rootName,
+      options: {
+        id: rootId,
+        role: 'individual',
+        parent_types: [],
+        adjective: null
+      }
+    },
+    id: rootId
+  })
+
+  // Stack tracks parent context: [{id, indent}]
+  const stack: Array<{ id: string; indent: number }> = [{ id: rootId, indent: -1 }]
+
+  for (let i = 1; i < lines.length; i++) {
+    const itemMatch = lines[i].match(MINDMAP_ITEM_REGEX)
+    if (!itemMatch) continue
+
+    const indentStr = itemMatch[1]
+    const indent = indentStr.length
+    const itemName = itemMatch[2].trim()
+    const itemId = cleanName(itemName)
+
+    // Pop stack until top has indent strictly less than current
+    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+      stack.pop()
+    }
+
+    const parentId = stack[stack.length - 1].id
+    const relId = `rel_${parentId}_${cleanName(relationLabel)}_${itemId}`
+
+    ops.push({
+      type: 'addNode',
+      payload: {
+        base_name: itemName,
+        displayName: itemName,
+        role: 'class',
+        options: { adjective: null }
+      },
+      id: itemId
+    })
+
+    ops.push({
+      type: 'addRelation',
+      payload: { source: parentId, target: itemId, name: relationLabel },
+      id: relId
+    })
+
+    stack.push({ id: itemId, indent })
+  }
+
+  return ops
 }
 
 /**
@@ -427,42 +559,52 @@ export function getOperationsFromCnl(cnlText: string): CnlOperation[] {
   resetMorphCounter()
 
   const operations: CnlOperation[] = []
-  const structuralTree = buildStructuralTree(cnlText)
+  const blocks = parseAllBlocks(cnlText)
 
+  for (const block of blocks) {
+    if (block.type === 'mindmap') {
+      operations.push(...parseMindmapBlock(block.lines))
+    } else {
+      const blockText = block.lines.join('\n')
+      const structuralTree = buildStructuralTree(blockText)
+
+      for (const nodeBlock of structuralTree) {
+        const { id: nodeId, payload: nodePayload } = processNodeHeading(nodeBlock.heading)
+        operations.push({ type: 'addNode', payload: nodePayload, id: nodeId })
+
+        const neighborhoodOps = processNeighborhood(nodeId, nodeBlock.content)
+        operations.push(...neighborhoodOps)
+
+        for (const morph of nodeBlock.morphs || []) {
+          const morphId = generateMorphId(nodeId, morph.name)
+
+          operations.push({
+            type: 'addMorph',
+            payload: {
+              nodeId,
+              morph: {
+                morph_id: morphId,
+                node_id: nodeId,
+                name: morph.name,
+                relationNode_ids: [],
+                attributeNode_ids: []
+              }
+            },
+            id: `${nodeId}_morph_${morph.name}`
+          })
+
+          const morphOps = processMorphNeighborhood(nodeId, morphId, morph.content)
+          operations.push(...morphOps)
+        }
+      }
+    }
+  }
+
+  // graph description from full text (works across all blocks)
   const graphDescriptionMatch = cnlText.match(GRAPH_DESCRIPTION_REGEX)
   if (graphDescriptionMatch) {
     const description = graphDescriptionMatch[1].trim()
     operations.push({ type: 'updateGraphDescription', payload: { description }, id: 'graph_description' })
-  }
-
-  for (const nodeBlock of structuralTree) {
-    const { id: nodeId, payload: nodePayload } = processNodeHeading(nodeBlock.heading)
-    operations.push({ type: 'addNode', payload: nodePayload, id: nodeId })
-
-    const neighborhoodOps = processNeighborhood(nodeId, nodeBlock.content)
-    operations.push(...neighborhoodOps)
-
-    for (const morph of nodeBlock.morphs || []) {
-      const morphId = generateMorphId(nodeId, morph.name)
-
-      operations.push({
-        type: 'addMorph',
-        payload: {
-          nodeId,
-          morph: {
-            morph_id: morphId,
-            node_id: nodeId,
-            name: morph.name,
-            relationNode_ids: [],
-            attributeNode_ids: []
-          }
-        },
-        id: `${nodeId}_morph_${morph.name}`
-      })
-
-      const morphOps = processMorphNeighborhood(nodeId, morphId, morph.content)
-      operations.push(...morphOps)
-    }
   }
 
   return operations

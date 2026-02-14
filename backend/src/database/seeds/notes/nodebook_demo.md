@@ -130,21 +130,21 @@ has operator: "OR";
 
 ### Example 2: Mind Map — Cell Biology
 
-Use heading depth to express hierarchy. This renders as a tree layout.
+Use list syntax with a relation to create hierarchical mindmaps.
 
 ```nodeBook
-# Cell [BiologicalStructure]
-## Nucleus
-### Chromosomes
-#### DNA
-### Nucleolus
-## Cytoplasm
-### Ribosomes
-### Endoplasmic Reticulum
-### Golgi Complex
-### Cytoskeleton
-## Plasma membrane
-### Phospholipids
+# Cell <consists of>
+- Nucleus
+  - Chromosomes
+    - DNA
+  - Nucleolus
+- Cytoplasm
+  - Ribosomes
+  - Endoplasmic Reticulum
+  - Golgi Complex
+  - Cytoskeleton
+- Plasma Membrane
+  - Phospholipids
 ```
 
 ### Example 3: What is nodeBook?

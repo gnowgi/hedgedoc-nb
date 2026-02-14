@@ -35,6 +35,10 @@ export class NodeBookAppExtension extends AppExtension {
       basicCompletion(codeFenceRegex, '```nodeBook\n# Node Name [Type]\nhas attribute: value;\n<relation> Target;\n```'),
       basicCompletion(
         codeFenceRegex,
+        '```nodeBook\n# Central Topic <relation>\n- Branch 1\n  - Sub-branch 1\n  - Sub-branch 2\n- Branch 2\n```'
+      ),
+      basicCompletion(
+        codeFenceRegex,
         '```nodeBook-schema\n# Define custom schema types\nnodeType: Planet, A celestial body, parent: Object\nrelationType: orbits, One body orbits another, domain: Planet, range: Star\nattributeType: diameter, float, Size measurement, unit: km, domain: Planet\n```'
       )
     ]
