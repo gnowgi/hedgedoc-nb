@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-declare module 'cytoscape-dagre' {
+declare module 'cytoscape-elk' {
   import type cytoscape from 'cytoscape'
-  const cytoscapeDagre: cytoscape.Ext
-  export default cytoscapeDagre
+  const cytoscapeElk: cytoscape.Ext
+  export default cytoscapeElk
 }
 
 declare module 'cytoscape-svg' {

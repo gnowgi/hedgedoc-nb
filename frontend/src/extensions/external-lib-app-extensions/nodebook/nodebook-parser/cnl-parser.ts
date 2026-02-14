@@ -132,7 +132,8 @@ function parseMindmapBlock(lines: string[]): CnlOperation[] {
         adjective: null
       }
     },
-    id: rootId
+    id: rootId,
+    source: 'mindmap'
   })
 
   // Stack tracks parent context: [{id, indent}]
@@ -163,13 +164,15 @@ function parseMindmapBlock(lines: string[]): CnlOperation[] {
         role: 'class',
         options: { adjective: null }
       },
-      id: itemId
+      id: itemId,
+      source: 'mindmap'
     })
 
     ops.push({
       type: 'addRelation',
       payload: { source: parentId, target: itemId, name: relationLabel },
-      id: relId
+      id: relId,
+      source: 'mindmap'
     })
 
     stack.push({ id: itemId, indent })

@@ -122,6 +122,7 @@ export interface CnlOperation {
   type: OperationType
   payload: Record<string, unknown>
   id: string
+  source?: 'mindmap' | 'cnl'
 }
 
 export interface MorphData {

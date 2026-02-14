@@ -3035,7 +3035,7 @@ __metadata:
     cypress-commands: "npm:3.0.0"
     cypress-fill-command: "npm:1.0.2"
     cytoscape: "npm:^3.30.4"
-    cytoscape-dagre: "npm:^2.5.0"
+    cytoscape-elk: "npm:^2.2.0"
     cytoscape-svg: "npm:^0.4.0"
     d3-graphviz: "npm:5.6.0"
     d3-selection: "npm:3.0.0"
@@ -8520,14 +8520,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cytoscape-dagre@npm:^2.5.0":
-  version: 2.5.0
-  resolution: "cytoscape-dagre@npm:2.5.0"
+"cytoscape-elk@npm:^2.2.0":
+  version: 2.3.0
+  resolution: "cytoscape-elk@npm:2.3.0"
   dependencies:
-    dagre: "npm:^0.8.5"
+    elkjs: "npm:^0.9.3"
   peerDependencies:
-    cytoscape: ^3.2.22
-  checksum: 10c0/f280c6edf6e85aff6dc564b3f35675a3b2b03a44e7177edebb8808c97bddf407c7599334950aca8d1a7cf8fda0fecffb341a12aac08d9977ffec932f5af1f0d9
+    cytoscape: ^3.2.0
+  checksum: 10c0/7ddf3138aaefdd5c54aacabad2c19743a80e8a3beb2a0423a77c2febf69dd5559c68d753fd96a0e240c8b2e7f5843bd87036dc126a4b5f9b24259e62aee86c4e
   languageName: node
   linkType: hard
 
@@ -8973,16 +8973,6 @@ __metadata:
     d3: "npm:^7.9.0"
     lodash-es: "npm:^4.17.21"
   checksum: 10c0/4eca80dbbad4075311e3853930f99486024785b54210541796d4216140d91744738ee51125e2692c3532af148fbc2e690171750583916ed2ad553150abb198c7
-  languageName: node
-  linkType: hard
-
-"dagre@npm:^0.8.5":
-  version: 0.8.5
-  resolution: "dagre@npm:0.8.5"
-  dependencies:
-    graphlib: "npm:^2.1.8"
-    lodash: "npm:^4.17.15"
-  checksum: 10c0/1c021b66961aa9a700bb6ec51747bcc214720a661ad6cb1878eab7316ecb550a759664a6754081a315b37d0355e3c19ff162813b36f20cbeb2e37f7440364d62
   languageName: node
   linkType: hard
 
@@ -9459,6 +9449,13 @@ __metadata:
   version: 1.5.91
   resolution: "electron-to-chromium@npm:1.5.91"
   checksum: 10c0/1c2f1210a1e526a0a139d8b783a71ee47cfd5db3ab888105b063c3c536d2d6a5de739dec30c137faeb3af8276bf26b4cadc05948aa7c51e6d1a628e9313c6b8a
+  languageName: node
+  linkType: hard
+
+"elkjs@npm:^0.9.3":
+  version: 0.9.3
+  resolution: "elkjs@npm:0.9.3"
+  checksum: 10c0/caf544ff4fce8442d1d3dd6dface176c9b2fe26fc1e34f56122828e6eef7d2d7fe70d3202f9f3ecf0feb6287d4c8430949f483e63e450a7454bb39ccffab3808
   languageName: node
   linkType: hard
 
@@ -10900,15 +10897,6 @@ __metadata:
   version: 4.2.11
   resolution: "graceful-fs@npm:4.2.11"
   checksum: 10c0/386d011a553e02bc594ac2ca0bd6d9e4c22d7fa8cfbfc448a6d148c59ea881b092db9dbe3547ae4b88e55f1b01f7c4a2ecc53b310c042793e63aa44cf6c257f2
-  languageName: node
-  linkType: hard
-
-"graphlib@npm:^2.1.8":
-  version: 2.1.8
-  resolution: "graphlib@npm:2.1.8"
-  dependencies:
-    lodash: "npm:^4.17.15"
-  checksum: 10c0/41c525e4d91a6d8b4e8da1883bf4e85689a547e908557ccc53f64db9141bdfb351b9162a79f13cae81c5b3a410027f59e4fc1edc1ea442234ec08e629859b188
   languageName: node
   linkType: hard
 
@@ -12812,13 +12800,6 @@ __metadata:
   version: 4.17.21
   resolution: "lodash@npm:4.17.21"
   checksum: 10c0/d8cbea072bb08655bb4c989da418994b073a608dffa608b09ac04b43a791b12aeae7cd7ad919aa4c925f33b48490b5cfe6c1f71d827956071dae2e7bb3a6b74c
-  languageName: node
-  linkType: hard
-
-"lodash@npm:^4.17.15":
-  version: 4.17.23
-  resolution: "lodash@npm:4.17.23"
-  checksum: 10c0/1264a90469f5bb95d4739c43eb6277d15b6d9e186df4ac68c3620443160fc669e2f14c11e7d8b2ccf078b81d06147c01a8ccced9aab9f9f63d50dcf8cace6bf6
   languageName: node
   linkType: hard
 
