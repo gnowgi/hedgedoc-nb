@@ -18,7 +18,7 @@ tags:
 | **nodeBook** | ` ```nodeBook ` | Build knowledge graphs using Controlled Natural Language (CNL) |
 | **Ledger** | ` ```ledger ` | Track expenses, balances, and budgets with auto-computed reports |
 
-Jump to: [nodeBook CNL](#nodebook-cnl-reference) | [Ledger](#ledger-reference) | [Features](/n/features)
+Jump to: [nodeBook CNL](#nodebook-cnl-reference) | [Petri Nets](#petri-net-transitions) | [Mind Maps](#mind-maps) | [Ledger](#ledger-reference) | [Features](/n/features)
 
 ---
 
@@ -30,107 +30,128 @@ Write structured knowledge in plain English. Each `# Node [Type]` declares a con
 
 ```
 # Node Name [Type]              — declare a node
-has attribute: value;           — node property
-has attr: 42 *unit*;            — attribute with unit
+attribute: value;               — node property ("has" prefix optional)
+attr: 42 *unit*;                — attribute with unit
 <relation name> Target Node;    — directed edge to another node
+<relation> N Target;            — weighted edge (N tokens/instances)
 
 ## Morph Name                   — polymorphic state (under a # node)
-    has attr: new value;        — morph-specific property
+    attr: new value;            — morph-specific property
     <relation> Target;          — morph-specific edge
 
-# Process [Transition]          — special node for state changes
-<has prior_state> Before Node;  — input to the process
-<has post_state> After Node;    — output of the process
+# Process [Transition]          — Petri net transition node
+<has prior_state> N Input;      — consumes N tokens per firing
+<has post_state> M Output;      — produces M tokens per firing
 ```
 
-### Example 1: Elements, Molecules & Transitions
+Arc weights default to 1 when omitted. Weights greater than 1 display as circled numbers (e.g. ⑥) on the graph arcs.
 
-Oxygen and Hydrogen have morphs (ion states). Water has phase morphs (ice, steam). Transitions model chemical and physical processes.
+### Example 1: Concept Map — Elements & Molecules
+
+Nodes can have **morphs** — polymorphic states that represent structural changes. Click a node to view its attributes; nodes with multiple morphs show a state selector.
 
 ```nodeBook
 # Hydrogen [Element]
-has atomic number: 1;
-has number of protons: 1;
-has number of electrons: 1;
-has number of neutrons: 0;
-has state: "gas";
+atomic number: 1;
+number of protons: 1;
+number of electrons: 1;
+number of neutrons: 0;
+state: "gas";
 
 ## Hydrogen ion
-has number of protons: 1;
-has number of neutrons: 0;
-has number of electrons: 0;
-has charge: +1;
-has state: "ion";
+number of protons: 1;
+number of neutrons: 0;
+number of electrons: 0;
+charge: +1;
+state: "ion";
 <part of> Water;
 
 # Oxygen [Element]
-has atomic number: 8;
-has number of protons: 8;
-has number of neutrons: 8;
-has number of electrons: 8;
-has state: "gas";
+atomic number: 8;
+number of protons: 8;
+number of neutrons: 8;
+number of electrons: 8;
+state: "gas";
 
 ## Oxide ion
-has number of protons: 8;
-has number of neutrons: 8;
-has number of electrons: 10;
-has charge: -2;
-has state: "ion";
+number of protons: 8;
+number of neutrons: 8;
+number of electrons: 10;
+charge: -2;
+state: "ion";
 <part of> Water;
 
 # Water [Molecule]
-has molecular formula: "H2O";
-has state: "liquid";
+molecular formula: "H2O";
+state: "liquid";
 
 ## Ice
-has molecular formula: "H2O";
-has state: "solid";
-has temperature: 0 *Celsius*;
+state: "solid";
+temperature: 0 *Celsius*;
 
 ## Steam
-has molecular formula: "H2O";
-has state: "gas";
-has temperature: 100 *Celsius*;
+state: "gas";
+temperature: 100 *Celsius*;
+```
 
-# Combustion Trigger [LogicalOperator]
-has operator: "OR";
-<has operand> Spark;
-<has operand> Flame;
+**Try it:** Click **Hydrogen** or **Oxygen** to switch between their base state and ion morphs. Click **Water** to see its ice and steam phases.
 
-# Electrolysis of Water [Transition]
-<has prior_state> Water;
+### Petri Net Transitions
+
+Declare a node with `[Transition]` to model a process. Connect input places with `<has prior_state>` and output places with `<has post_state>`. Use **arc weights** to specify how many tokens are consumed or produced per firing — essential for stoichiometric reactions.
+
+### Example 2: Chemistry — Electrolysis & Combustion
+
+Set initial tokens to **2** and fire **Electrolysis** to split water into hydrogen and oxygen. Then fire **Combustion** to recombine them. Arc weights (②) enforce the correct stoichiometry.
+
+```nodeBook
+# Electrolysis [Transition]
+<has prior_state> 2 Water;
 <has prior_state> Electricity;
-<has post_state> Hydrogen;
+<has post_state> 2 Hydrogen;
 <has post_state> Oxygen;
 
 # Combustion [Transition]
-<has prior_state> Hydrogen;
+<has prior_state> 2 Hydrogen;
 <has prior_state> Oxygen;
-<has prior_state> Combustion Trigger;
-<has post_state> Water;
+<has prior_state> Spark;
+<has post_state> 2 Water;
 
-# Phase Change [Transition]
-<has prior_state> Water;
-<has prior_state> Heat;
-<has post_state> Steam;
-
-# Freezing [Transition]
-<has prior_state> Water;
-<has prior_state> Cold;
-<has post_state> Ice;
-
-# Spark [Energy]
-# Flame [Energy]
+# Water [Substance]
+# Hydrogen [Substance]
+# Oxygen [Substance]
 # Electricity [Energy]
-# Heat [Energy]
-# Cold [Energy]
+# Spark [Energy]
 ```
 
-**Try it:** Click a node to see its attributes and morph states. Select a Transition node and press **Simulate** to animate the state change. Export the graph as PNG or SVG.
+**Try it:** Click an enabled (green) transition bar to fire it. The circled ② on each arc shows that 2 tokens are consumed or produced. Use the token input and **Reset** button to try different initial markings.
 
-### Example 2: Mind Map — Cell Biology
+### Example 3: Photosynthesis with Arc Weights
 
-Use list syntax with a relation to create hierarchical mindmaps.
+A single reaction consuming 6 CO₂ + 6 H₂O + sunlight to produce glucose and 6 O₂. Set initial tokens to **6** to fire the reaction.
+
+```nodeBook
+# Photosynthesis [Transition]
+<has prior_state> 6 CO2;
+<has prior_state> 6 H2O;
+<has prior_state> Sunlight;
+<has post_state> Glucose;
+<has post_state> 6 O2;
+
+# CO2 [Molecule]
+# H2O [Molecule]
+# Sunlight [Energy]
+# Glucose [Molecule]
+# O2 [Molecule]
+```
+
+When all prior-state places have enough tokens (≥ arc weight), the transition bar turns **green**. When no transition can fire, a **deadlock** banner appears.
+
+### Mind Maps
+
+Use list syntax with a `# Root <relation>` heading to create hierarchical mindmaps. Indentation defines the tree structure.
+
+### Example 4: Cell Biology
 
 ```nodeBook
 # Cell <consists of>
@@ -147,7 +168,7 @@ Use list syntax with a relation to create hierarchical mindmaps.
   - Phospholipids
 ```
 
-### Example 3: What is nodeBook?
+### Example 5: What is nodeBook?
 
 A self-describing knowledge graph — nodeBook explaining itself.
 
@@ -266,6 +287,10 @@ chart bar weekly
 - **Combine extensions** — use nodeBook, ledger, mermaid, math, and standard markdown all in one note
 - **Pan & zoom** nodeBook graphs with the mouse wheel; drag nodes to rearrange
 - **Export** nodeBook graphs as PNG or SVG using the buttons above the graph
+- **Arc weights** — write `<relation> 6 Target;` to specify quantities on edges (displayed as circled numbers ①–⑳)
+- **Petri net simulation** — click green transition bars to fire them; adjust the initial token count and use Reset to experiment
+- **Deadlock detection** — the graph alerts you when no transition can fire
+- **Optional "has" prefix** — `atomic number: 8;` works the same as `has atomic number: 8;`
 
 ---
 

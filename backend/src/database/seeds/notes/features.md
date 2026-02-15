@@ -1,15 +1,15 @@
 ---
-title: HedgeDoc Features Demo
-description: A showcase of HedgeDoc's markdown and embedding features
+title: nodeBook Features Demo
+description: A showcase of nodeBook's markdown, knowledge graph, and embedding features
 tags:
   - demo
   - features
-  - hedgedoc
+  - nodebook
 ---
 
-# HedgeDoc Features Demo
+# nodeBook Features Demo
 
-Welcome to **HedgeDoc** — a real-time collaborative markdown editor. This note showcases the features available in this instance, including the [nodeBook and Ledger extensions](/n/nodeBook).
+Welcome to **nodeBook** — a collaborative knowledge graph and smart notes platform built on [HedgeDoc](https://docs.hedgedoc.org). This note showcases the features available in this instance, including the [nodeBook CNL graphs and Ledger extensions](/n/nodeBook).
 
 [TOC]
 
@@ -51,12 +51,12 @@ This is a success admonition.
 ### Task Lists
 - [x] Learn markdown basics
 - [x] Try HedgeDoc
-- [ ] Explore the [nodeBook and Ledger extensions](/n/nodeBook)
+- [ ] Explore the [nodeBook CNL graphs and Ledger extensions](/n/nodeBook)
 - [ ] Collaborate with others
 
 ## Links & References
 
-- [nodeBook — Knowledge Graphs & Ledger](/n/nodeBook) — interactive CNL graphs and personal accounting
+- [nodeBook — Knowledge Graphs, Petri Nets & Ledger](/n/nodeBook) — interactive CNL graphs, simulations, and personal accounting
 - [HedgeDoc Documentation](https://docs.hedgedoc.org)
 
 ## Tables
@@ -237,31 +237,52 @@ https://gist.github.com/schacon/1
 
 ## nodeBook & Ledger Extensions
 
-This instance of HedgeDoc includes two additional code fence extensions:
+This instance includes two additional code fence extensions for structured knowledge and personal accounting:
 
 | Extension | Code Fence | Purpose |
 |-----------|-----------|---------|
-| **nodeBook** | ` ```nodeBook ` | Knowledge graphs using Controlled Natural Language |
+| **nodeBook** | ` ```nodeBook ` | Knowledge graphs, Petri net simulations, and mind maps using Controlled Natural Language |
 | **Ledger** | ` ```ledger ` | Personal accounting with auto-computed reports and charts |
 
 See the full documentation and live examples at [/n/nodeBook](/n/nodeBook).
 
-### Quick nodeBook Example
+### Quick nodeBook Example — Concept Map
 
 ```nodeBook
-# HedgeDoc [Software]
+# nodeBook [Software]
 <is a> Collaborative Editor;
 <supports> Markdown;
-<supports> Code Fence Extensions;
+<supports> Knowledge Graphs;
+<supports> Petri Net Simulation;
+<supports> Mind Maps;
 
-# Markdown [Format]
-<renders as> HTML;
+# Knowledge Graphs [Feature]
+<expressed in> Controlled Natural Language;
+<rendered by> Cytoscape;
 
-# Code Fence Extensions [Feature]
-<includes> Mermaid;
-<includes> Vega-Lite;
-<includes> nodeBook;
-<includes> Ledger;
+# Petri Net Simulation [Feature]
+<uses> Arc Weights;
+<detects> Deadlock;
+
+# Mind Maps [Feature]
+<uses> List Syntax;
+```
+
+### Quick nodeBook Example — Petri Net with Arc Weights
+
+Arc weights specify token quantities — essential for modelling reactions, resource flows, and processes. Weights display as circled numbers (②, ⑥) on the arcs.
+
+```nodeBook
+# Baking [Transition]
+<has prior_state> 2 Eggs;
+<has prior_state> 3 Flour;
+<has prior_state> Sugar;
+<has post_state> Cake;
+
+# Eggs [Ingredient]
+# Flour [Ingredient]
+# Sugar [Ingredient]
+# Cake [Product]
 ```
 
 ### Quick Ledger Example
