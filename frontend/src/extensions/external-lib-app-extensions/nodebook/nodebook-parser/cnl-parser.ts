@@ -295,13 +295,16 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
     content = content.replace(DESCRIPTION_REGEX, '').trim()
   }
 
-  // Process attributes
-  const attributeLines = content.split('\n').filter((line) => line.trim().startsWith('has '))
+  // Process attributes — any line with ":" is an attribute (has prefix is optional)
+  const attributeLines = content.split('\n').filter((line) => {
+    const trimmed = line.trim()
+    if (!trimmed.includes(':')) return false
+    if (trimmed.startsWith('<')) return false
+    if (trimmed.match(/^\s*has\s+function\s+"/)) return false
+    return true
+  })
   for (const line of attributeLines) {
-    // Skip function declarations
-    if (line.match(/^\s*has\s+function\s+"/)) continue
-
-    const basicMatch = line.match(/^\s*has\s+([^:]+):\s*([^;]+);?/)
+    const basicMatch = line.match(/^\s*(?:has\s+)?([^:<]+):\s*([^;]+);?/)
     if (!basicMatch) continue
 
     const [, name, fullValue] = basicMatch
@@ -432,12 +435,16 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
     content = content.replace(DESCRIPTION_REGEX, '').trim()
   }
 
-  // Process attributes
-  const attributeLines = content.split('\n').filter((line) => line.trim().startsWith('has '))
+  // Process attributes — any line with ":" is an attribute (has prefix is optional)
+  const attributeLines = content.split('\n').filter((line) => {
+    const trimmed = line.trim()
+    if (!trimmed.includes(':')) return false
+    if (trimmed.startsWith('<')) return false
+    if (trimmed.match(/^\s*has\s+function\s+"/)) return false
+    return true
+  })
   for (const line of attributeLines) {
-    if (line.match(/^\s*has\s+function\s+"/)) continue
-
-    const basicMatch = line.match(/^\s*has\s+([^:]+):\s*([^;]+);?/)
+    const basicMatch = line.match(/^\s*(?:has\s+)?([^:<]+):\s*([^;]+);?/)
     if (!basicMatch) continue
 
     const [, name, fullValue] = basicMatch

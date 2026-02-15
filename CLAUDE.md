@@ -79,10 +79,10 @@ The code fence prefix is **`nodeBook`** (not `cnl`). CNL is parsed entirely clie
 # Node Name [Type]              → Creates a node
 # **adjective** Node [Type]     → Node with adjective
 <relation name> Target;         → Directed edge
-has attribute: value;           → Node property
-has attr: value *unit*;         → Attribute with unit
+attribute: value;               → Node property ("has" prefix optional)
+attr: value *unit*;             → Attribute with unit
 ## morph name                   → Polymorphic state (under a # node)
-    has attr: value;            → Morph-specific attribute
+    attr: value;                → Morph-specific attribute
     <relation> Target;          → Morph-specific relation
 ```
 
