@@ -30,6 +30,7 @@ export interface CnlEdge {
   source_id: string
   target_id: string
   name: string
+  weight: number
   morph_ids: string[]
 }
 

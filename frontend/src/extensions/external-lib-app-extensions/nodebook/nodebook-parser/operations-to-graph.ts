@@ -122,6 +122,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
         source: string
         target: string
         name: string
+        weight?: number
         morphId?: string
       }
 
@@ -130,6 +131,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
         source_id: payload.source,
         target_id: payload.target,
         name: payload.name,
+        weight: payload.weight ?? 1,
         morph_ids: []
       }
 

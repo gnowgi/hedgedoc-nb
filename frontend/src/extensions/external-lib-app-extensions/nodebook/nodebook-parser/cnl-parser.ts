@@ -368,10 +368,19 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
   const relationMatches = [...content.matchAll(RELATION_REGEX)]
   for (const match of relationMatches) {
     const [, relationName, targets] = match
-    for (const target of targets
+    for (const rawTarget of targets
       .split(';')
       .map((t) => t.trim())
       .filter(Boolean)) {
+      // Extract optional leading weight: "6 CO2" → weight=6, rest="CO2"
+      let weight = 1
+      let target = rawTarget
+      const weightMatch = rawTarget.match(/^(\d+)\s+(.+)$/)
+      if (weightMatch) {
+        weight = parseInt(weightMatch[1], 10)
+        target = weightMatch[2]
+      }
+
       let targetAdjective: string | null = null
       let targetBaseName = target
       const targetDisplayName = target
@@ -408,7 +417,7 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
 
       ops.push({
         type: 'addRelation',
-        payload: { source: nodeId, target: targetId, name: relationName.trim() },
+        payload: { source: nodeId, target: targetId, name: relationName.trim(), weight },
         id: relId
       })
     }
@@ -509,10 +518,19 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
   const relationMatches = [...content.matchAll(RELATION_REGEX)]
   for (const match of relationMatches) {
     const [, relationName, targets] = match
-    for (const target of targets
+    for (const rawTarget of targets
       .split(';')
       .map((t) => t.trim())
       .filter(Boolean)) {
+      // Extract optional leading weight: "6 CO2" → weight=6, rest="CO2"
+      let weight = 1
+      let target = rawTarget
+      const weightMatch = rawTarget.match(/^(\d+)\s+(.+)$/)
+      if (weightMatch) {
+        weight = parseInt(weightMatch[1], 10)
+        target = weightMatch[2]
+      }
+
       let targetAdjective: string | null = null
       let targetBaseName = target
       const targetDisplayName = target
@@ -549,7 +567,7 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
 
       ops.push({
         type: 'addRelation',
-        payload: { source: nodeId, target: targetId, name: relationName.trim(), morphId },
+        payload: { source: nodeId, target: targetId, name: relationName.trim(), weight, morphId },
         id: relId
       })
     }

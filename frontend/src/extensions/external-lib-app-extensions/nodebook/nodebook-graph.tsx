@@ -27,6 +27,12 @@ function placeDisplayLabel(name: string, tokenCount: number): string {
   return `${name}\n${tokenCount}`
 }
 
+/** Convert a number to a circled Unicode digit (①-⑳), falling back to parenthesized form. */
+function circledNumber(n: number): string {
+  if (n >= 1 && n <= 20) return String.fromCodePoint(0x245f + n)
+  return `(${n})`
+}
+
 interface InMemoryGraph {
   nodes: CnlNode[]
   edges: CnlEdge[]
@@ -101,34 +107,36 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     setMarking(initial)
   }, [graphData, graphMode, priorStateNodeIds, postStateNodeIds, initialTokens])
 
-  // Petri net: check if a transition is enabled
+  // Petri net: check if a transition is enabled (respects arc weights)
   const isTransitionEnabled = useCallback(
     (transitionId: string, currentMarking: Map<string, number>): boolean => {
-      const inputPlaces = graphData.edges
-        .filter((e) => e.source_id === transitionId && e.name === 'has prior_state')
-        .map((e) => e.target_id)
-      return inputPlaces.length > 0 && inputPlaces.every((placeId) => (currentMarking.get(placeId) ?? 0) >= 1)
+      const inputEdges = graphData.edges.filter((e) => e.source_id === transitionId && e.name === 'has prior_state')
+      if (inputEdges.length === 0) return false
+      // Sum required tokens per input place (handles multiple arcs to the same place)
+      const required = new Map<string, number>()
+      for (const edge of inputEdges) {
+        required.set(edge.target_id, (required.get(edge.target_id) ?? 0) + edge.weight)
+      }
+      return [...required.entries()].every(([placeId, need]) => (currentMarking.get(placeId) ?? 0) >= need)
     },
     [graphData]
   )
 
-  // Petri net: fire a transition
+  // Petri net: fire a transition (respects arc weights)
   const fireTransition = useCallback(
     (transitionId: string) => {
       setMarking((prev) => {
         if (!isTransitionEnabled(transitionId, prev)) return prev
         const next = new Map(prev)
-        const inputs = graphData.edges
-          .filter((e) => e.source_id === transitionId && e.name === 'has prior_state')
-          .map((e) => e.target_id)
-        for (const placeId of inputs) {
-          next.set(placeId, (next.get(placeId) ?? 0) - 1)
+        // Consume tokens from input places by arc weight
+        const inputEdges = graphData.edges.filter((e) => e.source_id === transitionId && e.name === 'has prior_state')
+        for (const edge of inputEdges) {
+          next.set(edge.target_id, (next.get(edge.target_id) ?? 0) - edge.weight)
         }
-        const outputs = graphData.edges
-          .filter((e) => e.source_id === transitionId && e.name === 'has post_state')
-          .map((e) => e.target_id)
-        for (const placeId of outputs) {
-          next.set(placeId, (next.get(placeId) ?? 0) + 1)
+        // Produce tokens to output places by arc weight
+        const outputEdges = graphData.edges.filter((e) => e.source_id === transitionId && e.name === 'has post_state')
+        for (const edge of outputEdges) {
+          next.set(edge.target_id, (next.get(edge.target_id) ?? 0) + edge.weight)
         }
         return next
       })
@@ -405,7 +413,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             id: edge.id,
             source: edge.target_id,
             target: edge.source_id,
-            label: '',
+            label: edge.weight > 1 ? circledNumber(edge.weight) : '',
             edgeType: 'prior_state'
           }
         })
@@ -416,7 +424,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             id: edge.id,
             source: edge.source_id,
             target: edge.target_id,
-            label: '',
+            label: edge.weight > 1 ? circledNumber(edge.weight) : '',
             edgeType: 'post_state'
           }
         })
@@ -426,7 +434,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             id: edge.id,
             source: edge.source_id,
             target: edge.target_id,
-            label: edge.name
+            label: edge.weight > 1 ? `${edge.name} ${circledNumber(edge.weight)}` : edge.name
           }
         })
       }
@@ -609,7 +617,14 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             'target-arrow-shape': 'triangle',
             width: 3,
             'curve-style': 'bezier',
-            label: ''
+            label: 'data(label)',
+            'font-size': '14px',
+            color: '#1e40af',
+            'text-background-color': '#ffffff',
+            'text-background-opacity': 0.8,
+            'text-background-padding': '2px',
+            'text-rotation': 'autorotate',
+            'text-margin-y': -10
           }
         },
         // Output arcs (transition → place) — green
@@ -621,7 +636,14 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             'target-arrow-shape': 'triangle',
             width: 3,
             'curve-style': 'bezier',
-            label: ''
+            label: 'data(label)',
+            'font-size': '14px',
+            color: '#166534',
+            'text-background-color': '#ffffff',
+            'text-background-opacity': 0.8,
+            'text-background-padding': '2px',
+            'text-rotation': 'autorotate',
+            'text-margin-y': -10
           }
         },
         // Orphan nodes — sharp rectangles to signal unaffiliated status
@@ -809,19 +831,22 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     })
 
     // Transition data (Petri net)
-    let transitionData: { priorStates: { id: string; name: string }[]; postStates: { id: string; name: string }[] } | null = null
+    let transitionData: {
+      priorStates: { id: string; name: string; weight: number }[]
+      postStates: { id: string; name: string; weight: number }[]
+    } | null = null
     if (selectedNode.role === 'Transition') {
       const priorStates = graphData.edges
         .filter((e) => e.source_id === selectedNode.id && e.name === 'has prior_state')
         .map((e) => {
           const node = inMemoryGraph.nodes.find((n) => n.id === e.target_id)
-          return { id: e.target_id, name: node?.name ?? e.target_id }
+          return { id: e.target_id, name: node?.name ?? e.target_id, weight: e.weight }
         })
       const postStates = graphData.edges
         .filter((e) => e.source_id === selectedNode.id && e.name === 'has post_state')
         .map((e) => {
           const node = inMemoryGraph.nodes.find((n) => n.id === e.target_id)
-          return { id: e.target_id, name: node?.name ?? e.target_id }
+          return { id: e.target_id, name: node?.name ?? e.target_id, weight: e.weight }
         })
       transitionData = { priorStates, postStates }
     }
@@ -914,7 +939,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                     <span className={styles['transition-flow-heading']}>Prior States</span>
                     {selectedNodeData.transitionData.priorStates.map((s) => (
                       <span key={s.id} className={styles['transition-flow-item']}>
-                        {s.name} ({marking.get(s.id) ?? 0})
+                        {s.weight > 1 ? `${circledNumber(s.weight)} ` : ''}{s.name} ({marking.get(s.id) ?? 0})
                       </span>
                     ))}
                   </div>
@@ -925,7 +950,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                     <span className={styles['transition-flow-heading']}>Post States</span>
                     {selectedNodeData.transitionData.postStates.map((s) => (
                       <span key={s.id} className={styles['transition-flow-item']}>
-                        {s.name} ({marking.get(s.id) ?? 0})
+                        {s.weight > 1 ? `${circledNumber(s.weight)} ` : ''}{s.name} ({marking.get(s.id) ?? 0})
                       </span>
                     ))}
                   </div>
@@ -996,7 +1021,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                       <ul>
                         {section.relations.map((rel) => (
                           <li key={rel.id}>
-                            <strong>{rel.name}</strong> &rarr; {rel.target_id}
+                            <strong>{rel.name}</strong>{rel.weight > 1 ? ` ${circledNumber(rel.weight)}` : ''} &rarr; {rel.target_id}
                           </li>
                         ))}
                       </ul>
