@@ -20,6 +20,13 @@ import { useAsync } from 'react-use'
 
 const log = new Logger('NodeBookGraph')
 
+/** Build a display label for a Petri-net place: name + token indicator. */
+function placeDisplayLabel(name: string, tokenCount: number): string {
+  if (tokenCount <= 0) return name
+  if (tokenCount <= 3) return `${name}\n${'●'.repeat(tokenCount)}`
+  return `${name}\n${tokenCount}`
+}
+
 interface InMemoryGraph {
   nodes: CnlNode[]
   edges: CnlEdge[]
@@ -41,6 +48,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [validationWarnings, setValidationWarnings] = useState<CnlParseError[]>([])
   const [hasValidated, setHasValidated] = useState(false)
   const [marking, setMarking] = useState<Map<string, number>>(new Map())
+  const [initialTokens, setInitialTokens] = useState<number>(1)
 
   // Parse CNL synchronously (pure regex, microsecond-fast)
   const { graphData, operations } = useMemo(() => {
@@ -86,12 +94,12 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       return
     }
     const initial = new Map<string, number>()
-    for (const nodeId of priorStateNodeIds) initial.set(nodeId, 1)
+    for (const nodeId of priorStateNodeIds) initial.set(nodeId, initialTokens)
     for (const nodeId of postStateNodeIds) {
       if (!priorStateNodeIds.has(nodeId)) initial.set(nodeId, 0)
     }
     setMarking(initial)
-  }, [graphData, graphMode, priorStateNodeIds, postStateNodeIds])
+  }, [graphData, graphMode, priorStateNodeIds, postStateNodeIds, initialTokens])
 
   // Petri net: check if a transition is enabled
   const isTransitionEnabled = useCallback(
@@ -131,12 +139,12 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   // Petri net: reset marking to initial state
   const resetMarking = useCallback(() => {
     const initial = new Map<string, number>()
-    for (const nodeId of priorStateNodeIds) initial.set(nodeId, 1)
+    for (const nodeId of priorStateNodeIds) initial.set(nodeId, initialTokens)
     for (const nodeId of postStateNodeIds) {
       if (!priorStateNodeIds.has(nodeId)) initial.set(nodeId, 0)
     }
     setMarking(initial)
-  }, [priorStateNodeIds, postStateNodeIds])
+  }, [priorStateNodeIds, postStateNodeIds, initialTokens])
 
   // Check if any transition is enabled (for deadlock detection)
   const hasEnabledTransition = useMemo(() => {
@@ -260,49 +268,66 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     // Build node elements
     const cyNodes: cytoscape.ElementDefinition[] = []
 
-    // In Petri net mode, create compound parent nodes for each transition's groups
-    const transitionGroups = new Map<string, { priorGroupId: string; postGroupId: string }>()
     if (isPetriNet) {
+      // --- Petri net node building: compute all assignments first, then create elements ---
+
+      // 1. Identify transition IDs and prepare group ID templates
+      const transitionIds: string[] = []
+      for (const node of inMemoryGraph.nodes) {
+        if (node.role === 'Transition') transitionIds.push(node.id)
+      }
+
+      // 2. Build a map: for each place, track which transition+role (prior/post) it belongs to.
+      //    A place shared across transitions gets assigned to the first transition where it
+      //    appears, preferring the role (prior vs post) from that first edge.
+      const placeAssignment = new Map<string, { transId: string; role: 'prior' | 'post' }>()
+      for (const edge of graphData.edges) {
+        if (edge.name !== 'has prior_state' && edge.name !== 'has post_state') continue
+        if (placeAssignment.has(edge.target_id)) continue
+        const role = edge.name === 'has prior_state' ? 'prior' : 'post'
+        placeAssignment.set(edge.target_id, { transId: edge.source_id, role })
+      }
+
+      // 3. Auxiliary nodes: trace non-Petri edges to find a connected place's group
+      const auxiliaryAssignment = new Map<string, { transId: string; role: 'prior' | 'post' }>()
+      for (const edge of inMemoryGraph.edges) {
+        if (edge.name === 'has prior_state' || edge.name === 'has post_state') continue
+        const sourcePlace = placeAssignment.get(edge.source_id)
+        const targetPlace = placeAssignment.get(edge.target_id)
+        if (sourcePlace && !placeAssignment.has(edge.target_id) && !auxiliaryAssignment.has(edge.target_id)) {
+          auxiliaryAssignment.set(edge.target_id, sourcePlace)
+        }
+        if (targetPlace && !placeAssignment.has(edge.source_id) && !auxiliaryAssignment.has(edge.source_id)) {
+          auxiliaryAssignment.set(edge.source_id, targetPlace)
+        }
+      }
+
+      // 4. Determine which groups actually have members
+      const groupMembers = new Map<string, number>()
+      for (const [, assignment] of placeAssignment) {
+        const groupId = `${assignment.role}-group-${assignment.transId}`
+        groupMembers.set(groupId, (groupMembers.get(groupId) ?? 0) + 1)
+      }
+      for (const [, assignment] of auxiliaryAssignment) {
+        const groupId = `${assignment.role}-group-${assignment.transId}`
+        groupMembers.set(groupId, (groupMembers.get(groupId) ?? 0) + 1)
+      }
+
+      // 5. Only create compound groups that have at least one member
+      for (const transId of transitionIds) {
+        const priorGroupId = `prior-group-${transId}`
+        const postGroupId = `post-group-${transId}`
+        if (groupMembers.has(priorGroupId)) {
+          cyNodes.push({ data: { id: priorGroupId, label: 'Prior States', groupType: 'prior' } })
+        }
+        if (groupMembers.has(postGroupId)) {
+          cyNodes.push({ data: { id: postGroupId, label: 'Post States', groupType: 'post' } })
+        }
+      }
+
+      // 6. Create node elements
       for (const node of inMemoryGraph.nodes) {
         if (node.role === 'Transition') {
-          const priorGroupId = `prior-group-${node.id}`
-          const postGroupId = `post-group-${node.id}`
-          transitionGroups.set(node.id, { priorGroupId, postGroupId })
-
-          cyNodes.push({
-            data: {
-              id: priorGroupId,
-              label: 'Prior States',
-              groupType: 'prior'
-            }
-          })
-          cyNodes.push({
-            data: {
-              id: postGroupId,
-              label: 'Post States',
-              groupType: 'post'
-            }
-          })
-        }
-      }
-    }
-
-    // Find which transition each prior/post node belongs to
-    const nodeToTransition = new Map<string, string>()
-    if (isPetriNet) {
-      for (const edge of graphData.edges) {
-        if (edge.name === 'has prior_state' || edge.name === 'has post_state') {
-          if (!nodeToTransition.has(edge.target_id)) {
-            nodeToTransition.set(edge.target_id, edge.source_id)
-          }
-        }
-      }
-    }
-
-    for (const node of inMemoryGraph.nodes) {
-      if (isPetriNet) {
-        if (node.role === 'Transition') {
-          // Transition bar
           cyNodes.push({
             data: {
               id: node.id,
@@ -312,45 +337,42 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
               enabled: isTransitionEnabled(node.id, marking)
             }
           })
-        } else if (priorStateNodeIds.has(node.id)) {
-          const transId = nodeToTransition.get(node.id)
-          const group = transId ? transitionGroups.get(transId) : undefined
+        } else if (placeAssignment.has(node.id)) {
+          const assignment = placeAssignment.get(node.id)!
+          const groupId = `${assignment.role}-group-${assignment.transId}`
+          const hasGroup = groupMembers.has(groupId)
+          const isPrior = assignment.role === 'prior'
+          const tokens = marking.get(node.id) ?? (isPrior ? 1 : 0)
           cyNodes.push({
             data: {
               id: node.id,
               label: node.name,
+              displayLabel: placeDisplayLabel(node.name, tokens),
               type: 'pn-place',
-              tokenCount: marking.get(node.id) ?? 1,
-              partition: 0,
-              ...(group && { parent: group.priorGroupId })
-            }
-          })
-        } else if (postStateNodeIds.has(node.id)) {
-          const transId = nodeToTransition.get(node.id)
-          const group = transId ? transitionGroups.get(transId) : undefined
-          cyNodes.push({
-            data: {
-              id: node.id,
-              label: node.name,
-              type: 'pn-place',
-              tokenCount: marking.get(node.id) ?? 0,
-              partition: 2,
-              ...(group && { parent: group.postGroupId })
+              tokenCount: tokens,
+              partition: isPrior ? 0 : 2,
+              ...(hasGroup && { parent: groupId })
             }
           })
         } else {
-          // Regular node in a graph that also has transitions
+          // Auxiliary or orphan node
+          const auxAssignment = auxiliaryAssignment.get(node.id)
+          const parentGroupId = auxAssignment ? `${auxAssignment.role}-group-${auxAssignment.transId}` : undefined
+          const hasParent = parentGroupId && groupMembers.has(parentGroupId)
           cyNodes.push({
             data: {
               id: node.id,
               label: node.name,
-              type: 'polynode',
-              hasMorphs: node.morphs.length > 1
+              type: hasParent ? 'polynode' : 'pn-orphan',
+              hasMorphs: node.morphs.length > 1,
+              ...(hasParent && { parent: parentGroupId })
             }
           })
         }
-      } else {
-        // Concept map / mindmap mode — original behavior
+      }
+    } else {
+      // Concept map / mindmap mode — original behavior
+      for (const node of inMemoryGraph.nodes) {
         let displayName = node.name
         if (node.morphs && node.nbh) {
           const activeMorph = node.morphs.find((m) => m.morph_id === node.nbh)
@@ -471,46 +493,40 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
 
     if (isPetriNet) {
       graphStyles.push(
-        // Place nodes (circles)
+        // Place nodes (rounded rectangles — consistent with concept map style)
         {
           selector: 'node[type="pn-place"]',
           style: {
-            shape: 'ellipse',
-            width: 60,
-            height: 60,
+            shape: 'round-rectangle',
             'background-color': '#ffffff',
             'border-width': 3,
             'border-color': '#334155',
-            label: 'data(label)',
-            color: '#334155',
-            'text-valign': 'bottom',
-            'text-margin-y': 8,
-            'font-size': '10px',
+            label: 'data(displayLabel)',
+            color: '#1e293b',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'font-size': '11px',
             'text-wrap': 'wrap',
-            'text-max-width': '100px',
-            content: 'data(tokenCount)',
-            'text-halign': 'center'
+            'text-max-width': '120px',
+            width: 'label',
+            height: 'label',
+            padding: '10px'
           }
         },
-        // Place with tokens
+        // Place with tokens — solid border
         {
           selector: 'node[type="pn-place"][tokenCount > 0]',
           style: {
-            content: 'data(tokenCount)',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'font-size': '18px',
-            'font-weight': 'bold',
-            color: '#1e293b'
+            'border-color': '#334155',
+            'border-width': 3
           }
         },
-        // Empty place
+        // Empty place — dashed, muted
         {
           selector: 'node[type="pn-place"][tokenCount = 0]',
           style: {
             'background-color': '#f1f5f9',
             'border-style': 'dashed',
-            content: '',
             color: '#94a3b8'
           }
         },
@@ -607,6 +623,27 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             'curve-style': 'bezier',
             label: ''
           }
+        },
+        // Orphan nodes — sharp rectangles to signal unaffiliated status
+        {
+          selector: 'node[type="pn-orphan"]',
+          style: {
+            shape: 'rectangle',
+            'background-color': '#f8fafc',
+            'border-width': 2,
+            'border-color': '#94a3b8',
+            'border-style': 'dashed',
+            label: 'data(label)',
+            color: '#64748b',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'font-size': '10px',
+            'text-wrap': 'wrap',
+            'text-max-width': '100px',
+            width: 'label',
+            height: 'label',
+            padding: '8px'
+          }
         }
       )
     }
@@ -633,6 +670,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       })
       // Click place to select it
       cy.on('tap', 'node[type="pn-place"]', (evt) => {
+        const nodeId = evt.target.id()
+        setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId))
+      })
+      // Click auxiliary/orphan nodes to select
+      cy.on('tap', 'node[type="polynode"], node[type="pn-orphan"]', (evt) => {
         const nodeId = evt.target.id()
         setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId))
       })
@@ -664,6 +706,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       const node = cyRef.current.$id(placeId)
       if (node.length) {
         node.data('tokenCount', count)
+        node.data('displayLabel', placeDisplayLabel(node.data('label'), count))
       }
     }
     for (const node of graphData.nodes) {
@@ -817,9 +860,23 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
 
         <div className={styles['export-buttons']}>
           {isPetriNet && (
-            <button onClick={resetMarking} title='Reset token marking to initial state'>
-              Reset
-            </button>
+            <>
+              <input
+                type='number'
+                min={1}
+                step={1}
+                value={initialTokens}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10)
+                  if (v >= 1) setInitialTokens(v)
+                }}
+                className={styles['token-input']}
+                title='Initial tokens per prior-state place'
+              />
+              <button onClick={resetMarking} title='Reset token marking to initial state'>
+                Reset
+              </button>
+            </>
           )}
           <button onClick={handleValidate} title='Validate against schemas'>
             Validate

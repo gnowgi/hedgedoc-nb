@@ -56,6 +56,29 @@
   }
 }
 
+.token-input {
+  width: 3.5rem;
+  padding: 0.25rem 0.375rem;
+  font-size: 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #212529;
+  text-align: center;
+  -moz-appearance: textfield;
+
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    opacity: 1;
+  }
+
+  :global(body[data-bs-theme='dark']) & {
+    border-color: #495057;
+    background: rgba(52, 58, 64, 0.9);
+    color: #dee2e6;
+  }
+}
+
 .validation-pass-banner {
   padding: 0.5rem 0.75rem;
   background: #d1fae5;
