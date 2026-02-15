@@ -25,21 +25,37 @@ export class NodeBookAppExtension extends AppExtension {
 
   buildCheatsheetExtensions(): CheatsheetExtension[] {
     return [
-      { i18nKey: 'nodeBook', categoryI18nKey: 'charts', readMoreUrl: new URL('https://github.com/nodeBook') },
-      { i18nKey: 'nodeBook-schema', categoryI18nKey: 'charts', readMoreUrl: new URL('https://github.com/nodeBook') }
+      {
+        i18nKey: 'nodeBook',
+        categoryI18nKey: 'charts',
+        topics: [
+          { i18nKey: 'conceptMap' },
+          { i18nKey: 'petriNet' },
+          { i18nKey: 'mindMap' },
+          { i18nKey: 'morphs' }
+        ]
+      },
+      { i18nKey: 'nodeBook-schema', categoryI18nKey: 'charts' }
     ]
   }
 
   buildAutocompletion(): CompletionSource[] {
     return [
-      basicCompletion(codeFenceRegex, '```nodeBook\n# Node Name [Type]\nhas attribute: value;\n<relation> Target;\n```'),
+      basicCompletion(
+        codeFenceRegex,
+        '```nodeBook\n# Node Name [Type]\nattribute: value;\n<relation> Target;\n```'
+      ),
+      basicCompletion(
+        codeFenceRegex,
+        '```nodeBook\n# Process [Transition]\n<has prior_state> 2 Input;\n<has post_state> Output;\n```'
+      ),
       basicCompletion(
         codeFenceRegex,
         '```nodeBook\n# Central Topic <relation>\n- Branch 1\n  - Sub-branch 1\n  - Sub-branch 2\n- Branch 2\n```'
       ),
       basicCompletion(
         codeFenceRegex,
-        '```nodeBook-schema\n# Define custom schema types\nnodeType: Planet, A celestial body, parent: Object\nrelationType: orbits, One body orbits another, domain: Planet, range: Star\nattributeType: diameter, float, Size measurement, unit: km, domain: Planet\n```'
+        '```nodeBook-schema\nnodeType: Planet, A celestial body, parent: Object\nrelationType: orbits, One body orbits another, domain: Planet, range: Star\nattributeType: diameter, float, Size measurement, unit: km, domain: Planet\n```'
       )
     ]
   }

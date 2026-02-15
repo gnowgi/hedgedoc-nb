@@ -879,6 +879,34 @@
       "description": "Render diagrams and charts using mermaid.js by adding a code block with the language `mermaid`",
       "example": "```mermaid\ngantt\n  title A Gantt Diagram\n\n  section Section\n  A task: a1, 2014-01-01, 30d\n  Another task: after a1, 20d\n\n  section Another\n  Task in sec: 2014-01-12, 12d\n  Another task: 24d\n```"
     },
+    "nodeBook": {
+      "title": "nodeBook",
+      "conceptMap": {
+        "title": "Concept Map",
+        "description": "Create knowledge graphs by declaring nodes with `# Name [Type]` headings, adding attributes with `name: value;` (the `has` prefix is optional), and connecting nodes with `<relation> Target;` edges. Use `<relation> N Target;` for weighted edges — the number displays as a circled digit on the arc.",
+        "example": "```nodeBook\n# Earth [Planet]\ndiameter: 12742 *km*;\nstate: \"solid\";\n<orbits> Sun;\n<has satellite> Moon;\n\n# Sun [Star]\nspectral type: \"G2V\";\n\n# Moon [Satellite]\ndiameter: 3474 *km*;\n```"
+      },
+      "petriNet": {
+        "title": "Petri Net",
+        "description": "Model processes with `[Transition]` nodes. Connect inputs with `<has prior_state>` and outputs with `<has post_state>`. Arc weights specify how many tokens are consumed or produced per firing (e.g. `<has prior_state> 6 CO2;` needs 6 tokens). Click enabled (green) transitions to simulate. A deadlock banner appears when no transition can fire.",
+        "example": "```nodeBook\n# Photosynthesis [Transition]\n<has prior_state> 6 CO2;\n<has prior_state> 6 H2O;\n<has prior_state> Sunlight;\n<has post_state> Glucose;\n<has post_state> 6 O2;\n\n# CO2 [Molecule]\n# H2O [Molecule]\n# Sunlight [Energy]\n# Glucose [Molecule]\n# O2 [Molecule]\n```"
+      },
+      "mindMap": {
+        "title": "Mind Map",
+        "description": "Create hierarchical mind maps with a `# Root <relation>` heading followed by indented list items. Each indentation level defines a deeper branch. The relation label is used for all edges in the tree.",
+        "example": "```nodeBook\n# Science <branches into>\n- Physics\n  - Mechanics\n  - Thermodynamics\n- Chemistry\n  - Organic\n  - Inorganic\n- Biology\n  - Botany\n  - Zoology\n```"
+      },
+      "morphs": {
+        "title": "Polymorphic Nodes",
+        "description": "Add `## Morph Name` sub-headings under a `#` node to define polymorphic states. Each morph can have its own attributes and relations. Click a node in the graph to switch between its morphs using the state selector.",
+        "example": "```nodeBook\n# Water [Molecule]\nmolecular formula: \"H2O\";\nstate: \"liquid\";\n\n## Ice\nstate: \"solid\";\ntemperature: 0 *Celsius*;\n\n## Steam\nstate: \"gas\";\ntemperature: 100 *Celsius*;\n```"
+      }
+    },
+    "nodeBook-schema": {
+      "title": "nodeBook Schema",
+      "description": "Define custom node types, relation types, and attribute types in a `nodeBook-schema` code block. These schemas enable validation of your knowledge graphs via the Validate button.",
+      "example": "```nodeBook-schema\nnodeType: Planet, A celestial body, parent: Object\nrelationType: orbits, One body orbits another, domain: Planet, range: Star\nattributeType: diameter, float, Size measurement, unit: km, domain: Planet\nattributeType: mass, float, Mass of the object, unit: kg, domain: Planet\n```"
+    },
     "imagePlaceholder": {
       "title": "Image Placeholder",
       "description": "You can use image placeholders to indicate spots where images should be placed. To do this use an image link with `https://` as URL. You can upload the actual image directly from the renderer. Placeholders also support size definition, alt text and title.",
