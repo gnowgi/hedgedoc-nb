@@ -20,7 +20,7 @@ interface PageParams {
  */
 const EditorPage: NextPage<PageParams> = ({ params }) => {
   return (
-    <NoteLoadingBoundary noteId={params.noteId}>
+    <NoteLoadingBoundary noteId={params.noteId} key={params.noteId}>
       <EditorToRendererCommunicatorContextProvider>
         <EditorPageContent />
       </EditorToRendererCommunicatorContextProvider>

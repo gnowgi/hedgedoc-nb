@@ -24,7 +24,7 @@ const SlideShowPage: NextPage<PageParams> = ({ params }) => {
   useNoteAndAppTitle()
 
   return (
-    <NoteLoadingBoundary noteId={params.noteId}>
+    <NoteLoadingBoundary noteId={params.noteId} key={params.noteId}>
       <EditorToRendererCommunicatorContextProvider>
         <SlideShowPageContent />
       </EditorToRendererCommunicatorContextProvider>

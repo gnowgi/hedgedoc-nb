@@ -24,7 +24,7 @@ const DocumentReadOnlyPage: NextPage<PageParams> = ({ params }) => {
 
   return (
     <EditorToRendererCommunicatorContextProvider>
-      <NoteLoadingBoundary noteId={params.noteId}>
+      <NoteLoadingBoundary noteId={params.noteId} key={params.noteId}>
         <DocumentReadOnlyPageContent />
       </NoteLoadingBoundary>
     </EditorToRendererCommunicatorContextProvider>

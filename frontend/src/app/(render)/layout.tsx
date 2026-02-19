@@ -39,12 +39,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 }
 
 export const metadata: Metadata = {
-  applicationName: 'HedgeDoc',
+  applicationName: 'nodeBook',
   appleWebApp: {
-    title: 'HedgeDoc'
+    title: 'nodeBook'
   },
-  description: 'HedgeDoc - Ideas grow better together',
-  title: 'HedgeDoc',
+  description: 'nodeBook - Ideas grow better together',
+  title: 'nodeBook',
   manifest: '/icons/site.webmanifest'
 }
 
