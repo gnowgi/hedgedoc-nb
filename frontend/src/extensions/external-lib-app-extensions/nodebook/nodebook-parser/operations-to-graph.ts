@@ -45,6 +45,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
   const attributes: CnlAttribute[] = []
   const errors: Array<{ message: string; line?: number }> = []
   let description: string | null = null
+  let currency: string | null = null
 
   // PASS 1: Create explicit nodes (addNode operations)
   for (const op of operations) {
@@ -225,6 +226,9 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
     } else if (op.type === 'updateGraphDescription') {
       const payload = op.payload as { description: string }
       description = payload.description
+    } else if (op.type === 'setCurrency') {
+      const payload = op.payload as { currency: string }
+      currency = payload.currency
     }
   }
 
@@ -233,6 +237,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
     edges,
     attributes,
     description,
+    currency,
     errors
   }
 }

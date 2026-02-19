@@ -56,6 +56,7 @@ export interface CnlGraphData {
   edges: CnlEdge[]
   attributes: CnlAttribute[]
   description: string | null
+  currency: string | null
   errors: CnlParseError[]
 }
 
@@ -118,6 +119,7 @@ export type OperationType =
   | 'applyFunction'
   | 'updateNode'
   | 'updateGraphDescription'
+  | 'setCurrency'
 
 export interface CnlOperation {
   type: OperationType

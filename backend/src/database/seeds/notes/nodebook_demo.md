@@ -11,6 +11,11 @@ tags:
 
 # nodeBook
 
+Welcome to noteBook!
+
+![NodeBook Logo](icon.png)
+
+
 **nodeBook** extends [HedgeDoc](https://docs.hedgedoc.org) with interactive code fences that turn plain text into knowledge graphs and financial ledgers — right inside your collaborative markdown notes.
 
 | Extension | Code fence | What it does |
@@ -18,7 +23,7 @@ tags:
 | **nodeBook** | ` ```nodeBook ` | Build knowledge graphs using Controlled Natural Language (CNL) |
 | **Ledger** | ` ```ledger ` | Track expenses, balances, and budgets with auto-computed reports |
 
-Jump to: [nodeBook CNL](#nodebook-cnl-reference) | [Petri Nets](#petri-net-transitions) | [Mind Maps](#mind-maps) | [Ledger](#ledger-reference) | [Features](/n/features)
+Jump to: [nodeBook CNL](#nodebook-cnl-reference) | [Petri Nets](#petri-net-transitions) | [Accounting](#double-entry-accounting) | [Mind Maps](#mind-maps) | [Ledger](#ledger-reference) | [Features](/n/features)
 
 ---
 
@@ -146,6 +151,40 @@ A single reaction consuming 6 CO₂ + 6 H₂O + sunlight to produce glucose and 
 ```
 
 When all prior-state places have enough tokens (≥ arc weight), the transition bar turns **green**. When no transition can fire, a **deadlock** banner appears.
+
+### Double-Entry Accounting
+
+Transactions are a special kind of Petri net transition that models double-entry bookkeeping. Use `[Transaction]` nodes with `<debit>` and `<credit>` relations. Declare account types with `[Asset]`, `[Liability]`, `[Equity]`, `[Revenue]`, or `[Expense]` and set opening balances with `balance:`.
+
+### Example: Business Startup Journal
+
+```nodeBook
+# Cash [Asset]
+balance: 10000;
+
+# Accounts Receivable [Asset]
+balance: 3000;
+
+# Buy Inventory [Transaction]
+date: 2026-01-15;
+<debit> 5000 Inventory;
+<credit> 5000 Cash;
+
+# Pay Rent [Transaction]
+date: 2026-02-01;
+<debit> 1500 Rent Expense;
+<credit> 1500 Cash;
+
+# Receive Payment [Transaction]
+date: 2026-02-05;
+<debit> 3000 Cash;
+<credit> 3000 Accounts Receivable;
+
+# Inventory [Asset]
+# Rent Expense [Expense]
+```
+
+**Try it:** Click each green transaction to execute it. Cash starts at $10,000 — watch the balance decrease as you pay rent and buy inventory, then increase when you receive payment. The **Account Balances** table below the graph updates in real time. A transaction is disabled when the source account has insufficient balance.
 
 ### Mind Maps
 

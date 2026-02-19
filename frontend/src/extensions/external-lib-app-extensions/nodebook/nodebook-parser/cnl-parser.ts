@@ -13,6 +13,13 @@ const DESCRIPTION_REGEX = /```description\n([\s\S]*?)\n```/
 const GRAPH_DESCRIPTION_REGEX = /```graph-description\n([\s\S]*?)\n```/
 const MINDMAP_HEADING_REGEX = /^\s*#\s+(.+?)\s+<([^>]+)>\s*$/
 const MINDMAP_ITEM_REGEX = /^(\s*)-\s+(.+)$/
+const CURRENCY_REGEX = /^\s*currency\s*:\s*([^;\n]+?)\s*;?\s*$/i
+
+/** Maps accounting relation names to their Petri net equivalents. */
+const ACCOUNTING_RELATION_MAP: Record<string, string> = {
+  debit: 'has post_state',
+  credit: 'has prior_state'
+}
 
 interface NodeBlock {
   heading: string
@@ -368,16 +375,19 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
   const relationMatches = [...content.matchAll(RELATION_REGEX)]
   for (const match of relationMatches) {
     const [, relationName, targets] = match
+    const trimmedRelName = relationName.trim()
+    const isAccountingRelation = trimmedRelName in ACCOUNTING_RELATION_MAP
+    const mappedRelName = ACCOUNTING_RELATION_MAP[trimmedRelName] ?? trimmedRelName
     for (const rawTarget of targets
       .split(';')
       .map((t) => t.trim())
       .filter(Boolean)) {
-      // Extract optional leading weight: "6 CO2" → weight=6, rest="CO2"
+      // Extract optional leading weight: "6 CO2" → weight=6, "1500.50 Cash" → weight=1500.5
       let weight = 1
       let target = rawTarget
-      const weightMatch = rawTarget.match(/^(\d+)\s+(.+)$/)
+      const weightMatch = rawTarget.match(/^(\d+(?:\.\d{1,2})?)\s+(.+)$/)
       if (weightMatch) {
-        weight = parseInt(weightMatch[1], 10)
+        weight = parseFloat(weightMatch[1])
         target = weightMatch[2]
       }
 
@@ -402,14 +412,14 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
             .replace(/\s+/g, '_')
         : null
       const targetId = cleanTargetAdjective ? `${cleanTargetAdjective}_${cleanTargetBaseName}` : cleanTargetBaseName
-      const relId = `rel_${nodeId}_${relationName.trim().toLowerCase().replace(/\s+/g, '_')}_${targetId}`
+      const relId = `rel_${nodeId}_${trimmedRelName.toLowerCase().replace(/\s+/g, '_')}_${targetId}`
 
       ops.push({
         type: 'addNode',
         payload: {
           base_name: targetBaseName,
           displayName: targetDisplayName,
-          role: 'class',
+          role: isAccountingRelation ? 'Account' : 'class',
           options: { adjective: targetAdjective }
         },
         id: targetId
@@ -417,7 +427,7 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
 
       ops.push({
         type: 'addRelation',
-        payload: { source: nodeId, target: targetId, name: relationName.trim(), weight },
+        payload: { source: nodeId, target: targetId, name: mappedRelName, weight },
         id: relId
       })
     }
@@ -518,16 +528,19 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
   const relationMatches = [...content.matchAll(RELATION_REGEX)]
   for (const match of relationMatches) {
     const [, relationName, targets] = match
+    const trimmedRelName = relationName.trim()
+    const isAccountingRelation = trimmedRelName in ACCOUNTING_RELATION_MAP
+    const mappedRelName = ACCOUNTING_RELATION_MAP[trimmedRelName] ?? trimmedRelName
     for (const rawTarget of targets
       .split(';')
       .map((t) => t.trim())
       .filter(Boolean)) {
-      // Extract optional leading weight: "6 CO2" → weight=6, rest="CO2"
+      // Extract optional leading weight: "6 CO2" → weight=6, "1500.50 Cash" → weight=1500.5
       let weight = 1
       let target = rawTarget
-      const weightMatch = rawTarget.match(/^(\d+)\s+(.+)$/)
+      const weightMatch = rawTarget.match(/^(\d+(?:\.\d{1,2})?)\s+(.+)$/)
       if (weightMatch) {
-        weight = parseInt(weightMatch[1], 10)
+        weight = parseFloat(weightMatch[1])
         target = weightMatch[2]
       }
 
@@ -552,14 +565,14 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
             .replace(/\s+/g, '_')
         : null
       const targetId = cleanTargetAdjective ? `${cleanTargetAdjective}_${cleanTargetBaseName}` : cleanTargetBaseName
-      const relId = `rel_${nodeId}_${relationName.trim().toLowerCase().replace(/\s+/g, '_')}_${targetId}`
+      const relId = `rel_${nodeId}_${trimmedRelName.toLowerCase().replace(/\s+/g, '_')}_${targetId}`
 
       ops.push({
         type: 'addNode',
         payload: {
           base_name: targetBaseName,
           displayName: targetDisplayName,
-          role: 'class',
+          role: isAccountingRelation ? 'Account' : 'class',
           options: { adjective: targetAdjective }
         },
         id: targetId
@@ -567,7 +580,7 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
 
       ops.push({
         type: 'addRelation',
-        payload: { source: nodeId, target: targetId, name: relationName.trim(), weight, morphId },
+        payload: { source: nodeId, target: targetId, name: mappedRelName, weight, morphId },
         id: relId
       })
     }
@@ -633,6 +646,12 @@ export function getOperationsFromCnl(cnlText: string): CnlOperation[] {
   if (graphDescriptionMatch) {
     const description = graphDescriptionMatch[1].trim()
     operations.push({ type: 'updateGraphDescription', payload: { description }, id: 'graph_description' })
+  }
+
+  // currency setting (graph-level line: "currency: USD;")
+  const currencyMatch = cnlText.match(CURRENCY_REGEX)
+  if (currencyMatch) {
+    operations.push({ type: 'setCurrency', payload: { currency: currencyMatch[1].trim() }, id: 'graph_currency' })
   }
 
   return operations

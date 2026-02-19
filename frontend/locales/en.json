@@ -891,6 +891,11 @@
         "description": "Model processes with `[Transition]` nodes. Connect inputs with `<has prior_state>` and outputs with `<has post_state>`. Arc weights specify how many tokens are consumed or produced per firing (e.g. `<has prior_state> 6 CO2;` needs 6 tokens). Click enabled (green) transitions to simulate. A deadlock banner appears when no transition can fire.",
         "example": "```nodeBook\n# Photosynthesis [Transition]\n<has prior_state> 6 CO2;\n<has prior_state> 6 H2O;\n<has prior_state> Sunlight;\n<has post_state> Glucose;\n<has post_state> 6 O2;\n\n# CO2 [Molecule]\n# H2O [Molecule]\n# Sunlight [Energy]\n# Glucose [Molecule]\n# O2 [Molecule]\n```"
       },
+      "accounting": {
+        "title": "Double-Entry Accounting",
+        "description": "Model accounting transactions as Petri net transitions using `[Transaction]` nodes. Use `<debit>` and `<credit>` relations to move value between accounts. Declare accounts with `[Asset]`, `[Liability]`, `[Equity]`, `[Revenue]`, or `[Expense]` types and set initial balances with `balance: amount;`. Add `currency: EUR;` at the top to set the currency (supports USD, EUR, GBP, INR, JPY, PHP, and more). Click transactions to simulate — disabled when source accounts have insufficient balance.",
+        "example": "```nodeBook\ncurrency: INR;\n\n# Cash [Asset]\nbalance: 50000;\n\n# Buy Inventory [Transaction]\ndate: 2026-01-15;\n<debit> 25000 Inventory;\n<credit> 25000 Cash;\n```"
+      },
       "mindMap": {
         "title": "Mind Map",
         "description": "Create hierarchical mind maps with a `# Root <relation>` heading followed by indented list items. Each indentation level defines a deeper branch. The relation label is used for all edges in the tree.",

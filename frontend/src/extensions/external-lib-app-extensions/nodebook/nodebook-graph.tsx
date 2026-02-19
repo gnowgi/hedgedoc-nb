@@ -20,11 +20,39 @@ import { useAsync } from 'react-use'
 
 const log = new Logger('NodeBookGraph')
 
+/** Map currency codes to their symbols. */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CNY: '¥',
+  PHP: '₱', KRW: '₩', THB: '฿', BRL: 'R$', ZAR: 'R',
+  MXN: '$', CAD: 'C$', AUD: 'A$', CHF: 'CHF', SEK: 'kr',
+  RUB: '₽', TRY: '₺', SAR: '﷼', AED: 'د.إ', NGN: '₦'
+}
+
+/** Resolve a currency code/symbol to its display symbol. */
+function resolveCurrencySymbol(currency: string | null): string {
+  if (!currency) return '$'
+  const upper = currency.toUpperCase()
+  if (CURRENCY_SYMBOLS[upper]) return CURRENCY_SYMBOLS[upper]
+  // If the user typed a symbol directly (e.g., "€"), use it as-is
+  return currency
+}
+
 /** Build a display label for a Petri-net place: name + token indicator. */
-function placeDisplayLabel(name: string, tokenCount: number): string {
+function placeDisplayLabel(name: string, tokenCount: number, isAccounting: boolean, currencySymbol: string): string {
+  if (isAccounting) {
+    return `${name}\n${currencySymbol}${tokenCount.toFixed(2)}`
+  }
   if (tokenCount <= 0) return name
   if (tokenCount <= 3) return `${name}\n${'●'.repeat(tokenCount)}`
   return `${name}\n${tokenCount}`
+}
+
+/** Account types recognized for the accounting equation. */
+const ACCOUNT_TYPES = new Set(['Account', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])
+
+/** Check if a node role is a transition-like role (Transition or Transaction). */
+function isTransitionRole(role: string): boolean {
+  return role === 'Transition' || role === 'Transaction'
 }
 
 /** Convert a number to a circled Unicode digit (①-⑳), falling back to parenthesized form. */
@@ -65,7 +93,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     } catch (error) {
       log.error('Error parsing CNL', error)
       return {
-        graphData: { nodes: [], edges: [], attributes: [], description: null, errors: [{ message: String(error) }] } as CnlGraphData,
+        graphData: { nodes: [], edges: [], attributes: [], description: null, currency: null, errors: [{ message: String(error) }] } as CnlGraphData,
         operations: []
       }
     }
@@ -73,12 +101,24 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
 
   // Determine graph mode
   const graphMode: GraphMode = useMemo(() => {
-    const hasTransitions = graphData.nodes.some((n) => n.role === 'Transition')
+    const hasTransitions = graphData.nodes.some((n) => isTransitionRole(n.role))
     if (hasTransitions) return 'petri-net'
     const isMindmapOnly = operations.length > 0 && operations.every((op) => op.source === 'mindmap')
     if (isMindmapOnly) return 'mindmap'
     return 'concept-map'
   }, [graphData, operations])
+
+  // Detect accounting mode (Transaction nodes present)
+  const isAccountingMode = useMemo(
+    () => graphData.nodes.some((n) => n.role === 'Transaction'),
+    [graphData]
+  )
+
+  // Resolve currency symbol from graph data
+  const currencySymbol = useMemo(
+    () => resolveCurrencySymbol(graphData.currency),
+    [graphData.currency]
+  )
 
   // Compute prior/post state sets for Petri net mode
   const { priorStateNodeIds, postStateNodeIds } = useMemo(() => {
@@ -100,12 +140,23 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       return
     }
     const initial = new Map<string, number>()
-    for (const nodeId of priorStateNodeIds) initial.set(nodeId, initialTokens)
-    for (const nodeId of postStateNodeIds) {
-      if (!priorStateNodeIds.has(nodeId)) initial.set(nodeId, 0)
+    if (isAccountingMode) {
+      // Accounting mode: use balance: attribute for initial values, default to 0
+      for (const node of graphData.nodes) {
+        if (isTransitionRole(node.role)) continue
+        const balanceAttr = graphData.attributes.find(
+          (a) => a.source_id === node.id && a.name.toLowerCase() === 'balance'
+        )
+        initial.set(node.id, balanceAttr ? parseFloat(balanceAttr.value) || 0 : 0)
+      }
+    } else {
+      for (const nodeId of priorStateNodeIds) initial.set(nodeId, initialTokens)
+      for (const nodeId of postStateNodeIds) {
+        if (!priorStateNodeIds.has(nodeId)) initial.set(nodeId, 0)
+      }
     }
     setMarking(initial)
-  }, [graphData, graphMode, priorStateNodeIds, postStateNodeIds, initialTokens])
+  }, [graphData, graphMode, isAccountingMode, priorStateNodeIds, postStateNodeIds, initialTokens])
 
   // Petri net: check if a transition is enabled (respects arc weights)
   const isTransitionEnabled = useCallback(
@@ -157,8 +208,25 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   // Check if any transition is enabled (for deadlock detection)
   const hasEnabledTransition = useMemo(() => {
     if (graphMode !== 'petri-net') return true
-    return graphData.nodes.some((n) => n.role === 'Transition' && isTransitionEnabled(n.id, marking))
+    return graphData.nodes.some((n) => isTransitionRole(n.role) && isTransitionEnabled(n.id, marking))
   }, [graphData, graphMode, marking, isTransitionEnabled])
+
+  // Accounting: validate that debits == credits per transaction
+  const unbalancedTransactions = useMemo(() => {
+    if (!isAccountingMode) return []
+    const result: Array<{ name: string; debits: number; credits: number }> = []
+    for (const node of graphData.nodes) {
+      if (node.role !== 'Transaction') continue
+      const debitEdges = graphData.edges.filter((e) => e.source_id === node.id && e.name === 'has post_state')
+      const creditEdges = graphData.edges.filter((e) => e.source_id === node.id && e.name === 'has prior_state')
+      const totalDebits = debitEdges.reduce((sum, e) => sum + e.weight, 0)
+      const totalCredits = creditEdges.reduce((sum, e) => sum + e.weight, 0)
+      if (Math.abs(totalDebits - totalCredits) > 0.001) {
+        result.push({ name: node.name, debits: totalDebits, credits: totalCredits })
+      }
+    }
+    return result
+  }, [graphData, isAccountingMode])
 
   // Reset validation state when code changes
   useEffect(() => {
@@ -282,7 +350,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       // 1. Identify transition IDs and prepare group ID templates
       const transitionIds: string[] = []
       for (const node of inMemoryGraph.nodes) {
-        if (node.role === 'Transition') transitionIds.push(node.id)
+        if (isTransitionRole(node.role)) transitionIds.push(node.id)
       }
 
       // 2. Build a map: for each place, track which transition+role (prior/post) it belongs to.
@@ -322,20 +390,22 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       }
 
       // 5. Only create compound groups that have at least one member
+      const priorGroupLabel = isAccountingMode ? 'Credits' : 'Prior States'
+      const postGroupLabel = isAccountingMode ? 'Debits' : 'Post States'
       for (const transId of transitionIds) {
         const priorGroupId = `prior-group-${transId}`
         const postGroupId = `post-group-${transId}`
         if (groupMembers.has(priorGroupId)) {
-          cyNodes.push({ data: { id: priorGroupId, label: 'Prior States', groupType: 'prior' } })
+          cyNodes.push({ data: { id: priorGroupId, label: priorGroupLabel, groupType: 'prior' } })
         }
         if (groupMembers.has(postGroupId)) {
-          cyNodes.push({ data: { id: postGroupId, label: 'Post States', groupType: 'post' } })
+          cyNodes.push({ data: { id: postGroupId, label: postGroupLabel, groupType: 'post' } })
         }
       }
 
       // 6. Create node elements
       for (const node of inMemoryGraph.nodes) {
-        if (node.role === 'Transition') {
+        if (isTransitionRole(node.role)) {
           cyNodes.push({
             data: {
               id: node.id,
@@ -350,12 +420,12 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           const groupId = `${assignment.role}-group-${assignment.transId}`
           const hasGroup = groupMembers.has(groupId)
           const isPrior = assignment.role === 'prior'
-          const tokens = marking.get(node.id) ?? (isPrior ? 1 : 0)
+          const tokens = marking.get(node.id) ?? (isPrior ? (isAccountingMode ? 0 : 1) : 0)
           cyNodes.push({
             data: {
               id: node.id,
               label: node.name,
-              displayLabel: placeDisplayLabel(node.name, tokens),
+              displayLabel: placeDisplayLabel(node.name, tokens, isAccountingMode, currencySymbol),
               type: 'pn-place',
               tokenCount: tokens,
               partition: isPrior ? 0 : 2,
@@ -408,23 +478,29 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
 
       if (isPetriNet && edge.name === 'has prior_state') {
         // Reverse direction: place → transition (for correct LR flow)
+        const arcLabel = isAccountingMode
+          ? `${currencySymbol}${edge.weight.toFixed(2)}`
+          : edge.weight > 1 ? circledNumber(edge.weight) : ''
         cyEdges.push({
           data: {
             id: edge.id,
             source: edge.target_id,
             target: edge.source_id,
-            label: edge.weight > 1 ? circledNumber(edge.weight) : '',
+            label: arcLabel,
             edgeType: 'prior_state'
           }
         })
       } else if (isPetriNet && edge.name === 'has post_state') {
         // Direction already correct: transition → place
+        const arcLabel = isAccountingMode
+          ? `${currencySymbol}${edge.weight.toFixed(2)}`
+          : edge.weight > 1 ? circledNumber(edge.weight) : ''
         cyEdges.push({
           data: {
             id: edge.id,
             source: edge.source_id,
             target: edge.target_id,
-            label: edge.weight > 1 ? circledNumber(edge.weight) : '',
+            label: arcLabel,
             edgeType: 'post_state'
           }
         })
@@ -719,7 +795,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       cy.destroy()
       cyRef.current = null
     }
-  }, [cytoscapeModules, inMemoryGraph, graphMode, layoutConfig, marking, priorStateNodeIds, postStateNodeIds, isTransitionEnabled, fireTransition, graphData])
+  }, [cytoscapeModules, inMemoryGraph, graphMode, layoutConfig, marking, priorStateNodeIds, postStateNodeIds, isTransitionEnabled, fireTransition, graphData, isAccountingMode, currencySymbol])
 
   // Update Cytoscape node data when marking changes (without full re-render)
   useEffect(() => {
@@ -728,11 +804,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       const node = cyRef.current.$id(placeId)
       if (node.length) {
         node.data('tokenCount', count)
-        node.data('displayLabel', placeDisplayLabel(node.data('label'), count))
+        node.data('displayLabel', placeDisplayLabel(node.data('label'), count, isAccountingMode, currencySymbol))
       }
     }
     for (const node of graphData.nodes) {
-      if (node.role === 'Transition') {
+      if (isTransitionRole(node.role)) {
         const enabled = isTransitionEnabled(node.id, marking)
         const cyNode = cyRef.current.$id(node.id)
         if (cyNode.length) {
@@ -740,7 +816,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         }
       }
     }
-  }, [marking, graphMode, graphData, isTransitionEnabled])
+  }, [marking, graphMode, graphData, isTransitionEnabled, isAccountingMode, currencySymbol])
 
   // Handle morph change (concept map mode)
   const handleMorphChange = useCallback(
@@ -835,7 +911,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       priorStates: { id: string; name: string; weight: number }[]
       postStates: { id: string; name: string; weight: number }[]
     } | null = null
-    if (selectedNode.role === 'Transition') {
+    if (isTransitionRole(selectedNode.role)) {
       const priorStates = graphData.edges
         .filter((e) => e.source_id === selectedNode.id && e.name === 'has prior_state')
         .map((e) => {
@@ -880,11 +956,26 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         )}
 
         {isPetriNet && !hasEnabledTransition && marking.size > 0 && (
-          <div className={styles['deadlock-banner']}>Deadlock: no transition can fire</div>
+          <div className={styles['deadlock-banner']}>
+            {isAccountingMode ? 'All transactions processed (or insufficient account balances)' : 'Deadlock: no transition can fire'}
+          </div>
+        )}
+
+        {isAccountingMode && unbalancedTransactions.length > 0 && (
+          <div className={styles['warning-banner']}>
+            <details open>
+              <summary>{unbalancedTransactions.length} unbalanced transaction(s)</summary>
+              <ul>
+                {unbalancedTransactions.map((t, i) => (
+                  <li key={i}>{t.name}: debits {currencySymbol}{t.debits.toFixed(2)} != credits {currencySymbol}{t.credits.toFixed(2)}</li>
+                ))}
+              </ul>
+            </details>
+          </div>
         )}
 
         <div className={styles['export-buttons']}>
-          {isPetriNet && (
+          {isPetriNet && !isAccountingMode && (
             <>
               <input
                 type='number'
@@ -898,10 +989,12 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                 className={styles['token-input']}
                 title='Initial tokens per prior-state place'
               />
-              <button onClick={resetMarking} title='Reset token marking to initial state'>
-                Reset
-              </button>
             </>
+          )}
+          {isPetriNet && (
+            <button onClick={resetMarking} title={isAccountingMode ? 'Reset account balances' : 'Reset token marking to initial state'}>
+              Reset
+            </button>
           )}
           <button onClick={handleValidate} title='Validate against schemas'>
             Validate
@@ -921,7 +1014,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             <h4>
               {selectedNode.name}
               <span className={styles['node-type-badge']}>
-                {isPetriNet && selectedNode.role === 'Transition' ? 'Transition' : selectedNode.role}
+                {selectedNode.role}
               </span>
               <button className={styles['close-button']} onClick={() => setSelectedNodeId(null)}>
                 &times;
@@ -930,16 +1023,23 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
 
             {selectedNode.description && <div className={styles['node-description']}>{selectedNode.description}</div>}
 
-            {/* Petri net transition detail */}
+            {/* Petri net transition / accounting transaction detail */}
             {isPetriNet && selectedNodeData.transitionData && (
               <div className={styles['transition-panel']}>
-                <div className={styles['transition-label']}>Petri Net Transition</div>
+                <div className={styles['transition-label']}>
+                  {isAccountingMode ? 'Accounting Transaction' : 'Petri Net Transition'}
+                </div>
                 <div className={styles['transition-flow']}>
                   <div className={styles['transition-flow-group']}>
-                    <span className={styles['transition-flow-heading']}>Prior States</span>
+                    <span className={styles['transition-flow-heading']}>
+                      {isAccountingMode ? 'Credits (from)' : 'Prior States'}
+                    </span>
                     {selectedNodeData.transitionData.priorStates.map((s) => (
                       <span key={s.id} className={styles['transition-flow-item']}>
-                        {s.weight > 1 ? `${circledNumber(s.weight)} ` : ''}{s.name} ({marking.get(s.id) ?? 0})
+                        {isAccountingMode
+                          ? `${currencySymbol}${s.weight.toFixed(2)} ${s.name} (bal: ${currencySymbol}${(marking.get(s.id) ?? 0).toFixed(2)})`
+                          : `${s.weight > 1 ? `${circledNumber(s.weight)} ` : ''}${s.name} (${marking.get(s.id) ?? 0})`
+                        }
                       </span>
                     ))}
                   </div>
@@ -947,10 +1047,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                   <div className={styles['transition-flow-center']}>{selectedNode.name}</div>
                   <span className={styles['transition-flow-arrow']}>&rarr;</span>
                   <div className={styles['transition-flow-group']}>
-                    <span className={styles['transition-flow-heading']}>Post States</span>
+                    <span className={styles['transition-flow-heading']}>
+                      {isAccountingMode ? 'Debits (to)' : 'Post States'}
+                    </span>
                     {selectedNodeData.transitionData.postStates.map((s) => (
                       <span key={s.id} className={styles['transition-flow-item']}>
-                        {s.weight > 1 ? `${circledNumber(s.weight)} ` : ''}{s.name} ({marking.get(s.id) ?? 0})
+                        {isAccountingMode
+                          ? `${currencySymbol}${s.weight.toFixed(2)} ${s.name} (bal: ${currencySymbol}${(marking.get(s.id) ?? 0).toFixed(2)})`
+                          : `${s.weight > 1 ? `${circledNumber(s.weight)} ` : ''}${s.name} (${marking.get(s.id) ?? 0})`
+                        }
                       </span>
                     ))}
                   </div>
@@ -961,7 +1066,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                     onClick={() => fireTransition(selectedNode.id)}
                     disabled={!isTransitionEnabled(selectedNode.id, marking)}
                   >
-                    Fire Transition
+                    {isAccountingMode ? 'Execute Transaction' : 'Fire Transition'}
                   </button>
                   <button className={styles['reset-button']} onClick={resetMarking}>
                     Reset
@@ -970,12 +1075,25 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
               </div>
             )}
 
-            {/* Petri net place detail */}
+            {/* Petri net place / account detail */}
             {isPetriNet && (priorStateNodeIds.has(selectedNode.id) || postStateNodeIds.has(selectedNode.id)) && (
               <div className={styles['place-panel']}>
                 <div className={styles['place-info']}>
-                  <span>Tokens: <strong>{marking.get(selectedNode.id) ?? 0}</strong></span>
-                  <span>Role: {priorStateNodeIds.has(selectedNode.id) ? 'Prior State (Input)' : 'Post State (Output)'}</span>
+                  <span>
+                    {isAccountingMode ? 'Balance: ' : 'Tokens: '}
+                    <strong>
+                      {isAccountingMode
+                        ? `${currencySymbol}${(marking.get(selectedNode.id) ?? 0).toFixed(2)}`
+                        : marking.get(selectedNode.id) ?? 0
+                      }
+                    </strong>
+                  </span>
+                  <span>
+                    Role: {isAccountingMode
+                      ? (priorStateNodeIds.has(selectedNode.id) ? 'Credit Source' : 'Debit Destination')
+                      : (priorStateNodeIds.has(selectedNode.id) ? 'Prior State (Input)' : 'Post State (Output)')
+                    }
+                  </span>
                 </div>
               </div>
             )}
@@ -1029,6 +1147,72 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                   </div>
                 )
             )}
+          </div>
+        )}
+
+        {/* Accounting balance summary table */}
+        {isAccountingMode && marking.size > 0 && (
+          <div className={styles['balance-summary']}>
+            <h4>Account Balances</h4>
+            <table className={styles['balance-table']}>
+              <thead>
+                <tr>
+                  <th>Account</th>
+                  <th>Type</th>
+                  <th className={styles['balance-amount']}>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {graphData.nodes
+                  .filter((n) => !isTransitionRole(n.role))
+                  .map((n) => {
+                    const balance = marking.get(n.id) ?? 0
+                    return (
+                      <tr key={n.id} className={balance < 0 ? styles['negative-balance'] : undefined}>
+                        <td>{n.name}</td>
+                        <td>
+                          <span className={styles['account-type-badge']}>{n.role}</span>
+                        </td>
+                        <td className={styles['balance-amount']}>{currencySymbol}{balance.toFixed(2)}</td>
+                      </tr>
+                    )
+                  })}
+              </tbody>
+            </table>
+            {/* Accounting equation summary */}
+            {(() => {
+              const accountNodes = graphData.nodes.filter((n) => !isTransitionRole(n.role))
+              const hasTypedAccounts = accountNodes.some((n) =>
+                ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'].includes(n.role)
+              )
+              if (!hasTypedAccounts) return null
+              const sum = (roles: string[]) =>
+                accountNodes
+                  .filter((n) => roles.includes(n.role))
+                  .reduce((s, n) => s + (marking.get(n.id) ?? 0), 0)
+              const assets = sum(['Asset'])
+              const liabilities = sum(['Liability'])
+              const equity = sum(['Equity'])
+              const revenue = sum(['Revenue'])
+              const expenses = sum(['Expense'])
+              return (
+                <div className={styles['accounting-equation']}>
+                  <span>Assets: <strong>{currencySymbol}{assets.toFixed(2)}</strong></span>
+                  <span> = </span>
+                  <span>Liabilities: <strong>{currencySymbol}{liabilities.toFixed(2)}</strong></span>
+                  <span> + </span>
+                  <span>Equity: <strong>{currencySymbol}{equity.toFixed(2)}</strong></span>
+                  {(revenue > 0 || expenses > 0) && (
+                    <>
+                      <span> + </span>
+                      <span>Revenue: <strong>{currencySymbol}{revenue.toFixed(2)}</strong></span>
+                      <span> - </span>
+                      <span>Expenses: <strong>{currencySymbol}{expenses.toFixed(2)}</strong></span>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>

@@ -31,6 +31,7 @@ export class NodeBookAppExtension extends AppExtension {
         topics: [
           { i18nKey: 'conceptMap' },
           { i18nKey: 'petriNet' },
+          { i18nKey: 'accounting' },
           { i18nKey: 'mindMap' },
           { i18nKey: 'morphs' }
         ]
@@ -48,6 +49,10 @@ export class NodeBookAppExtension extends AppExtension {
       basicCompletion(
         codeFenceRegex,
         '```nodeBook\n# Process [Transition]\n<has prior_state> 2 Input;\n<has post_state> Output;\n```'
+      ),
+      basicCompletion(
+        codeFenceRegex,
+        '```nodeBook\n# Cash [Asset]\nbalance: 10000;\n\n# Buy Inventory [Transaction]\ndate: 2026-01-15;\n<debit> 5000 Inventory;\n<credit> 5000 Cash;\n```'
       ),
       basicCompletion(
         codeFenceRegex,
