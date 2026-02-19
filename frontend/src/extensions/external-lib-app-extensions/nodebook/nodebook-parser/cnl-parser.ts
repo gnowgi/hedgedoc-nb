@@ -13,7 +13,7 @@ const DESCRIPTION_REGEX = /```description\n([\s\S]*?)\n```/
 const GRAPH_DESCRIPTION_REGEX = /```graph-description\n([\s\S]*?)\n```/
 const MINDMAP_HEADING_REGEX = /^\s*#\s+(.+?)\s+<([^>]+)>\s*$/
 const MINDMAP_ITEM_REGEX = /^(\s*)-\s+(.+)$/
-const CURRENCY_REGEX = /^\s*currency\s*:\s*([^;\n]+?)\s*;?\s*$/i
+const CURRENCY_REGEX = /^\s*currency\s*:\s*([^;\n]+?)\s*;?\s*$/im
 
 /** Maps accounting relation names to their Petri net equivalents. */
 const ACCOUNTING_RELATION_MAP: Record<string, string> = {
