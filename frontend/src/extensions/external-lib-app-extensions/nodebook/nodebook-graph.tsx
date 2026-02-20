@@ -149,6 +149,18 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         )
         initial.set(node.id, balanceAttr ? parseFloat(balanceAttr.value) || 0 : 0)
       }
+      // Auto-fire all transactions: apply each transaction's effects once
+      for (const node of graphData.nodes) {
+        if (node.role !== 'Transaction') continue
+        const creditEdges = graphData.edges.filter((e) => e.source_id === node.id && e.name === 'has prior_state')
+        for (const edge of creditEdges) {
+          initial.set(edge.target_id, (initial.get(edge.target_id) ?? 0) - edge.weight)
+        }
+        const debitEdges = graphData.edges.filter((e) => e.source_id === node.id && e.name === 'has post_state')
+        for (const edge of debitEdges) {
+          initial.set(edge.target_id, (initial.get(edge.target_id) ?? 0) + edge.weight)
+        }
+      }
     } else {
       for (const nodeId of priorStateNodeIds) initial.set(nodeId, initialTokens)
       for (const nodeId of postStateNodeIds) {
@@ -761,7 +773,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       // Click enabled transition to fire it
       cy.on('tap', 'node[type="pn-transition"]', (evt) => {
         const nodeId = evt.target.id()
-        if (evt.target.data('enabled')) {
+        if (!isAccountingMode && evt.target.data('enabled')) {
           fireTransition(nodeId)
         }
         setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId))
@@ -955,9 +967,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           </div>
         )}
 
-        {isPetriNet && !hasEnabledTransition && marking.size > 0 && (
+        {isAccountingMode && marking.size > 0 && (
           <div className={styles['deadlock-banner']}>
-            {isAccountingMode ? 'All transactions processed (or insufficient account balances)' : 'Deadlock: no transition can fire'}
+            Balances reflect all transactions in this block
+          </div>
+        )}
+
+        {isPetriNet && !isAccountingMode && !hasEnabledTransition && marking.size > 0 && (
+          <div className={styles['deadlock-banner']}>
+            Deadlock: no transition can fire
           </div>
         )}
 
@@ -991,8 +1009,8 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
               />
             </>
           )}
-          {isPetriNet && (
-            <button onClick={resetMarking} title={isAccountingMode ? 'Reset account balances' : 'Reset token marking to initial state'}>
+          {isPetriNet && !isAccountingMode && (
+            <button onClick={resetMarking} title='Reset token marking to initial state'>
               Reset
             </button>
           )}
@@ -1060,18 +1078,20 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                     ))}
                   </div>
                 </div>
-                <div className={styles['transition-buttons']}>
-                  <button
-                    className={styles['simulate-button']}
-                    onClick={() => fireTransition(selectedNode.id)}
-                    disabled={!isTransitionEnabled(selectedNode.id, marking)}
-                  >
-                    {isAccountingMode ? 'Execute Transaction' : 'Fire Transition'}
-                  </button>
-                  <button className={styles['reset-button']} onClick={resetMarking}>
-                    Reset
-                  </button>
-                </div>
+                {!isAccountingMode && (
+                  <div className={styles['transition-buttons']}>
+                    <button
+                      className={styles['simulate-button']}
+                      onClick={() => fireTransition(selectedNode.id)}
+                      disabled={!isTransitionEnabled(selectedNode.id, marking)}
+                    >
+                      Fire Transition
+                    </button>
+                    <button className={styles['reset-button']} onClick={resetMarking}>
+                      Reset
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
