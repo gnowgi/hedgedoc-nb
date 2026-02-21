@@ -80,9 +80,28 @@ const filterTree = (tree: Map<string, TagTreeNode>, filterLower: string): Map<st
   return filtered
 }
 
+const collectAllNotesRecursive = (node: TagTreeNode): NoteExploreEntryInterface[] => {
+  const seen = new Set<string>()
+  const result: NoteExploreEntryInterface[] = []
+  const collect = (n: TagTreeNode) => {
+    for (const note of n.notes) {
+      if (!seen.has(note.primaryAlias)) {
+        seen.add(note.primaryAlias)
+        result.push(note)
+      }
+    }
+    for (const child of n.children.values()) {
+      collect(child)
+    }
+  }
+  collect(node)
+  return result
+}
+
 export interface UseTagTreeResult {
   tagTree: Map<string, TagTreeNode>
   countAllNotes: (node: TagTreeNode) => number
+  collectAllNotesRecursive: (node: TagTreeNode) => NoteExploreEntryInterface[]
 }
 
 export const useTagTree = (notes: NoteExploreEntryInterface[], searchFilter: string): UseTagTreeResult => {
@@ -94,7 +113,7 @@ export const useTagTree = (notes: NoteExploreEntryInterface[], searchFilter: str
     return filterTree(tree, searchFilter.toLowerCase())
   }, [notes, searchFilter])
 
-  return { tagTree, countAllNotes }
+  return { tagTree, countAllNotes, collectAllNotesRecursive }
 }
 
 export { UNTAGGED_KEY }

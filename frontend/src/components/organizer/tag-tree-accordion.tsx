@@ -3,8 +3,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import React, { useMemo } from 'react'
-import { Accordion } from 'react-bootstrap'
+import React, { useCallback, useMemo } from 'react'
+import { Accordion, Badge } from 'react-bootstrap'
 import type { TagTreeNode } from './types'
 import { TagTreeNodeList } from './tag-tree-node-list'
 import { UNTAGGED_KEY } from './use-tag-tree'
@@ -37,16 +37,29 @@ export const TagTreeAccordion: React.FC<TagTreeAccordionProps> = ({
     return sortedEntries[0][0]
   }, [sortedEntries])
 
+  const onHeaderClick = useCallback(
+    (path: string) => (event: React.MouseEvent) => {
+      event.stopPropagation()
+      onSelectPath(path)
+    },
+    [onSelectPath]
+  )
+
   return (
     <Accordion defaultActiveKey={defaultActiveKey}>
       {sortedEntries.map(([key, node]) => (
         <Accordion.Item eventKey={key} key={key}>
           <Accordion.Header>
-            <span className={'d-flex justify-content-between align-items-center w-100 me-2'}>
+            <span
+              className={'d-flex justify-content-between align-items-center w-100 me-2'}
+              onClick={onHeaderClick(node.fullPath)}
+              role={'button'}>
               <span>
                 {key === UNTAGGED_KEY ? <Trans i18nKey={'organizer.untagged'} /> : node.segment}
               </span>
-              <span className={'text-muted small'}>{countAllNotes(node)}</span>
+              <Badge bg={selectedPath === node.fullPath ? 'primary' : 'secondary'} pill>
+                {countAllNotes(node)}
+              </Badge>
             </span>
           </Accordion.Header>
           <Accordion.Body className={'p-0'}>

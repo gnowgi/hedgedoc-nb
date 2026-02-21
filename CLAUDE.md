@@ -88,8 +88,26 @@ attr: value *unit*;             → Attribute with unit
 
 Graph modes: `markdown`, `mindmap`, `richgraph`, `strictgraph`.
 
+## Deployment
+
+Development happens on a **remote VPS** accessible at **https://nodebook.co.in**.
+
+- **Docker Compose** config: `docker/docker-compose.yml` (backend, frontend, postgres, caddy proxy)
+- **Env file**: `docker/.env` (DB creds, base URL, auth config)
+- **Caddyfile**: `docker/Caddyfile` (reverse proxy: `/api/*`, `/realtime` → backend:3000; `/*` → frontend:3001)
+- **Seed data**: `docker/seed-content/*.md` + `docker/seed-notes.sh <base-url> <api-token>`
+- Caddy auto-provisions TLS via Let's Encrypt for `nodebook.co.in`
+- Rebuild & deploy: `cd docker && docker compose up --build -d`
+
+### Backend API routes
+
+- **Private API** (session + CSRF): `/api/private/...` (auth, explore, notes CRUD, etc.)
+- **Public API** (token-based): `/api/v2/...` (used by seed script)
+- CSRF token: `GET /api/private/csrf/token`
+- Register: `POST /api/private/auth/local` (body: `{username, displayName, password}`)
+- Login: `POST /api/private/auth/local/login` (body: `{username, password}`)
+
 ## Environment Notes
 
-- The nodeBook extension build has not been tested yet — build errors are expected, most likely in the parser files (ported from JS to TS).
 - Each code fence extension uses dynamic `import()` with `webpackChunkName` for code splitting, `useAsync` from `react-use` for async loading, and `AsyncLoadingBoundary` for loading states.
 - Docker builds use Node 24.12.0-alpine internally.

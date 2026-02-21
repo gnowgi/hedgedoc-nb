@@ -7,6 +7,7 @@ import React, { useMemo } from 'react'
 import type { NoteExploreEntryInterface } from '@hedgedoc/commons'
 import type { TagTreeNode } from './types'
 import { UNTAGGED_KEY } from './use-tag-tree'
+import type { UseTagTreeResult } from './use-tag-tree'
 import Link from 'next/link'
 import { Badge, Breadcrumb, ListGroup, ListGroupItem } from 'react-bootstrap'
 import { NoteTags } from '../explore-page/note-tags/note-tags'
@@ -18,6 +19,7 @@ import { useTranslatedText } from '../../hooks/common/use-translated-text'
 export interface NoteListPanelProps {
   selectedPath: string | null
   tagTree: Map<string, TagTreeNode>
+  collectAllNotesRecursive: UseTagTreeResult['collectAllNotesRecursive']
 }
 
 const findNodeByPath = (tree: Map<string, TagTreeNode>, path: string): TagTreeNode | null => {
@@ -63,12 +65,20 @@ const NoteItem: React.FC<{ note: NoteExploreEntryInterface }> = ({ note }) => {
   )
 }
 
-export const NoteListPanel: React.FC<NoteListPanelProps> = ({ selectedPath, tagTree }) => {
+export const NoteListPanel: React.FC<NoteListPanelProps> = ({ selectedPath, tagTree, collectAllNotesRecursive }) => {
   const node = useMemo(() => {
     if (!selectedPath) return null
     if (selectedPath === UNTAGGED_KEY) return tagTree.get(UNTAGGED_KEY) ?? null
     return findNodeByPath(tagTree, selectedPath)
   }, [selectedPath, tagTree])
+
+  const displayNotes = useMemo(() => {
+    if (!node) return []
+    if (node.children.size > 0) {
+      return collectAllNotesRecursive(node)
+    }
+    return node.notes
+  }, [node, collectAllNotesRecursive])
 
   const breadcrumbSegments = useMemo(() => {
     if (!selectedPath || selectedPath === UNTAGGED_KEY) return null
@@ -98,11 +108,11 @@ export const NoteListPanel: React.FC<NoteListPanelProps> = ({ selectedPath, tagT
           ))
         )}
         <Badge bg={'info'} className={'ms-2 align-self-center'}>
-          {node.notes.length}
+          {displayNotes.length}
         </Badge>
       </Breadcrumb>
       <ListGroup>
-        {node.notes.map((note) => (
+        {displayNotes.map((note) => (
           <NoteItem key={note.primaryAlias} note={note} />
         ))}
       </ListGroup>

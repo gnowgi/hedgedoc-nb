@@ -17,7 +17,7 @@ export const OrganizerContent: React.FC = () => {
   const { notes, loading, error } = useAllNotes()
   const [searchFilter, setSearchFilter] = useState('')
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  const { tagTree, countAllNotes } = useTagTree(notes, searchFilter)
+  const { tagTree, countAllNotes, collectAllNotesRecursive } = useTagTree(notes, searchFilter)
 
   if (loading) {
     return (
@@ -50,7 +50,7 @@ export const OrganizerContent: React.FC = () => {
         />
       </Col>
       <Col xs={9}>
-        <NoteListPanel selectedPath={selectedPath} tagTree={tagTree} />
+        <NoteListPanel selectedPath={selectedPath} tagTree={tagTree} collectAllNotesRecursive={collectAllNotesRecursive} />
       </Col>
     </Row>
   )
