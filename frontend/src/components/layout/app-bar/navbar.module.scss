@@ -26,3 +26,20 @@
 body[data-bs-theme='dark'] .navbar {
   background-color: #17191c;
 }
+
+@media (max-width: 767.98px) {
+  .side {
+    flex: 0 1 auto;
+  }
+
+  .center {
+    flex: 1 1 0;
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+  }
+
+  .navbar {
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+  }
+}

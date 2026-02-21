@@ -15,7 +15,9 @@ import { RendererPane } from './renderer-pane/renderer-pane'
 import { Sidebar } from './sidebar/sidebar'
 import { Splitter } from './splitter/splitter'
 import { PrintWarning } from './print-warning/print-warning'
-import React, { useMemo, useRef } from 'react'
+import { useIsMobile } from '../../hooks/common/use-is-mobile'
+import { setEditorSplitPosition } from '../../redux/editor-config/methods'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import './print.scss'
 import { usePrintKeyboardShortcut } from './hooks/use-print-keyboard-shortcut'
@@ -31,6 +33,15 @@ export enum ScrollSource {
 export const EditorPageContent: React.FC = () => {
   useTranslation()
   usePrintKeyboardShortcut()
+
+  const isMobile = useIsMobile()
+  const mobileInitDone = useRef(false)
+  useEffect(() => {
+    if (isMobile && !mobileInitDone.current) {
+      mobileInitDone.current = true
+      setEditorSplitPosition(100)
+    }
+  }, [isMobile])
 
   const scrollSource = useRef<ScrollSource>(ScrollSource.EDITOR)
   const [editorScrollState, onMarkdownRendererScroll] = useScrollState(scrollSource, ScrollSource.EDITOR)

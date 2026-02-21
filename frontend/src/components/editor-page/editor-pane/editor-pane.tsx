@@ -7,6 +7,7 @@ import { useApplicationState } from '../../../hooks/common/use-application-state
 import { ORIGIN, useBaseUrl } from '../../../hooks/common/use-base-url'
 import { useMayEdit } from '../../../hooks/common/use-may-edit'
 import { useTranslatedText } from '../../../hooks/common/use-translated-text'
+import { useIsMobile } from '../../../hooks/common/use-is-mobile'
 import { useDarkModeState } from '../../../hooks/dark-mode/use-dark-mode-state'
 import { cypressAttribute, cypressId } from '../../../utils/cypress-attribute'
 import { findLanguageByCodeBlockName } from '../../markdown-renderer/extensions/_base-classes/code-block-markdown-extension/find-language-by-code-block-name'
@@ -134,6 +135,12 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ scrollState, onScroll, o
 
   useOnImageUploadFromRenderer()
 
+  const isMobile = useIsMobile()
+  const basicSetupOptions = useMemo(
+    () => (isMobile ? { lineNumbers: false, foldGutter: false, highlightActiveLineGutter: false } : true),
+    [isMobile]
+  )
+
   const ligaturesEnabled = useApplicationState((state) => state.editorConfig.ligatures)
   const codeMirrorClassName = useMemo(
     () => `overflow-hidden ${styles.extendedCodemirror} h-100 ${ligaturesEnabled ? '' : styles['no-ligatures']}`,
@@ -182,7 +189,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ scrollState, onScroll, o
         height={'100%'}
         maxHeight={'100%'}
         maxWidth={'100%'}
-        basicSetup={true}
+        basicSetup={basicSetupOptions}
         className={codeMirrorClassName}
         theme={darkModeActivated ? oneDark : undefined}
       />

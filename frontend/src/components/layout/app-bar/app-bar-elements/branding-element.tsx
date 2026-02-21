@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { useIsMobile } from '../../../../hooks/common/use-is-mobile'
 import { useDarkModeState } from '../../../../hooks/dark-mode/use-dark-mode-state'
 import { CustomBranding } from '../../../common/custom-branding/custom-branding'
 import { HedgeDocLogoHorizontalGrey } from '../../../common/hedge-doc-logo/hedge-doc-logo-horizontal-grey'
@@ -17,6 +18,7 @@ import { Navbar } from 'react-bootstrap'
  */
 export const BrandingElement: React.FC = () => {
   const darkModeActivated = useDarkModeState()
+  const isMobile = useIsMobile()
 
   return (
     <Navbar.Brand>
@@ -25,9 +27,14 @@ export const BrandingElement: React.FC = () => {
           size={LogoSize.SMALL}
           className={'w-auto'}
           color={darkModeActivated ? 'dark' : 'light'}
+          showText={!isMobile}
         />
-        <BrandingSeparatorDash />
-        <CustomBranding inline={true} />
+        {!isMobile && (
+          <>
+            <BrandingSeparatorDash />
+            <CustomBranding inline={true} />
+          </>
+        )}
       </Link>
     </Navbar.Brand>
   )

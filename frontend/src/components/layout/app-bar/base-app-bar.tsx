@@ -36,7 +36,9 @@ export const BaseAppBar: React.FC<PropsWithChildren<BaseAppBarProps>> = ({ child
       <Nav className={`align-items-center flex-fill overflow-hidden px-4 ${styles.center}`}>{children}</Nav>
       <Nav className={`align-items-stretch justify-content-end flex-grow-1 ${styles.side} h-100 py-1`}>
         <div className={'d-flex gap-2'}>
-          <HelpDropdown />
+          <div className={'d-none d-md-flex'}>
+            <HelpDropdown />
+          </div>
           <SettingsButton />
           <NewNoteButton />
           <UserElement />
