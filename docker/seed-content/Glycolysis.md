@@ -1,3 +1,12 @@
+---
+title: Glycolysis — Petri Net Tutorial
+tags:
+  - biology/metabolism
+  - biology/glycolysis
+  - nodebook/petri-net
+  - tutorial
+---
+
 # Glycolysis — Petri Net Tutorial
 
 Glycolysis is the metabolic pathway that converts glucose into pyruvate, releasing energy stored as ATP and NADH. It occurs in the cytoplasm of all living cells and consists of 10 enzymatic steps divided into two phases: an **energy investment phase** (consuming ATP) and an **energy payoff phase** (producing ATP and NADH).

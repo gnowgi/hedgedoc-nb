@@ -1,3 +1,11 @@
+---
+title: Taxonomic Classification
+tags:
+  - biology/taxonomy
+  - nodebook/concept-map
+  - tutorial
+---
+
 # Taxonomic Classification
 
 A hierarchical classification of life using nodeBook. Taxonomic ranks are encoded as node types (e.g., `[Domain]`, `[Kingdom]`, `[Phylum]`), and `<classifies>` relations link each rank to its children.

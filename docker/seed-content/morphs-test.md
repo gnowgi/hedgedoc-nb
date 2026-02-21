@@ -1,3 +1,11 @@
+---
+title: Morphs and Transitions Test
+tags:
+  - nodebook/morphs
+  - nodebook/concept-map
+  - test
+---
+
 # Morphs and Transitions Test
 
 This CNL file demonstrates the morphs functionality in NodeBook, showing how nodes can transition between different states without creating new nodes.

@@ -1,3 +1,11 @@
+---
+title: Cell Biology — Mindmap Demo
+tags:
+  - biology/cell-biology
+  - nodebook/mindmap
+  - demo
+---
+
 # Cell Biology — Mindmap Demo
 
 A mindmap of cell structure using nodeBook's mindmap syntax. The `<contains>` relation creates a tree from the root node to all indented items.

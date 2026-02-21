@@ -1,3 +1,11 @@
+---
+title: Transition (Declarative)
+tags:
+  - nodebook/petri-net
+  - nodebook/transitions
+  - tutorial
+---
+
 # Transition (Declarative)
 
 Transition shows prior-state of nodes and their state on one side, and

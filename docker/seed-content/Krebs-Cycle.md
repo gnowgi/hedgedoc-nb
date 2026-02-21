@@ -1,3 +1,12 @@
+---
+title: Krebs Cycle (Citric Acid Cycle) — Petri Net Tutorial
+tags:
+  - biology/metabolism
+  - biology/krebs-cycle
+  - nodebook/petri-net
+  - tutorial
+---
+
 # Krebs Cycle (Citric Acid Cycle) — Petri Net Tutorial
 
 The citric acid cycle (also called the Krebs cycle or TCA cycle) is the central metabolic hub of aerobic respiration. It takes place in the mitochondrial matrix and oxidises acetyl-CoA derived from carbohydrates, fats, and proteins. Each turn of the cycle produces 3 NADH, 1 FADH2, 1 GTP, and 2 CO2.

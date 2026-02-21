@@ -1,3 +1,12 @@
+---
+title: Urea Cycle — Petri Net Tutorial
+tags:
+  - biology/metabolism
+  - biology/urea-cycle
+  - nodebook/petri-net
+  - tutorial
+---
+
 # Urea Cycle — Petri Net Tutorial
 
 The urea cycle (ornithine cycle) converts toxic ammonia produced by amino acid catabolism into urea for excretion. It occurs partly in the mitochondrial matrix (first two steps) and partly in the cytosol (remaining steps) of hepatocytes. The cycle connects to the Krebs cycle via fumarate, linking nitrogen metabolism to energy metabolism.
