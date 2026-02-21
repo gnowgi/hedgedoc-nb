@@ -61,6 +61,35 @@ function circledNumber(n: number): string {
   return `(${n})`
 }
 
+/** DFS-based cycle detection on directed edges. */
+function graphHasCycle(edges: CnlEdge[]): boolean {
+  const adj = new Map<string, string[]>()
+  for (const edge of edges) {
+    if (!adj.has(edge.source_id)) adj.set(edge.source_id, [])
+    adj.get(edge.source_id)!.push(edge.target_id)
+  }
+  const WHITE = 0, GRAY = 1, BLACK = 2
+  const color = new Map<string, number>()
+  for (const [node, neighbors] of adj) {
+    color.set(node, WHITE)
+    for (const n of neighbors) if (!color.has(n)) color.set(n, WHITE)
+  }
+  function dfs(node: string): boolean {
+    color.set(node, GRAY)
+    for (const neighbor of adj.get(node) ?? []) {
+      const c = color.get(neighbor) ?? WHITE
+      if (c === GRAY) return true
+      if (c === WHITE && dfs(neighbor)) return true
+    }
+    color.set(node, BLACK)
+    return false
+  }
+  for (const [node, c] of color) {
+    if (c === WHITE && dfs(node)) return true
+  }
+  return false
+}
+
 interface InMemoryGraph {
   nodes: CnlNode[]
   edges: CnlEdge[]
@@ -107,6 +136,12 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     if (isMindmapOnly) return 'mindmap'
     return 'concept-map'
   }, [graphData, operations])
+
+  // Detect cycles in concept-map graphs (for stress layout)
+  const hasCycle = useMemo(() => {
+    if (graphMode !== 'concept-map') return false
+    return graphHasCycle(graphData.edges)
+  }, [graphData.edges, graphMode])
 
   // Detect accounting mode (Transaction nodes present)
   const isAccountingMode = useMemo(
@@ -328,6 +363,18 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       }
     }
 
+    if (graphMode === 'concept-map' && hasCycle) {
+      return {
+        name: 'elk',
+        nodeDimensionsIncludeLabels: true,
+        elk: {
+          algorithm: 'stress',
+          'elk.stress.desiredEdgeLength': '120',
+          'elk.spacing.nodeNode': '50'
+        }
+      }
+    }
+
     const hasTransitions = graphMode === 'petri-net'
     return {
       name: 'elk',
@@ -344,7 +391,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         ...(hasTransitions && { 'elk.partitioning.activate': 'true' })
       }
     }
-  }, [graphMode])
+  }, [graphMode, hasCycle])
 
   // Render Cytoscape graph
   useEffect(() => {
