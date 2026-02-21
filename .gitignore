@@ -42,6 +42,3 @@ frontend/cypress/screenshots
 
 # Rathole proxy configuration
 rathole.toml
-
-# CNL example files
-CNL_Examples/

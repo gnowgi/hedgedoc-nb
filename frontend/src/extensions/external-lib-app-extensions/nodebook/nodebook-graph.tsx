@@ -402,8 +402,8 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       }
 
       // 5. Only create compound groups that have at least one member
-      const priorGroupLabel = isAccountingMode ? 'Credits' : 'Prior States'
-      const postGroupLabel = isAccountingMode ? 'Debits' : 'Post States'
+      const priorGroupLabel = isAccountingMode ? 'Credits' : 'Inputs'
+      const postGroupLabel = isAccountingMode ? 'Debits' : 'Outputs'
       for (const transId of transitionIds) {
         const priorGroupId = `prior-group-${transId}`
         const postGroupId = `post-group-${transId}`
@@ -1050,7 +1050,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                 <div className={styles['transition-flow']}>
                   <div className={styles['transition-flow-group']}>
                     <span className={styles['transition-flow-heading']}>
-                      {isAccountingMode ? 'Credits (from)' : 'Prior States'}
+                      {isAccountingMode ? 'Credits (from)' : 'Inputs'}
                     </span>
                     {selectedNodeData.transitionData.priorStates.map((s) => (
                       <span key={s.id} className={styles['transition-flow-item']}>
@@ -1066,7 +1066,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                   <span className={styles['transition-flow-arrow']}>&rarr;</span>
                   <div className={styles['transition-flow-group']}>
                     <span className={styles['transition-flow-heading']}>
-                      {isAccountingMode ? 'Debits (to)' : 'Post States'}
+                      {isAccountingMode ? 'Debits (to)' : 'Outputs'}
                     </span>
                     {selectedNodeData.transitionData.postStates.map((s) => (
                       <span key={s.id} className={styles['transition-flow-item']}>
