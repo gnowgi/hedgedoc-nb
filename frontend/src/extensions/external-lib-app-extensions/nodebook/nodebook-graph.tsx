@@ -61,6 +61,14 @@ function circledNumber(n: number): string {
   return `(${n})`
 }
 
+/** Map a quantifier string to a display symbol prefix. */
+function quantifierSymbol(quantifier: string): string {
+  const lower = quantifier.toLowerCase()
+  if (lower === 'all' || lower === 'every') return '∀ '
+  if (lower === 'some' || lower === 'exists') return '∃ '
+  return `[${quantifier}] `
+}
+
 /** DFS-based cycle detection on directed edges. */
 function graphHasCycle(edges: CnlEdge[]): boolean {
   const adj = new Map<string, string[]>()
@@ -517,12 +525,16 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             displayName = `${node.name} (${activeMorph.name})`
           }
         }
+        if (node.quantifier) {
+          displayName = `${quantifierSymbol(node.quantifier)}${displayName}`
+        }
         cyNodes.push({
           data: {
             id: node.id,
             label: displayName,
             type: 'polynode',
-            hasMorphs: node.morphs.length > 1
+            hasMorphs: node.morphs.length > 1,
+            hasQuantifier: !!node.quantifier
           }
         })
       }
@@ -607,6 +619,14 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         style: {
           'border-width': 3,
           'border-style': 'double'
+        }
+      },
+      {
+        selector: 'node[?hasQuantifier]',
+        style: {
+          'border-style': 'dashed',
+          'border-color': '#7c3aed',
+          'border-width': 3
         }
       },
       {
@@ -1081,6 +1101,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
               <span className={styles['node-type-badge']}>
                 {selectedNode.role}
               </span>
+              {selectedNode.quantifier && (
+                <span className={styles['quantifier-badge']}>
+                  {quantifierSymbol(selectedNode.quantifier).trim()} {selectedNode.quantifier}
+                </span>
+              )}
               <button className={styles['close-button']} onClick={() => setSelectedNodeId(null)}>
                 &times;
               </button>
@@ -1198,6 +1223,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                           <li key={attr.id}>
                             <strong>{attr.name}:</strong> {attr.value}
                             {attr.unit ? ` ${attr.unit}` : ''}
+                            {attr.quantifier && (
+                              <span className={`${styles['attr-tag']} ${styles['attr-tag-quantifier']}`}>{attr.quantifier}</span>
+                            )}
+                            {attr.adverb && (
+                              <span className={`${styles['attr-tag']} ${styles['attr-tag-adverb']}`}>{attr.adverb}</span>
+                            )}
+                            {attr.modality && (
+                              <span className={`${styles['attr-tag']} ${styles['attr-tag-modality']}`}>{attr.modality}</span>
+                            )}
                           </li>
                         ))}
                       </ul>

@@ -59,6 +59,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
           role?: string
           parent_types?: string[]
           adjective?: string | null
+          quantifier?: string | null
         }
       }
       const nodeId = op.id
@@ -78,7 +79,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
         base_name: baseName,
         name,
         adjective,
-        quantifier: null,
+        quantifier: options.quantifier ?? null,
         role,
         description: null,
         parent_types: options.parent_types ?? [],

@@ -5,7 +5,7 @@
  */
 import type { CnlOperation } from './types'
 
-const HEADING_REGEX = /^\s*(#+)\s*(?:\*\*(.+?)\*\*\s*)?(.+?)(?:\s*\[(.+?)\])?$/
+const HEADING_REGEX = /^\s*(#+)\s*(?:\*([^*]+)\*\s+)?(?:\*\*(.+?)\*\*\s*)?(.+?)(?:\s*\[(.+?)\])?$/
 const SIMPLE_HEADING_REGEX = /^\s*(#+)\s*(.+?)$/
 const RELATION_REGEX = /^\s*<(.+?)>\s*([^;\n]*?)(?:;|$)/gm
 const FUNCTION_REGEX = /^\s*has\s+function\s+"([^"]+)"\s*;/gm
@@ -228,12 +228,14 @@ function processNodeHeading(heading: string): { id: string; type: string; payloa
   let baseName: string | null = null
   let displayName: string | null = null
   let nodeType: string | null = null
+  let quantifier: string | null = null
 
   let match = heading.match(HEADING_REGEX)
   if (match) {
-    adjective = match[2] ?? null
-    baseName = match[3]
-    nodeType = match[4] ?? null
+    quantifier = match[2] ?? null
+    adjective = match[3] ?? null
+    baseName = match[4]
+    nodeType = match[5] ?? null
     displayName = adjective && baseName ? `**${adjective}** ${baseName}` : baseName
   } else {
     match = heading.match(SIMPLE_HEADING_REGEX)
@@ -278,7 +280,8 @@ function processNodeHeading(heading: string): { id: string; type: string; payloa
         id,
         role: nodeType,
         parent_types: [],
-        adjective: adjective ? adjective.trim() : null
+        adjective: adjective ? adjective.trim() : null,
+        quantifier: quantifier ? quantifier.trim() : null
       }
     }
   }
