@@ -1,0 +1,13 @@
+/*
+ * SPDX-FileCopyrightText: 2025 The HedgeDoc developers (see AUTHORS file)
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+import type { NoteExploreEntryInterface } from '@hedgedoc/commons'
+
+export interface TagTreeNode {
+  segment: string
+  fullPath: string
+  children: Map<string, TagTreeNode>
+  notes: NoteExploreEntryInterface[]
+}

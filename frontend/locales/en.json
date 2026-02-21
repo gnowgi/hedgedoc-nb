@@ -989,5 +989,13 @@
       "title": "Warning!",
       "text": "To print this note, please use the print button in the export menu in the sidebar. Printing this page directly will not work as expected."
     }
+  },
+  "organizer": {
+    "title": "Organizer",
+    "search": "Filter by tag or note title",
+    "noSelection": "Select a tag from the sidebar to view its notes.",
+    "untagged": "Untagged",
+    "loading": "Loading notes...",
+    "error": "Failed to load notes. Please try again."
   }
 }
