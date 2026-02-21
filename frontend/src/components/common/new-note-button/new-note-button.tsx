@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import React, { useCallback } from 'react'
 import { FileEarmarkPlus as IconPlus } from 'react-bootstrap-icons'
 import { Trans } from 'react-i18next'
+import { useIsMobile } from '../../../hooks/common/use-is-mobile'
 import { useFrontendConfig } from '../frontend-config-context/use-frontend-config'
 import { PermissionLevel } from '@hedgedoc/commons'
 import { useIsLoggedIn } from '../../../hooks/common/use-is-logged-in'
@@ -23,6 +24,8 @@ export const NewNoteButton: React.FC = () => {
   const router = useRouter()
   const guestAccessLevel = useFrontendConfig().guestAccess
   const isLoggedIn = useIsLoggedIn()
+
+  const isMobile = useIsMobile()
 
   const createNewNoteAndRedirect = useCallback((): void => {
     createNote('')
@@ -45,7 +48,7 @@ export const NewNoteButton: React.FC = () => {
       size={'sm'}
       icon={IconPlus}
       onClick={createNewNoteAndRedirect}>
-      <Trans i18nKey='navigation.newNote' />
+      {!isMobile && <Trans i18nKey='navigation.newNote' />}
     </IconButton>
   )
 }

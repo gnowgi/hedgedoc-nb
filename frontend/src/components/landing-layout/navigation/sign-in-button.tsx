@@ -10,7 +10,9 @@ import Link from 'next/link'
 import React, { useMemo } from 'react'
 import { Button } from 'react-bootstrap'
 import type { ButtonProps } from 'react-bootstrap/Button'
+import { BoxArrowInRight as IconSignIn } from 'react-bootstrap-icons'
 import { Trans } from 'react-i18next'
+import { useIsMobile } from '../../../hooks/common/use-is-mobile'
 import { filterOneClickProviders } from '../../login-page/utils/filter-one-click-providers'
 import { getOneClickProviderMetadata } from '../../login-page/one-click/get-one-click-provider-metadata'
 import { usePathname } from 'next/navigation'
@@ -27,6 +29,7 @@ export type SignInButtonProps = Omit<ButtonProps, 'href'>
 export const SignInButton: React.FC<SignInButtonProps> = ({ variant, ...props }) => {
   const authProviders = useFrontendConfig().authProviders
   const pathname = usePathname()
+  const isMobile = useIsMobile()
 
   const loginLink = useMemo(() => {
     const oneClickProviders = filterOneClickProviders(authProviders)
@@ -45,7 +48,7 @@ export const SignInButton: React.FC<SignInButtonProps> = ({ variant, ...props })
   return (
     <Link href={loginLink} passHref={true}>
       <Button title={buttonTitle} {...cypressId('sign-in-button')} variant={variant || 'success'} {...props}>
-        <Trans i18nKey='login.signIn' />
+        {isMobile ? <IconSignIn size={18} /> : <Trans i18nKey='login.signIn' />}
       </Button>
     </Link>
   )
