@@ -82,6 +82,17 @@ const rawNextConfig = {
         ]
       })
     )
+
+    // markdown-it v14 ships only .mjs files in lib/, but @types/markdown-it
+    // and the markdown-it-plugins workspace use .js extensions for TypeScript
+    // NodeNext compatibility. This alias tells webpack to also try .mjs when
+    // a .js import can't be found.
+    config.resolve.extensionAlias = {
+      ...config.resolve.extensionAlias,
+      '.js': ['.js', '.ts', '.mjs'],
+      '.mjs': ['.mjs']
+    }
+
     return config
   },
   reactStrictMode: false,
