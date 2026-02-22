@@ -105,6 +105,25 @@ const rawNextConfig = {
       }
     ])
   },
+  rewrites: () => {
+    const backendUrl = process.env.HD_INTERNAL_API_URL || 'http://localhost:3000'
+    return Promise.resolve({
+      beforeFiles: [
+        {
+          source: '/realtime',
+          destination: `${backendUrl}/realtime`
+        },
+        {
+          source: '/uploads/:path*',
+          destination: `${backendUrl}/uploads/:path*`
+        },
+        {
+          source: '/public/:path*',
+          destination: `${backendUrl}/public/:path*`
+        }
+      ]
+    })
+  },
   typescript: {
     ignoreBuildErrors: true
   },

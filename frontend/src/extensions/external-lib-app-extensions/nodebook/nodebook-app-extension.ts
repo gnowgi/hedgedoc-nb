@@ -10,6 +10,7 @@ import {
 } from '../../../components/editor-page/editor-pane/autocompletions/basic-completion'
 import type { MarkdownRendererExtension } from '../../../components/markdown-renderer/extensions/_base-classes/markdown-renderer-extension'
 import { AppExtension } from '../../_base-classes/app-extension'
+import { buildNodeBookInBlockCompletions } from './nodebook-completions'
 import { NodeBookMarkdownExtension } from './nodebook-markdown-extension'
 import type { CompletionSource } from '@codemirror/autocomplete'
 
@@ -42,6 +43,7 @@ export class NodeBookAppExtension extends AppExtension {
 
   buildAutocompletion(): CompletionSource[] {
     return [
+      ...buildNodeBookInBlockCompletions(),
       basicCompletion(
         codeFenceRegex,
         '```nodeBook\n# Node Name [Type]\nattribute: value;\n<relation> Target;\n```'

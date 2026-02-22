@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2023 The HedgeDoc developers (see AUTHORS file)
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Local dev override. Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+---
+services:
+  proxy:
+    ports: !override
+      - "3080:3080"
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile
