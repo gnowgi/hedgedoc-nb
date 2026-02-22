@@ -55,11 +55,52 @@ function resetMorphCounter(): void {
   morphCounter = 0
 }
 
+/** Words that are the same in singular and plural form. */
+const INVARIANT_WORDS = new Set([
+  'species', 'series', 'means', 'news', 'sheep', 'fish', 'deer',
+  'moose', 'aircraft', 'mathematics', 'physics', 'economics',
+  'politics', 'ethics', 'linguistics', 'thermodynamics', 'genetics'
+])
+
+/**
+ * Basic English singularization for node ID normalization.
+ * Converts common plural forms to singular so that 'humans' and 'human'
+ * resolve to the same node ID. Applied per-word.
+ */
+function singularize(word: string): string {
+  if (word.length <= 2) return word
+  if (INVARIANT_WORDS.has(word)) return word
+  // Don't singularize words ending in 'ss' (glass, mass, class, process)
+  if (word.endsWith('ss')) return word
+  // Don't singularize words ending in 'us' (status, genus, campus, bus)
+  if (word.endsWith('us')) return word
+  // Don't singularize words ending in 'is' (analysis, basis)
+  if (word.endsWith('is')) return word
+  // ies → y for longer words (cities → city, categories → category)
+  // Short words fall through to -s rule: pies → pie, dies → die
+  if (word.endsWith('ies') && word.length >= 6) return word.slice(0, -3) + 'y'
+  // ves → f (wolves → wolf, leaves → leaf)
+  if (word.endsWith('ves') && word.length >= 6) return word.slice(0, -3) + 'f'
+  // shes, ches, xes, zes, ses → remove 'es' (dishes → dish, boxes → box, processes → process)
+  if (/(?:sh|ch|x|z|s)es$/.test(word)) return word.slice(0, -2)
+  // Standard plural: remove trailing 's' (humans → human, mammals → mammal)
+  if (word.endsWith('s')) return word.slice(0, -1)
+  return word
+}
+
 /**
  * Generate a clean node ID from a display name.
+ * Normalizes case, removes special chars, and singularizes each word
+ * so that 'human', 'Human', 'humans', 'Humans' all produce the same ID.
  */
 function cleanName(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '_')
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .split(/\s+/)
+    .map(singularize)
+    .join('_')
 }
 
 interface ParsedBlock {
@@ -264,9 +305,9 @@ function processNodeHeading(heading: string): { id: string; type: string; payloa
     }
   }
 
-  const cleanBaseName = baseName.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '_')
+  const cleanBaseName = baseName.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').split(/\s+/).map(singularize).join('_')
   const cleanAdjective = adjective
-    ? adjective.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '_')
+    ? adjective.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').split(/\s+/).map(singularize).join('_')
     : null
   const id = cleanAdjective ? `${cleanAdjective}_${cleanBaseName}` : cleanBaseName
 
@@ -407,12 +448,16 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
       const cleanTargetBaseName = targetBaseName
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '_')
+        .split(/\s+/)
+        .map(singularize)
+        .join('_')
       const cleanTargetAdjective = targetAdjective
         ? targetAdjective
             .toLowerCase()
             .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '_')
+            .split(/\s+/)
+            .map(singularize)
+            .join('_')
         : null
       const targetId = cleanTargetAdjective ? `${cleanTargetAdjective}_${cleanTargetBaseName}` : cleanTargetBaseName
       const relId = `rel_${nodeId}_${trimmedRelName.toLowerCase().replace(/\s+/g, '_')}_${targetId}`
@@ -560,12 +605,16 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
       const cleanTargetBaseName = targetBaseName
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '_')
+        .split(/\s+/)
+        .map(singularize)
+        .join('_')
       const cleanTargetAdjective = targetAdjective
         ? targetAdjective
             .toLowerCase()
             .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '_')
+            .split(/\s+/)
+            .map(singularize)
+            .join('_')
         : null
       const targetId = cleanTargetAdjective ? `${cleanTargetAdjective}_${cleanTargetBaseName}` : cleanTargetBaseName
       const relId = `rel_${nodeId}_${trimmedRelName.toLowerCase().replace(/\s+/g, '_')}_${targetId}`
