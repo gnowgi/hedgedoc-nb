@@ -119,7 +119,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [validationWarnings, setValidationWarnings] = useState<CnlParseError[]>([])
   const [hasValidated, setHasValidated] = useState(false)
   const [marking, setMarking] = useState<Map<string, number>>(new Map())
-  const [initialTokens, setInitialTokens] = useState<number>(1)
+  const [tokenMultiplier, setTokenMultiplier] = useState<number>(1)
 
   // Parse CNL synchronously (pure regex, microsecond-fast)
   const { graphData, operations } = useMemo(() => {
@@ -176,6 +176,19 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     return { priorStateNodeIds: prior, postStateNodeIds: post }
   }, [graphData, graphMode])
 
+  // Compute the maximum prior-state arc weight per place
+  const maxPriorWeight = useMemo(() => {
+    const weightMap = new Map<string, number>()
+    if (graphMode !== 'petri-net') return weightMap
+    for (const edge of graphData.edges) {
+      if (edge.name === 'has prior_state') {
+        const current = weightMap.get(edge.target_id) ?? 0
+        if (edge.weight > current) weightMap.set(edge.target_id, edge.weight)
+      }
+    }
+    return weightMap
+  }, [graphData.edges, graphMode])
+
   // Initialize Petri net marking when graph data changes
   useEffect(() => {
     if (graphMode !== 'petri-net') {
@@ -205,13 +218,16 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         }
       }
     } else {
-      for (const nodeId of priorStateNodeIds) initial.set(nodeId, initialTokens)
+      for (const nodeId of priorStateNodeIds) {
+        const weight = maxPriorWeight.get(nodeId) ?? 1
+        initial.set(nodeId, tokenMultiplier * weight)
+      }
       for (const nodeId of postStateNodeIds) {
         if (!priorStateNodeIds.has(nodeId)) initial.set(nodeId, 0)
       }
     }
     setMarking(initial)
-  }, [graphData, graphMode, isAccountingMode, priorStateNodeIds, postStateNodeIds, initialTokens])
+  }, [graphData, graphMode, isAccountingMode, priorStateNodeIds, postStateNodeIds, tokenMultiplier, maxPriorWeight])
 
   // Petri net: check if a transition is enabled (respects arc weights)
   const isTransitionEnabled = useCallback(
@@ -253,12 +269,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   // Petri net: reset marking to initial state
   const resetMarking = useCallback(() => {
     const initial = new Map<string, number>()
-    for (const nodeId of priorStateNodeIds) initial.set(nodeId, initialTokens)
+    for (const nodeId of priorStateNodeIds) {
+      const weight = maxPriorWeight.get(nodeId) ?? 1
+      initial.set(nodeId, tokenMultiplier * weight)
+    }
     for (const nodeId of postStateNodeIds) {
       if (!priorStateNodeIds.has(nodeId)) initial.set(nodeId, 0)
     }
     setMarking(initial)
-  }, [priorStateNodeIds, postStateNodeIds, initialTokens])
+  }, [priorStateNodeIds, postStateNodeIds, tokenMultiplier, maxPriorWeight])
 
   // Check if any transition is enabled (for deadlock detection)
   const hasEnabledTransition = useMemo(() => {
@@ -487,7 +506,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           const groupId = `${assignment.role}-group-${assignment.transId}`
           const hasGroup = groupMembers.has(groupId)
           const isPrior = assignment.role === 'prior'
-          const tokens = marking.get(node.id) ?? (isPrior ? (isAccountingMode ? 0 : 1) : 0)
+          const tokens = marking.get(node.id) ?? (isPrior ? (isAccountingMode ? 0 : tokenMultiplier * (maxPriorWeight.get(node.id) ?? 1)) : 0)
           cyNodes.push({
             data: {
               id: node.id,
@@ -1066,13 +1085,13 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                 type='number'
                 min={1}
                 step={1}
-                value={initialTokens}
+                value={tokenMultiplier}
                 onChange={(e) => {
                   const v = parseInt(e.target.value, 10)
-                  if (v >= 1) setInitialTokens(v)
+                  if (v >= 1) setTokenMultiplier(v)
                 }}
                 className={styles['token-input']}
-                title='Initial tokens per prior-state place'
+                title='Token multiplier — initial tokens = multiplier × arc weight'
               />
             </>
           )}
