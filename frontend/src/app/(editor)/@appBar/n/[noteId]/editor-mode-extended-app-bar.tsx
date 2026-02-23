@@ -8,17 +8,27 @@ import { useCallback } from 'react'
 import React, { Fragment } from 'react'
 import { BaseAppBar } from '../../../../../components/layout/app-bar/base-app-bar'
 import { ButtonGroup } from 'react-bootstrap'
-import { Eye as IconEye, FileText as IconFileText, WindowSplit as IconWindowSplit } from 'react-bootstrap-icons'
+import {
+  Eye as IconEye,
+  FileText as IconFileText,
+  List as IconList,
+  WindowSplit as IconWindowSplit
+} from 'react-bootstrap-icons'
 import { IconButton } from '../../../../../components/common/icon-button/icon-button'
 import { setEditorSplitPosition } from '../../../../../redux/editor-config/methods'
 import { useApplicationState } from '../../../../../hooks/common/use-application-state'
 import { useTranslatedText } from '../../../../../hooks/common/use-translated-text'
+import { useIsMobile } from '../../../../../hooks/common/use-is-mobile'
+import { useBooleanState } from '../../../../../hooks/common/use-boolean-state'
+import { MobileMenu } from '../../../../../components/editor-page/mobile-menu/mobile-menu'
 
 /**
  * Extended AppBar for the editor mode that includes buttons to switch between the different editor modes
  */
 export const EditorModeExtendedAppBar: React.FC<PropsWithChildren> = ({ children }) => {
   const splitValue = useApplicationState((state) => state.editorConfig.splitPosition)
+  const isMobile = useIsMobile()
+  const [menuOpen, showMenu, hideMenu] = useBooleanState()
 
   const onClickEditorOnly = useCallback(() => {
     setEditorSplitPosition(100)
@@ -47,12 +57,14 @@ export const EditorModeExtendedAppBar: React.FC<PropsWithChildren> = ({ children
               onClick={onClickEditorOnly}
               variant={splitValue === 100 ? 'secondary' : 'outline-secondary'}
             />
-            <IconButton
-              icon={IconWindowSplit}
-              title={titleBothViews}
-              onClick={onClickBothViews}
-              variant={splitValue > 0 && splitValue < 100 ? 'secondary' : 'outline-secondary'}
-            />
+            {!isMobile && (
+              <IconButton
+                icon={IconWindowSplit}
+                title={titleBothViews}
+                onClick={onClickBothViews}
+                variant={splitValue > 0 && splitValue < 100 ? 'secondary' : 'outline-secondary'}
+              />
+            )}
             <IconButton
               icon={IconEye}
               title={titleViewOnly}
@@ -61,6 +73,14 @@ export const EditorModeExtendedAppBar: React.FC<PropsWithChildren> = ({ children
             />
           </ButtonGroup>
         </Fragment>
+      }
+      rightContent={
+        isMobile ? (
+          <div className={'d-flex gap-2'}>
+            <IconButton icon={IconList} title={'Menu'} onClick={showMenu} variant={'outline-secondary'} />
+            <MobileMenu show={menuOpen} onHide={hideMenu} />
+          </div>
+        ) : undefined
       }>
       {children}
     </BaseAppBar>

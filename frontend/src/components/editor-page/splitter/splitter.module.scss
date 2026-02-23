@@ -28,3 +28,9 @@
   width: 100%;
   z-index: 100000;
 }
+
+@media (max-width: 767.98px) {
+  .inner {
+    min-width: 0;
+  }
+}

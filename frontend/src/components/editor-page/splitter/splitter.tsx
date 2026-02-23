@@ -10,6 +10,7 @@ import type { MouseEvent, ReactElement, TouchEvent } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useApplicationState } from '../../../hooks/common/use-application-state'
 import { setEditorSplitPosition } from '../../../redux/editor-config/methods'
+import { useIsMobile } from '../../../hooks/common/use-is-mobile'
 
 export interface SplitterProps {
   left?: ReactElement
@@ -56,6 +57,7 @@ const SNAP_PERCENTAGE = 10
  * @return the created component
  */
 export const Splitter: React.FC<SplitterProps> = ({ additionalContainerClassName, left, right }) => {
+  const isMobile = useIsMobile()
   const relativeSplitValue = useApplicationState((state) => state.editorConfig.splitPosition)
   const [resizingInProgress, setResizingInProgress] = useState(false)
   const adjustedRelativeSplitValue = useMemo(() => Math.min(100, Math.max(0, relativeSplitValue)), [relativeSplitValue])
@@ -135,13 +137,16 @@ export const Splitter: React.FC<SplitterProps> = ({ additionalContainerClassName
 
   useKeyboardShortcuts()
 
+  const leftWidth = isMobile ? `${adjustedRelativeSplitValue}%` : `calc(${adjustedRelativeSplitValue}% - 5px)`
+  const rightWidth = isMobile ? `${100 - adjustedRelativeSplitValue}%` : `calc(100% - ${adjustedRelativeSplitValue}%)`
+
   return (
     <div
       ref={splitContainer}
       className={`flex-fill flex-row d-flex ${additionalContainerClassName || ''}${
         resizingInProgress ? ' ' + styles.resizing : ''
       }`}>
-      {resizingInProgress && (
+      {!isMobile && resizingInProgress && (
         <div
           className={styles['move-overlay']}
           onTouchMove={onMove}
@@ -153,22 +158,24 @@ export const Splitter: React.FC<SplitterProps> = ({ additionalContainerClassName
       <div
         id={'editor-edit-pane'}
         className={styles['left']}
-        style={{ width: `calc(${adjustedRelativeSplitValue}% - 5px)` }}>
+        style={{ width: leftWidth }}>
         <div className={styles['inner']}>{left}</div>
       </div>
-      <SplitDivider
-        onGrab={onStartResizing}
-        onLeftButtonClick={onLeftButtonClick}
-        onRightButtonClick={onRightButtonClick}
-        forceOpen={resizingInProgress}
-        focusLeft={relativeSplitValue < SNAP_PERCENTAGE}
-        focusRight={relativeSplitValue > 100 - SNAP_PERCENTAGE}
-        dividerButtonsShift={dividerButtonsShift}
-      />
+      {!isMobile && (
+        <SplitDivider
+          onGrab={onStartResizing}
+          onLeftButtonClick={onLeftButtonClick}
+          onRightButtonClick={onRightButtonClick}
+          forceOpen={resizingInProgress}
+          focusLeft={relativeSplitValue < SNAP_PERCENTAGE}
+          focusRight={relativeSplitValue > 100 - SNAP_PERCENTAGE}
+          dividerButtonsShift={dividerButtonsShift}
+        />
+      )}
       <div
         id={'editor-view-pane'}
         className={styles['right']}
-        style={{ width: `calc(100% - ${adjustedRelativeSplitValue}%)` }}>
+        style={{ width: rightWidth }}>
         <div className={styles['inner']}>{right}</div>
       </div>
     </div>

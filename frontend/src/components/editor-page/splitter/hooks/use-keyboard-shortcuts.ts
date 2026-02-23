@@ -5,14 +5,17 @@
  */
 import { useEffect } from 'react'
 import { setEditorSplitPosition } from '../../../../redux/editor-config/methods'
+import { useIsMobile } from '../../../../hooks/common/use-is-mobile'
 
 /**
  * Binds global keyboard shortcuts for setting the split value.
  */
 export const useKeyboardShortcuts = () => {
+  const isMobile = useIsMobile()
+
   useEffect(() => {
     const shortcutHandler = (event: KeyboardEvent): void => {
-      if (event.ctrlKey && event.altKey && event.key === 'b') {
+      if (event.ctrlKey && event.altKey && event.key === 'b' && !isMobile) {
         setEditorSplitPosition(50)
         event.preventDefault()
       }
@@ -32,5 +35,5 @@ export const useKeyboardShortcuts = () => {
     return () => {
       document.removeEventListener('keydown', shortcutHandler, false)
     }
-  }, [])
+  }, [isMobile])
 }

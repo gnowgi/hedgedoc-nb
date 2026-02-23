@@ -16,8 +16,9 @@ import { Sidebar } from './sidebar/sidebar'
 import { Splitter } from './splitter/splitter'
 import { PrintWarning } from './print-warning/print-warning'
 import { useIsMobile } from '../../hooks/common/use-is-mobile'
+import { useSwipeToggle } from '../../hooks/common/use-swipe-toggle'
 import { setEditorSplitPosition } from '../../redux/editor-config/methods'
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import './print.scss'
 import { usePrintKeyboardShortcut } from './hooks/use-print-keyboard-shortcut'
@@ -75,19 +76,24 @@ export const EditorPageContent: React.FC = () => {
   const editorExtensionComponents = useComponentsFromAppExtensions()
   useNoteAndAppTitle()
 
+  const swipeContainerRef = useRef<HTMLDivElement>(null)
+  const onSwipeLeft = useCallback(() => setEditorSplitPosition(0), [])
+  const onSwipeRight = useCallback(() => setEditorSplitPosition(100), [])
+  useSwipeToggle(isMobile ? swipeContainerRef : { current: null }, onSwipeLeft, onSwipeRight)
+
   return (
     <ChangeEditorContentContextProvider>
       <ExtensionEventEmitterProvider>
         {editorExtensionComponents}
         <CommunicatorImageLightbox />
         <PrintWarning />
-        <div className={'flex-fill d-flex h-100 w-100 overflow-hidden flex-row'}>
+        <div ref={swipeContainerRef} className={'flex-fill d-flex h-100 w-100 overflow-hidden flex-row'}>
           <Splitter
             left={leftPane}
             right={rightPane}
             additionalContainerClassName={'overflow-hidden position-relative'}
           />
-          <Sidebar />
+          {!isMobile && <Sidebar />}
         </div>
       </ExtensionEventEmitterProvider>
     </ChangeEditorContentContextProvider>

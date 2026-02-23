@@ -18,12 +18,17 @@ import { cypressId } from '../../../utils/cypress-attribute'
 
 export interface BaseAppBarProps {
   additionalContentLeft?: React.ReactNode
+  rightContent?: React.ReactNode
 }
 
 /**
  * Renders the base app bar with branding, help, settings user elements.
  */
-export const BaseAppBar: React.FC<PropsWithChildren<BaseAppBarProps>> = ({ children, additionalContentLeft }) => {
+export const BaseAppBar: React.FC<PropsWithChildren<BaseAppBarProps>> = ({
+  children,
+  additionalContentLeft,
+  rightContent
+}) => {
   return (
     <Navbar
       expand={true}
@@ -35,14 +40,16 @@ export const BaseAppBar: React.FC<PropsWithChildren<BaseAppBarProps>> = ({ child
       </Nav>
       <Nav className={`align-items-center flex-fill overflow-hidden px-4 ${styles.center}`}>{children}</Nav>
       <Nav className={`align-items-stretch justify-content-end flex-grow-1 ${styles.side} h-100 py-1`}>
-        <div className={'d-flex gap-2'}>
-          <div className={'d-none d-md-flex'}>
-            <HelpDropdown />
+        {rightContent ?? (
+          <div className={'d-flex gap-2'}>
+            <div className={'d-none d-md-flex'}>
+              <HelpDropdown />
+            </div>
+            <SettingsButton />
+            <NewNoteButton />
+            <UserElement />
           </div>
-          <SettingsButton />
-          <NewNoteButton />
-          <UserElement />
-        </div>
+        )}
       </Nav>
     </Navbar>
   )
