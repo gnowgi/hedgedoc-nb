@@ -31,9 +31,15 @@ services:
       - hedgedoc_db:/var/lib/postgresql/data
 
   seed:
-    image: alpine/curl:latest
+    image: postgres:15-alpine
     depends_on:
       - backend
+      - db
+    environment:
+      PGHOST: db
+      PGUSER: "${HD_DATABASE_USERNAME}"
+      PGPASSWORD: "${HD_DATABASE_PASSWORD}"
+      PGDATABASE: "${HD_DATABASE_NAME}"
     volumes:
       - ./seed-entrypoint.sh:/seed-entrypoint.sh:ro
       - ./seed-content:/seed-content:ro
