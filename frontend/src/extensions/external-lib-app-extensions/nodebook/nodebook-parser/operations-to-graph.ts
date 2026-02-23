@@ -32,7 +32,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
   const edges: CnlEdge[] = []
   const attributes: CnlAttribute[] = []
   const abbreviations: Record<string, { fullName: string; nodeId: string }> = {}
-  const equations: Array<{ id: string; expression: string }> = []
+  const expressions: Array<{ id: string; expression: string }> = []
   const errors: Array<{ message: string; line?: number }> = []
   let description: string | null = null
   let currency: string | null = null
@@ -203,9 +203,9 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
     } else if (op.type === 'setCurrency') {
       const payload = op.payload as { currency: string }
       currency = payload.currency
-    } else if (op.type === 'addEquation') {
+    } else if (op.type === 'addExpression') {
       const payload = op.payload as { expression: string }
-      equations.push({ id: op.id, expression: payload.expression })
+      expressions.push({ id: op.id, expression: payload.expression })
     }
   }
 
@@ -214,7 +214,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
     edges,
     attributes,
     abbreviations,
-    equations,
+    expressions,
     description,
     currency,
     errors

@@ -163,10 +163,10 @@ export function buildNodeBookInBlockCompletions(): CompletionSource[] {
       apply: at.name + ': '
     }))
 
-    // Add expression: and equation: as special completions
+    // Add definition: and expression: as special completions
     options.push(
-      { label: 'expression', detail: 'Math expression for a [Function] transition', apply: 'expression: ' },
-      { label: 'equation', detail: 'Auto-generate Petri net from a math expression', apply: 'equation: ' },
+      { label: 'definition', detail: 'Math definition for a [Function] transition', apply: 'definition: ' },
+      { label: 'expression', detail: 'Auto-generate Petri net from a math expression', apply: 'expression: ' },
       { label: 'value', detail: 'Numeric value for a place node', apply: 'value: ' }
     )
 

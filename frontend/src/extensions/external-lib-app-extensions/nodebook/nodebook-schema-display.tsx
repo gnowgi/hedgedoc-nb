@@ -171,7 +171,7 @@ export const NodeBookSchemaDisplay: React.FC<CodeProps> = ({ code }) => {
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Expression</th>
+                  <th>Definition</th>
                   <th>Scope</th>
                   <th>Description</th>
                 </tr>
@@ -180,7 +180,7 @@ export const NodeBookSchemaDisplay: React.FC<CodeProps> = ({ code }) => {
                 {schemas.functionTypes.map((ft) => (
                   <tr key={ft.name}>
                     <td>{ft.name}</td>
-                    <td>{ft.expression}</td>
+                    <td>{ft.definition}</td>
                     <td>{ft.scope.join(', ') || '-'}</td>
                     <td>{ft.description ?? '-'}</td>
                   </tr>

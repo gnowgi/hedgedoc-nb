@@ -9,7 +9,7 @@ import type { CodeProps } from '../../../components/markdown-renderer/replace-co
 import { cypressId } from '../../../utils/cypress-attribute'
 import { Logger } from '../../../utils/logger'
 import { getOperationsFromCnl } from './nodebook-parser/cnl-parser'
-import { equationToPetriNetOps } from './nodebook-parser/equation-to-pn'
+import { expressionToPetriNetOps } from './nodebook-parser/equation-to-pn'
 import { MorphRegistry } from './nodebook-parser/morph-registry'
 import { evaluateExpression } from './nodebook-parser/nodebook-evaluator'
 import { operationsToGraph } from './nodebook-parser/operations-to-graph'
@@ -154,30 +154,30 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     } catch (error) {
       log.error('Error parsing CNL', error)
       return {
-        parsedGraphData: { nodes: [], edges: [], attributes: [], abbreviations: {}, equations: [], description: null, currency: null, errors: [{ message: String(error) }] } as CnlGraphData,
+        parsedGraphData: { nodes: [], edges: [], attributes: [], abbreviations: {}, expressions: [], description: null, currency: null, errors: [{ message: String(error) }] } as CnlGraphData,
         operations: []
       }
     }
   }, [code])
 
-  // Expand equations asynchronously, then merge into graph data
+  // Expand expressions asynchronously, then merge into graph data
   const [graphData, setGraphData] = useState<CnlGraphData>(parsedGraphData)
   useEffect(() => {
-    if (parsedGraphData.equations.length === 0) {
+    if (parsedGraphData.expressions.length === 0) {
       setGraphData(parsedGraphData)
       return
     }
     let cancelled = false
     void (async () => {
       const allExtraOps = []
-      for (const eq of parsedGraphData.equations) {
-        const eqOps = await equationToPetriNetOps(eq.expression)
-        allExtraOps.push(...eqOps)
+      for (const expr of parsedGraphData.expressions) {
+        const exprOps = await expressionToPetriNetOps(expr.expression)
+        allExtraOps.push(...exprOps)
       }
       if (cancelled) return
-      // Merge equation ops with original ops and re-process
+      // Merge expression ops with original ops and re-process
       const merged = operationsToGraph([...operations, ...allExtraOps])
-      // Preserve the equation list and other metadata from original parse
+      // Preserve the expression list and other metadata from original parse
       merged.description = merged.description ?? parsedGraphData.description
       merged.currency = merged.currency ?? parsedGraphData.currency
       setGraphData(merged)
@@ -327,9 +327,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       const isFunctionNode = transitionNode?.role === 'Function'
 
       if (isFunctionNode) {
-        // Async fire for Function transitions: evaluate expression, then update marking + values
+        // Async fire for Function transitions: evaluate definition, then update marking + values
         const expressionAttr = graphData.attributes.find(
-          (a) => a.source_id === transitionId && a.name.toLowerCase() === 'expression'
+          (a) => a.source_id === transitionId && a.name.toLowerCase() === 'definition'
         )
         if (!expressionAttr) return
 
@@ -516,7 +516,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       if (!fn) continue
 
       const exprAttr = graphData.attributes.find(
-        (a) => a.source_id === fnId && a.name.toLowerCase() === 'expression'
+        (a) => a.source_id === fnId && a.name.toLowerCase() === 'definition'
       )
       if (!exprAttr) continue
 
@@ -794,7 +794,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       for (const node of inMemoryGraph.nodes) {
         if (isTransitionRole(node.role)) {
           const isFn = node.role === 'Function'
-          const exprAttr = isFn ? graphData.attributes.find((a) => a.source_id === node.id && a.name.toLowerCase() === 'expression') : null
+          const exprAttr = isFn ? graphData.attributes.find((a) => a.source_id === node.id && a.name.toLowerCase() === 'definition') : null
           cyNodes.push({
             data: {
               id: node.id,
@@ -1536,10 +1536,10 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                 </div>
                 {selectedNode.role === 'Function' && (() => {
                   const exprAttr = graphData.attributes.find(
-                    (a) => a.source_id === selectedNode.id && a.name.toLowerCase() === 'expression'
+                    (a) => a.source_id === selectedNode.id && a.name.toLowerCase() === 'definition'
                   )
                   return exprAttr ? (
-                    <div className={styles['expression-display']}>
+                    <div className={styles['definition-display']}>
                       <strong>f(x)</strong> = <code>{exprAttr.value}</code>
                     </div>
                   ) : null

@@ -13,7 +13,7 @@ const GRAPH_DESCRIPTION_REGEX = /```graph-description\n([\s\S]*?)\n```/
 const MINDMAP_HEADING_REGEX = /^\s*#\s+(.+?)\s+<([^>]+)>\s*$/
 const MINDMAP_ITEM_REGEX = /^(\s*)-\s+(.+)$/
 const CURRENCY_REGEX = /^\s*currency\s*:\s*([^;\n]+?)\s*;?\s*$/im
-const EQUATION_REGEX = /^\s*equation\s*:\s*(.+?)\s*;?\s*$/m
+const EXPRESSION_REGEX = /^\s*expression\s*:\s*(.+?)\s*;?\s*$/m
 
 /** Maps relation aliases to their canonical Petri net equivalents. */
 const RELATION_ALIAS_MAP: Record<string, string> = {
@@ -353,7 +353,7 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
     const trimmed = line.trim()
     if (!trimmed.includes(':')) return false
     if (trimmed.startsWith('<')) return false
-    if (/^\s*equation\s*:/i.test(trimmed)) return false
+    if (/^\s*expression\s*:/i.test(trimmed)) return false
     return true
   })
   for (const line of attributeLines) {
@@ -502,7 +502,7 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
     const trimmed = line.trim()
     if (!trimmed.includes(':')) return false
     if (trimmed.startsWith('<')) return false
-    if (/^\s*equation\s*:/i.test(trimmed)) return false
+    if (/^\s*expression\s*:/i.test(trimmed)) return false
     return true
   })
   for (const line of attributeLines) {
@@ -694,12 +694,12 @@ export function getOperationsFromCnl(cnlText: string): CnlOperation[] {
     operations.push({ type: 'setCurrency', payload: { currency: currencyMatch[1].trim() }, id: 'graph_currency' })
   }
 
-  // equation directive (graph-level: "equation: (a + b) * c;")
-  const equationMatch = cnlText.match(EQUATION_REGEX)
-  if (equationMatch) {
-    const expression = equationMatch[1].trim()
+  // expression directive (graph-level: "expression: (a + b) * c;")
+  const expressionMatch = cnlText.match(EXPRESSION_REGEX)
+  if (expressionMatch) {
+    const expression = expressionMatch[1].trim()
     const eqId = `eq_${fnv1aHash(expression)}`
-    operations.push({ type: 'addEquation', payload: { expression }, id: eqId })
+    operations.push({ type: 'addExpression', payload: { expression }, id: eqId })
   }
 
   return operations

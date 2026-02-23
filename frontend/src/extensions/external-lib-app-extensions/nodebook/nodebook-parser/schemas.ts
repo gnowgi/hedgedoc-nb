@@ -16,7 +16,7 @@ export const nodeTypes: NodeTypeSchema[] = [
   { name: 'Element', description: 'A pure substance consisting of one type of atom.', parent_types: ['Substance'] },
   { name: 'Molecule', description: 'A group of atoms bonded together.', parent_types: ['Substance'] },
   { name: 'Transition', description: 'A process that transforms inputs to outputs.', parent_types: ['class'] },
-  { name: 'Function', description: 'A computable transition with an expression that evaluates input values to produce output values.', parent_types: ['Transition'] },
+  { name: 'Function', description: 'A computable transition with a definition that evaluates input values to produce output values.', parent_types: ['Transition'] },
   { name: 'Transaction', description: 'An accounting transaction that moves value between accounts (double-entry).', parent_types: ['class'] },
   { name: 'Account', description: 'A general ledger account that holds monetary value.', parent_types: ['class'] },
   { name: 'Asset', description: 'An account representing resources owned (debit-normal).', parent_types: ['Account'] },
@@ -147,40 +147,40 @@ export const transitionTypes: TransitionTypeSchema[] = [
 export const functionTypes: FunctionTypeSchema[] = [
   {
     name: 'atomicMass',
-    expression: '"number of protons" + "number of neutrons"',
+    definition: '"number of protons" + "number of neutrons"',
     scope: ['Element', 'class']
   },
   {
     name: 'distance',
-    expression: 'let $x_1$ be "position x"; let $y_1$ be "position y"; let $z_1$ be "position z"; let $x_2$ be "previous position x"; let $y_2$ be "previous position y"; let $z_2$ be "previous position z"; let delta_x be $x_1$ - $x_2$; let delta_y be $y_1$ - $y_2$; let delta_z be $z_1$ - $z_2$; sqrt(power(delta_x, 2) + power(delta_y, 2) + power(delta_z, 2))',
+    definition: 'let $x_1$ be "position x"; let $y_1$ be "position y"; let $z_1$ be "position z"; let $x_2$ be "previous position x"; let $y_2$ be "previous position y"; let $z_2$ be "previous position z"; let delta_x be $x_1$ - $x_2$; let delta_y be $y_1$ - $y_2$; let delta_z be $z_1$ - $z_2$; sqrt(power(delta_x, 2) + power(delta_y, 2) + power(delta_z, 2))',
     scope: ['Object', 'Particle', 'Vehicle', 'class'],
     description: 'Calculates Euclidean distance between two 3D positions using vector notation',
     required_attributes: ['position x', 'position y', 'position z', 'previous position x', 'previous position y', 'previous position z']
   },
   {
     name: 'displacement',
-    expression: 'let $x$ be "position x"; let $y$ be "position y"; let $z$ be "position z"; let $x_0$ be "initial position x"; let $y_0$ be "initial position y"; let $z_0$ be "initial position z"; let delta_x be $x$ - $x_0$; let delta_y be $y$ - $y_0$; let delta_z be $z$ - $z_0$; sqrt(power(delta_x, 2) + power(delta_y, 2) + power(delta_z, 2))',
+    definition: 'let $x$ be "position x"; let $y$ be "position y"; let $z$ be "position z"; let $x_0$ be "initial position x"; let $y_0$ be "initial position y"; let $z_0$ be "initial position z"; let delta_x be $x$ - $x_0$; let delta_y be $y$ - $y_0$; let delta_z be $z$ - $z_0$; sqrt(power(delta_x, 2) + power(delta_y, 2) + power(delta_z, 2))',
     scope: ['Object', 'Particle', 'Vehicle', 'class'],
     description: 'Calculates displacement from initial position to current position using vector notation',
     required_attributes: ['position x', 'position y', 'position z', 'initial position x', 'initial position y', 'initial position z']
   },
   {
     name: 'speed',
-    expression: 'let $x_1$ be "position x"; let $y_1$ be "position y"; let $z_1$ be "position z"; let $x_2$ be "previous position x"; let $y_2$ be "previous position y"; let $z_2$ be "previous position z"; let $t_1$ be "time"; let $t_2$ be "previous time"; let delta_x be $x_1$ - $x_2$; let delta_y be $y_1$ - $y_2$; let delta_z be $z_1$ - $z_2$; let distance be sqrt(power(delta_x, 2) + power(delta_y, 2) + power(delta_z, 2)); let delta_t be $t_1$ - $t_2$; distance / delta_t',
+    definition: 'let $x_1$ be "position x"; let $y_1$ be "position y"; let $z_1$ be "position z"; let $x_2$ be "previous position x"; let $y_2$ be "previous position y"; let $z_2$ be "previous position z"; let $t_1$ be "time"; let $t_2$ be "previous time"; let delta_x be $x_1$ - $x_2$; let delta_y be $y_1$ - $y_2$; let delta_z be $z_1$ - $z_2$; let distance be sqrt(power(delta_x, 2) + power(delta_y, 2) + power(delta_z, 2)); let delta_t be $t_1$ - $t_2$; distance / delta_t',
     scope: ['Object', 'Particle', 'Vehicle', 'class'],
     description: 'Calculates speed (distance traveled over time) using intermediate variables',
     required_attributes: ['position x', 'position y', 'position z', 'previous position x', 'previous position y', 'previous position z', 'time', 'previous time']
   },
   {
     name: 'velocity_magnitude',
-    expression: 'let $x$ be "position x"; let $y$ be "position y"; let $z$ be "position z"; let $x_0$ be "initial position x"; let $y_0$ be "initial position y"; let $z_0$ be "initial position z"; let $t_1$ be "time"; let $t_2$ be "previous time"; let delta_x be $x$ - $x_0$; let delta_y be $y$ - $y_0$; let delta_z be $z$ - $z_0$; let displacement be sqrt(power(delta_x, 2) + power(delta_y, 2) + power(delta_z, 2)); let delta_t be $t_1$ - $t_2$; displacement / delta_t',
+    definition: 'let $x$ be "position x"; let $y$ be "position y"; let $z$ be "position z"; let $x_0$ be "initial position x"; let $y_0$ be "initial position y"; let $z_0$ be "initial position z"; let $t_1$ be "time"; let $t_2$ be "previous time"; let delta_x be $x$ - $x_0$; let delta_y be $y$ - $y_0$; let delta_z be $z$ - $z_0$; let displacement be sqrt(power(delta_x, 2) + power(delta_y, 2) + power(delta_z, 2)); let delta_t be $t_1$ - $t_2$; displacement / delta_t',
     scope: ['Object', 'Particle', 'Vehicle', 'class'],
     description: 'Calculates velocity magnitude (displacement over time) using intermediate variables',
     required_attributes: ['position x', 'position y', 'position z', 'initial position x', 'initial position y', 'initial position z', 'time', 'previous time']
   },
   {
     name: 'acceleration',
-    expression: 'let $x_1$ be "position x"; let $y_1$ be "position y"; let $z_1$ be "position z"; let $x_2$ be "previous position x"; let $y_2$ be "previous position y"; let $z_2$ be "previous position z"; let $x_3$ be "previous previous position x"; let $y_3$ be "previous previous position y"; let $z_3$ be "previous previous position z"; let $t_1$ be "time"; let $t_2$ be "previous time"; let $t_3$ be "previous previous time"; let velocity_1 be sqrt(power($x_1$ - $x_2$, 2) + power($y_1$ - $y_2$, 2) + power($z_1$ - $z_2$, 2)) / ($t_1$ - $t_2$); let velocity_2 be sqrt(power($x_2$ - $x_3$, 2) + power($y_2$ - $y_3$, 2) + power($z_2$ - $z_3$, 2)) / ($t_2$ - $t_3$); let delta_v be velocity_1 - velocity_2; let delta_t be $t_1$ - $t_2$; delta_v / delta_t',
+    definition: 'let $x_1$ be "position x"; let $y_1$ be "position y"; let $z_1$ be "position z"; let $x_2$ be "previous position x"; let $y_2$ be "previous position y"; let $z_2$ be "previous position z"; let $x_3$ be "previous previous position x"; let $y_3$ be "previous previous position y"; let $z_3$ be "previous previous position z"; let $t_1$ be "time"; let $t_2$ be "previous time"; let $t_3$ be "previous previous time"; let velocity_1 be sqrt(power($x_1$ - $x_2$, 2) + power($y_1$ - $y_2$, 2) + power($z_1$ - $z_2$, 2)) / ($t_1$ - $t_2$); let velocity_2 be sqrt(power($x_2$ - $x_3$, 2) + power($y_2$ - $y_3$, 2) + power($z_2$ - $z_3$, 2)) / ($t_2$ - $t_3$); let delta_v be velocity_1 - velocity_2; let delta_t be $t_1$ - $t_2$; delta_v / delta_t',
     scope: ['Object', 'Particle', 'Vehicle', 'class'],
     description: 'Calculates acceleration (change in velocity over time) using intermediate variables',
     required_attributes: ['position x', 'position y', 'position z', 'previous position x', 'previous position y', 'previous position z', 'previous previous position x', 'previous previous position y', 'previous previous position z', 'time', 'previous time', 'previous previous time']

@@ -32,7 +32,7 @@ nodeType: Substance, A material with definite chemical composition, parent: clas
 nodeType: Element, A pure substance consisting of one type of atom, parent: Substance
 nodeType: Molecule, A group of atoms bonded together, parent: Substance
 nodeType: Transition, A process that transforms inputs to outputs, parent: class
-nodeType: Function, A computable transition with an expression that evaluates input values to produce output values, parent: Transition
+nodeType: Function, A computable transition with a definition that evaluates input values to produce output values, parent: Transition
 nodeType: Transaction, An accounting transaction that moves value between accounts, parent: class
 nodeType: Account, A general ledger account that holds monetary value, parent: class
 nodeType: Asset, An account representing resources owned (debit-normal), parent: Account
@@ -251,7 +251,7 @@ transitionType: stellar_fusion, Hydrogen fuses into helium in a star's core, inp
 Defines a computed attribute derived from other attributes.
 
 ```
-functionType: name, expression, scope: Type1|Type2, description: text
+functionType: name, definition, scope: Type1|Type2, description: text
 ```
 
 **Example:**

@@ -121,8 +121,8 @@ function walkNode(node: Record<string, unknown>): WalkResult {
       },
       {
         type: 'addAttribute',
-        payload: { source: transitionId, name: 'expression', value: exprString },
-        id: `attr_${transitionId}_expression`
+        payload: { source: transitionId, name: 'definition', value: exprString },
+        id: `attr_${transitionId}_definition`
       }
     )
 
@@ -192,8 +192,8 @@ function walkNode(node: Record<string, unknown>): WalkResult {
       },
       {
         type: 'addAttribute',
-        payload: { source: transitionId, name: 'expression', value: exprString },
-        id: `attr_${transitionId}_expression`
+        payload: { source: transitionId, name: 'definition', value: exprString },
+        id: `attr_${transitionId}_definition`
       }
     )
 
@@ -223,7 +223,7 @@ function walkNode(node: Record<string, unknown>): WalkResult {
  * Each operator becomes a [Function] transition with input/output place arcs.
  * Returns CnlOperations that can be merged into an existing graph.
  */
-export async function equationToPetriNetOps(expression: string): Promise<CnlOperation[]> {
+export async function expressionToPetriNetOps(expression: string): Promise<CnlOperation[]> {
   const math = await import(/* webpackChunkName: "mathjs" */ 'mathjs')
   const instance = math.create(math.all, {}) as unknown as { parse: (expr: string) => Record<string, unknown> }
   opCounter = 0

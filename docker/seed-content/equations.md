@@ -1,17 +1,17 @@
 ---
-title: Function Transitions & Equations
-description: Computable Petri net transitions — evaluate expressions, chain functions, and auto-generate data-flow networks from equations
+title: Function Transitions & Expressions
+description: Computable Petri net transitions — evaluate definitions, chain functions, and auto-generate data-flow networks from expressions
 tags:
   - nodebook
   - tutorial
   - functions
   - petri-net
-  - equations
+  - expressions
 ---
 
-# Function Transitions & Equations
+# Function Transitions & Expressions
 
-nodeBook extends the Petri net model with **computable transitions**. A `[Function]` is a transition that carries an `expression:` attribute — when fired, it reads numeric values from its input places, evaluates the expression using [math.js](https://mathjs.org/), and writes the result to its output places.
+nodeBook extends the Petri net model with **computable transitions**. A `[Function]` is a transition that carries a `definition:` attribute — when fired, it reads numeric values from its input places, evaluates the definition using [math.js](https://mathjs.org/), and writes the result to its output places.
 
 This turns a knowledge graph into a **semantic computer**: the graph doesn't just *describe* relationships, it *computes* through them.
 
@@ -34,7 +34,7 @@ value: 0;
 <input> protons;
 <input> neutrons;
 <output> mass_number;
-expression: protons + neutrons;
+definition: protons + neutrons;
 
 # mass_number
 ```
@@ -50,13 +50,13 @@ expression: protons + neutrons;
 1. `value:` attributes give places their initial numeric values
 2. `<input>` connects a place as an input arc (alias for `<has prior_state>`)
 3. `<output>` connects a place as an output arc (alias for `<has post_state>`)
-4. `expression:` tells the Function what to compute — variable names match the `# heading` names of input places
+4. `definition:` tells the Function what to compute — variable names match the `# heading` names of input places
 
 ---
 
 ## 2. Division and Other Operators
 
-All standard arithmetic operators work in expressions.
+All standard arithmetic operators work in definitions.
 
 ```nodeBook
 # distance
@@ -69,7 +69,7 @@ value: 10;
 <input> distance;
 <input> time;
 <output> speed;
-expression: distance / time;
+definition: distance / time;
 
 # speed
 ```
@@ -80,7 +80,7 @@ Fire the transition → `speed = 10`.
 
 ## 3. Built-in Math Functions
 
-Expressions support `sqrt()`, `abs()`, `log()`, `exp()`, `sin()`, `cos()`, `tan()`, `pow()`, and constants `pi` and `e`.
+Definitions support `sqrt()`, `abs()`, `log()`, `exp()`, `sin()`, `cos()`, `tan()`, `pow()`, and constants `pi` and `e`.
 
 ```nodeBook
 # radius
@@ -89,7 +89,7 @@ value: 5;
 # computeArea [Function]
 <input> radius;
 <output> area;
-expression: pi * radius ^ 2;
+definition: pi * radius ^ 2;
 
 # area
 ```
@@ -113,7 +113,7 @@ value: 4;
 <input> a;
 <input> b;
 <output> sum_ab;
-expression: a + b;
+definition: a + b;
 
 # sum_ab
 
@@ -124,7 +124,7 @@ value: 2;
 <input> sum_ab;
 <input> c;
 <output> result;
-expression: sum_ab * c;
+definition: sum_ab * c;
 
 # result
 ```
@@ -137,7 +137,7 @@ This is equivalent to the expression $(a + b) \times c = (3 + 4) \times 2 = 14$.
 
 ## 5. Attribute Abbreviations `{x}`
 
-When input places have long attribute names, use `{abbrev}` to create short aliases for expressions.
+When input places have long attribute names, use `{abbrev}` to create short aliases for definitions.
 
 ```nodeBook
 # Hydrogen [Element]
@@ -147,12 +147,12 @@ number of neutrons {n}: 0;
 # atomicMass [Function]
 <input> Hydrogen;
 <output> mass;
-expression: p + n;
+definition: p + n;
 
 # mass
 ```
 
-The expression `p + n` resolves the abbreviations:
+The definition `p + n` resolves the abbreviations:
 - `p` → value of "number of protons" on Hydrogen → `1`
 - `n` → value of "number of neutrons" on Hydrogen → `0`
 
@@ -160,12 +160,12 @@ Result: `mass = 1`.
 
 ---
 
-## 6. Equation Directive (Auto-Generated Petri Net)
+## 6. Expression Directive (Auto-Generated Petri Net)
 
-The `equation:` directive automatically decomposes a math expression into a full Petri net — each operator becomes a Function transition, each variable becomes an input place, and intermediate results get their own places.
+The `expression:` directive automatically decomposes a math expression into a full Petri net — each operator becomes a Function transition, each variable becomes an input place, and intermediate results get their own places.
 
 ```nodeBook
-equation: (a + b) * c;
+expression: (a + b) * c;
 ```
 
 This auto-generates:
@@ -179,7 +179,7 @@ Set values on `a`, `b`, `c` and click **Evaluate All** to watch computation flow
 ### A more complex equation
 
 ```nodeBook
-equation: sqrt(x^2 + y^2);
+expression: sqrt(x^2 + y^2);
 ```
 
 This decomposes the Pythagorean distance formula into:
@@ -204,7 +204,7 @@ value: 3;
 # squareV [Function]
 <input> velocity;
 <output> v_squared;
-expression: velocity ^ 2;
+definition: velocity ^ 2;
 
 # v_squared
 
@@ -212,7 +212,7 @@ expression: velocity ^ 2;
 <input> mass;
 <input> v_squared;
 <output> KE;
-expression: 0.5 * mass * v_squared;
+definition: 0.5 * mass * v_squared;
 
 # KE
 ```
@@ -236,7 +236,7 @@ orbital period {T}: 365.25;
 # computeSpeed [Function]
 <input> Earth;
 <output> orbital_speed;
-expression: 2 * pi * r / T;
+definition: 2 * pi * r / T;
 
 # orbital_speed
 
@@ -255,11 +255,11 @@ The Function reads abbreviated attributes `r` and `T` from the typed `Earth` nod
 # functionName [Function]
 <input> inputPlace;
 <output> outputPlace;
-expression: math expression;
+definition: math expression;
 ```
 
 - `[Function]` is a subtype of `[Transition]` — it renders as a purple rounded bar
-- Variable names in the expression must match the `# heading` names of input places, or abbreviations defined with `{x}` syntax
+- Variable names in the definition must match the `# heading` names of input places, or abbreviations defined with `{x}` syntax
 - Multiple inputs and outputs are supported
 
 ### Place Values
@@ -280,13 +280,13 @@ long attribute name {x}: 42;
 ```
 
 - `{x}` after the attribute name creates a short alias
-- Expressions can reference `x` instead of the full attribute name
+- Definitions can reference `x` instead of the full attribute name
 - Abbreviations are scoped to the nodeBook block
 
-### Equation Directive
+### Expression Directive
 
 ```
-equation: mathematical expression;
+expression: mathematical expression;
 ```
 
 - Placed at the top level of a nodeBook block (not under any `# heading`)

@@ -193,10 +193,10 @@ function parseTransitionTypeLine(fields: string[]): ParsedLine<TransitionTypeSch
 
 function parseFunctionTypeLine(fields: string[]): ParsedLine<FunctionTypeSchema> {
   if (fields.length < 2) {
-    return { error: 'functionType requires at least: name, expression' }
+    return { error: 'functionType requires at least: name, definition' }
   }
   const name = fields[0]
-  const expression = fields[1]
+  const definition = fields[1]
   const remaining = fields.slice(2)
   const kvs = parseKeyValuePairs(remaining)
 
@@ -204,7 +204,7 @@ function parseFunctionTypeLine(fields: string[]): ParsedLine<FunctionTypeSchema>
   const scope = scopeStr ? splitPipeList(scopeStr) : []
   const descStr = kvs.get('description')
 
-  const result: FunctionTypeSchema = { name, expression, scope }
+  const result: FunctionTypeSchema = { name, definition, scope }
   if (descStr !== undefined) {
     result.description = descStr
   }

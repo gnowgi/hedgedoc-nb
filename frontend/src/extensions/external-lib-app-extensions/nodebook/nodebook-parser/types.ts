@@ -56,7 +56,7 @@ export interface CnlGraphData {
   edges: CnlEdge[]
   attributes: CnlAttribute[]
   abbreviations: Record<string, { fullName: string; nodeId: string }>
-  equations: Array<{ id: string; expression: string }>
+  expressions: Array<{ id: string; expression: string }>
   description: string | null
   currency: string | null
   errors: CnlParseError[]
@@ -107,7 +107,7 @@ export interface TransitionTypeSchema {
 
 export interface FunctionTypeSchema {
   name: string
-  expression: string
+  definition: string
   scope: string[]
   description?: string
   required_attributes?: string[]
@@ -118,7 +118,7 @@ export type OperationType =
   | 'addMorph'
   | 'addRelation'
   | 'addAttribute'
-  | 'addEquation'
+  | 'addExpression'
   | 'updateNode'
   | 'updateGraphDescription'
   | 'setCurrency'
