@@ -30,6 +30,16 @@ services:
     volumes:
       - hedgedoc_db:/var/lib/postgresql/data
 
+  seed:
+    image: alpine/curl:latest
+    depends_on:
+      - backend
+    volumes:
+      - ./seed-entrypoint.sh:/seed-entrypoint.sh:ro
+      - ./seed-content:/seed-content:ro
+    entrypoint: ["/bin/sh", "/seed-entrypoint.sh"]
+    restart: "no"
+
   proxy:
     image: caddy:latest
     restart: unless-stopped
