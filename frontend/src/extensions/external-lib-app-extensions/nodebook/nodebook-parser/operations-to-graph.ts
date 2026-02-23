@@ -5,18 +5,6 @@
  */
 import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode, CnlOperation, Morph } from './types'
 
-/**
- * Browser-compatible FNV-1a hash
- */
-function fnv1aHash(str: string): string {
-  let hash = 0x811c9dc5
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i)
-    hash = Math.imul(hash, 0x01000193)
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0').slice(0, 6)
-}
-
 let basicMorphCounter = 0
 
 function createBasicMorph(nodeId: string): Morph {
@@ -43,6 +31,8 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
   const nodesMap = new Map<string, CnlNode>()
   const edges: CnlEdge[] = []
   const attributes: CnlAttribute[] = []
+  const abbreviations: Record<string, { fullName: string; nodeId: string }> = {}
+  const equations: Array<{ id: string; expression: string }> = []
   const errors: Array<{ message: string; line?: number }> = []
   let description: string | null = null
   let currency: string | null = null
@@ -160,10 +150,15 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
         name: string
         value: string
         morphId?: string
+        abbreviation?: string
         unit?: string
         adverb?: string
         modality?: string
         quantifier?: string
+      }
+
+      if (payload.abbreviation) {
+        abbreviations[payload.abbreviation] = { fullName: payload.name, nodeId: payload.source }
       }
 
       const attr: CnlAttribute = {
@@ -194,28 +189,6 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
       }
 
       attributes.push(attr)
-    } else if (op.type === 'applyFunction') {
-      const payload = op.payload as { source: string; name: string }
-      const valueHash = fnv1aHash(`function:${payload.name}`)
-      const attr: CnlAttribute = {
-        id: op.id,
-        source_id: payload.source,
-        name: payload.name,
-        value: `function:${payload.name}`,
-        unit: null,
-        adverb: null,
-        modality: null,
-        quantifier: null,
-        morph_ids: []
-      }
-
-      const sourceNode = nodesMap.get(payload.source)
-      if (sourceNode) {
-        sourceNode.morphs[0].attributeNode_ids.push(attr.id)
-        attr.morph_ids.push(sourceNode.morphs[0].morph_id)
-      }
-
-      attributes.push(attr)
     } else if (op.type === 'updateNode') {
       const payload = op.payload as { id: string; fields: Record<string, unknown> }
       const node = nodesMap.get(payload.id)
@@ -230,6 +203,9 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
     } else if (op.type === 'setCurrency') {
       const payload = op.payload as { currency: string }
       currency = payload.currency
+    } else if (op.type === 'addEquation') {
+      const payload = op.payload as { expression: string }
+      equations.push({ id: op.id, expression: payload.expression })
     }
   }
 
@@ -237,6 +213,8 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
     nodes: Array.from(nodesMap.values()),
     edges,
     attributes,
+    abbreviations,
+    equations,
     description,
     currency,
     errors

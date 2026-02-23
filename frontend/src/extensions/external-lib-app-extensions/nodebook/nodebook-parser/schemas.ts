@@ -16,6 +16,7 @@ export const nodeTypes: NodeTypeSchema[] = [
   { name: 'Element', description: 'A pure substance consisting of one type of atom.', parent_types: ['Substance'] },
   { name: 'Molecule', description: 'A group of atoms bonded together.', parent_types: ['Substance'] },
   { name: 'Transition', description: 'A process that transforms inputs to outputs.', parent_types: ['class'] },
+  { name: 'Function', description: 'A computable transition with an expression that evaluates input values to produce output values.', parent_types: ['Transition'] },
   { name: 'Transaction', description: 'An accounting transaction that moves value between accounts (double-entry).', parent_types: ['class'] },
   { name: 'Account', description: 'A general ledger account that holds monetary value.', parent_types: ['class'] },
   { name: 'Asset', description: 'An account representing resources owned (debit-normal).', parent_types: ['Account'] },

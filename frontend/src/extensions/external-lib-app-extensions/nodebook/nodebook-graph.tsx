@@ -9,7 +9,9 @@ import type { CodeProps } from '../../../components/markdown-renderer/replace-co
 import { cypressId } from '../../../utils/cypress-attribute'
 import { Logger } from '../../../utils/logger'
 import { getOperationsFromCnl } from './nodebook-parser/cnl-parser'
+import { equationToPetriNetOps } from './nodebook-parser/equation-to-pn'
 import { MorphRegistry } from './nodebook-parser/morph-registry'
+import { evaluateExpression } from './nodebook-parser/nodebook-evaluator'
 import { operationsToGraph } from './nodebook-parser/operations-to-graph'
 import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode, CnlParseError } from './nodebook-parser/types'
 import { validateOperations } from './nodebook-parser/validate-operations'
@@ -37,10 +39,13 @@ function resolveCurrencySymbol(currency: string | null): string {
   return currency
 }
 
-/** Build a display label for a Petri-net place: name + token indicator. */
-function placeDisplayLabel(name: string, tokenCount: number, isAccounting: boolean, currencySymbol: string): string {
+/** Build a display label for a Petri-net place: name + token indicator + optional computed value. */
+function placeDisplayLabel(name: string, tokenCount: number, isAccounting: boolean, currencySymbol: string, computedValue?: number | null): string {
   if (isAccounting) {
     return `${name}\n${currencySymbol}${tokenCount.toFixed(2)}`
+  }
+  if (computedValue !== undefined && computedValue !== null) {
+    return `${name}\n= ${Number.isInteger(computedValue) ? computedValue : computedValue.toFixed(4)}`
   }
   if (tokenCount <= 0) return name
   if (tokenCount <= 3) return `${name}\n${'●'.repeat(tokenCount)}`
@@ -52,7 +57,7 @@ const ACCOUNT_TYPES = new Set(['Account', 'Asset', 'Liability', 'Equity', 'Reven
 
 /** Check if a node role is a transition-like role (Transition or Transaction). */
 function isTransitionRole(role: string): boolean {
-  return role === 'Transition' || role === 'Transaction'
+  return role === 'Transition' || role === 'Transaction' || role === 'Function'
 }
 
 /** Convert a number to a circled Unicode digit (①-⑳), falling back to parenthesized form. */
@@ -119,22 +124,48 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [validationWarnings, setValidationWarnings] = useState<CnlParseError[]>([])
   const [hasValidated, setHasValidated] = useState(false)
   const [marking, setMarking] = useState<Map<string, number>>(new Map())
+  const [placeValues, setPlaceValues] = useState<Map<string, number>>(new Map())
   const [tokenMultiplier, setTokenMultiplier] = useState<number>(1)
 
   // Parse CNL synchronously (pure regex, microsecond-fast)
-  const { graphData, operations } = useMemo(() => {
+  const { parsedGraphData, operations } = useMemo(() => {
     try {
       const ops = getOperationsFromCnl(code)
       const data = operationsToGraph(ops)
-      return { graphData: data, operations: ops }
+      return { parsedGraphData: data, operations: ops }
     } catch (error) {
       log.error('Error parsing CNL', error)
       return {
-        graphData: { nodes: [], edges: [], attributes: [], description: null, currency: null, errors: [{ message: String(error) }] } as CnlGraphData,
+        parsedGraphData: { nodes: [], edges: [], attributes: [], abbreviations: {}, equations: [], description: null, currency: null, errors: [{ message: String(error) }] } as CnlGraphData,
         operations: []
       }
     }
   }, [code])
+
+  // Expand equations asynchronously, then merge into graph data
+  const [graphData, setGraphData] = useState<CnlGraphData>(parsedGraphData)
+  useEffect(() => {
+    if (parsedGraphData.equations.length === 0) {
+      setGraphData(parsedGraphData)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const allExtraOps = []
+      for (const eq of parsedGraphData.equations) {
+        const eqOps = await equationToPetriNetOps(eq.expression)
+        allExtraOps.push(...eqOps)
+      }
+      if (cancelled) return
+      // Merge equation ops with original ops and re-process
+      const merged = operationsToGraph([...operations, ...allExtraOps])
+      // Preserve the equation list and other metadata from original parse
+      merged.description = merged.description ?? parsedGraphData.description
+      merged.currency = merged.currency ?? parsedGraphData.currency
+      setGraphData(merged)
+    })()
+    return () => { cancelled = true }
+  }, [parsedGraphData, operations])
 
   // Determine graph mode
   const graphMode: GraphMode = useMemo(() => {
@@ -154,6 +185,12 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   // Detect accounting mode (Transaction nodes present)
   const isAccountingMode = useMemo(
     () => graphData.nodes.some((n) => n.role === 'Transaction'),
+    [graphData]
+  )
+
+  // Detect function mode (Function nodes present)
+  const hasFunctions = useMemo(
+    () => graphData.nodes.some((n) => n.role === 'Function'),
     [graphData]
   )
 
@@ -217,6 +254,27 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           initial.set(edge.target_id, (initial.get(edge.target_id) ?? 0) + edge.weight)
         }
       }
+    } else if (hasFunctions) {
+      // Function mode: places with a "value" attribute get 1 token, others get 0
+      const initialValues = new Map<string, number>()
+      for (const node of graphData.nodes) {
+        if (isTransitionRole(node.role)) continue
+        const valueAttr = graphData.attributes.find(
+          (a) => a.source_id === node.id && a.name.toLowerCase() === 'value'
+        )
+        if (valueAttr) {
+          const numVal = parseFloat(valueAttr.value)
+          if (!isNaN(numVal)) {
+            initialValues.set(node.id, numVal)
+            initial.set(node.id, 1)
+          } else {
+            initial.set(node.id, 0)
+          }
+        } else {
+          initial.set(node.id, priorStateNodeIds.has(node.id) ? 1 : 0)
+        }
+      }
+      setPlaceValues(initialValues)
     } else {
       for (const nodeId of priorStateNodeIds) {
         const weight = maxPriorWeight.get(nodeId) ?? 1
@@ -227,7 +285,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       }
     }
     setMarking(initial)
-  }, [graphData, graphMode, isAccountingMode, priorStateNodeIds, postStateNodeIds, tokenMultiplier, maxPriorWeight])
+  }, [graphData, graphMode, isAccountingMode, hasFunctions, priorStateNodeIds, postStateNodeIds, tokenMultiplier, maxPriorWeight])
 
   // Petri net: check if a transition is enabled (respects arc weights)
   const isTransitionEnabled = useCallback(
@@ -244,40 +302,265 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     [graphData]
   )
 
-  // Petri net: fire a transition (respects arc weights)
+  // Petri net: fire a transition (respects arc weights, evaluates Function expressions)
   const fireTransition = useCallback(
     (transitionId: string) => {
-      setMarking((prev) => {
-        if (!isTransitionEnabled(transitionId, prev)) return prev
-        const next = new Map(prev)
-        // Consume tokens from input places by arc weight
+      const transitionNode = graphData.nodes.find((n) => n.id === transitionId)
+      const isFunctionNode = transitionNode?.role === 'Function'
+
+      if (isFunctionNode) {
+        // Async fire for Function transitions: evaluate expression, then update marking + values
+        const expressionAttr = graphData.attributes.find(
+          (a) => a.source_id === transitionId && a.name.toLowerCase() === 'expression'
+        )
+        if (!expressionAttr) return
+
         const inputEdges = graphData.edges.filter((e) => e.source_id === transitionId && e.name === 'has prior_state')
-        for (const edge of inputEdges) {
-          next.set(edge.target_id, (next.get(edge.target_id) ?? 0) - edge.weight)
-        }
-        // Produce tokens to output places by arc weight
         const outputEdges = graphData.edges.filter((e) => e.source_id === transitionId && e.name === 'has post_state')
-        for (const edge of outputEdges) {
-          next.set(edge.target_id, (next.get(edge.target_id) ?? 0) + edge.weight)
+
+        // Build scope: map input place names to their numeric values
+        const scope: Record<string, number> = {}
+        for (const edge of inputEdges) {
+          const inputNode = graphData.nodes.find((n) => n.id === edge.target_id)
+          if (inputNode) {
+            // Use the place's computed value if available, else try its "value" attribute
+            const val = placeValues.get(edge.target_id)
+            if (val !== undefined) {
+              scope[inputNode.base_name] = val
+              // Also add by node ID (cleaned)
+              scope[edge.target_id] = val
+            } else {
+              const valAttr = graphData.attributes.find(
+                (a) => a.source_id === edge.target_id && a.name.toLowerCase() === 'value'
+              )
+              if (valAttr) {
+                const numVal = parseFloat(valAttr.value)
+                if (!isNaN(numVal)) {
+                  scope[inputNode.base_name] = numVal
+                  scope[edge.target_id] = numVal
+                }
+              }
+            }
+          }
         }
-        return next
-      })
+
+        // Add abbreviation aliases to scope
+        for (const [abbrev, info] of Object.entries(graphData.abbreviations)) {
+          const nodeVal = placeValues.get(info.nodeId)
+          if (nodeVal !== undefined) {
+            scope[abbrev] = nodeVal
+          } else {
+            // Find the attribute value from the source node
+            const valAttr = graphData.attributes.find(
+              (a) => a.source_id === info.nodeId && a.name === info.fullName
+            )
+            if (valAttr) {
+              const numVal = parseFloat(valAttr.value)
+              if (!isNaN(numVal)) scope[abbrev] = numVal
+            }
+          }
+        }
+
+        // Evaluate asynchronously
+        void evaluateExpression(expressionAttr.value, scope).then((result) => {
+          if (result.value !== null) {
+            // Update marking: standard token consume/produce
+            setMarking((prev) => {
+              if (!isTransitionEnabled(transitionId, prev)) return prev
+              const next = new Map(prev)
+              for (const edge of inputEdges) {
+                next.set(edge.target_id, (next.get(edge.target_id) ?? 0) - edge.weight)
+              }
+              for (const edge of outputEdges) {
+                next.set(edge.target_id, (next.get(edge.target_id) ?? 0) + edge.weight)
+              }
+              return next
+            })
+            // Write computed result to all output places
+            setPlaceValues((prev) => {
+              const next = new Map(prev)
+              for (const edge of outputEdges) {
+                next.set(edge.target_id, result.value!)
+              }
+              return next
+            })
+          } else {
+            log.error('Expression evaluation error:', result.error)
+          }
+        })
+      } else {
+        // Standard PN firing
+        setMarking((prev) => {
+          if (!isTransitionEnabled(transitionId, prev)) return prev
+          const next = new Map(prev)
+          const inputEdges = graphData.edges.filter((e) => e.source_id === transitionId && e.name === 'has prior_state')
+          for (const edge of inputEdges) {
+            next.set(edge.target_id, (next.get(edge.target_id) ?? 0) - edge.weight)
+          }
+          const outputEdges = graphData.edges.filter((e) => e.source_id === transitionId && e.name === 'has post_state')
+          for (const edge of outputEdges) {
+            next.set(edge.target_id, (next.get(edge.target_id) ?? 0) + edge.weight)
+          }
+          return next
+        })
+      }
     },
-    [graphData, isTransitionEnabled]
+    [graphData, isTransitionEnabled, placeValues]
   )
 
   // Petri net: reset marking to initial state
   const resetMarking = useCallback(() => {
     const initial = new Map<string, number>()
-    for (const nodeId of priorStateNodeIds) {
-      const weight = maxPriorWeight.get(nodeId) ?? 1
-      initial.set(nodeId, tokenMultiplier * weight)
-    }
-    for (const nodeId of postStateNodeIds) {
-      if (!priorStateNodeIds.has(nodeId)) initial.set(nodeId, 0)
+    if (hasFunctions) {
+      const initialValues = new Map<string, number>()
+      for (const node of graphData.nodes) {
+        if (isTransitionRole(node.role)) continue
+        const valueAttr = graphData.attributes.find(
+          (a) => a.source_id === node.id && a.name.toLowerCase() === 'value'
+        )
+        if (valueAttr) {
+          const numVal = parseFloat(valueAttr.value)
+          if (!isNaN(numVal)) {
+            initialValues.set(node.id, numVal)
+            initial.set(node.id, 1)
+          } else {
+            initial.set(node.id, 0)
+          }
+        } else {
+          initial.set(node.id, priorStateNodeIds.has(node.id) ? 1 : 0)
+        }
+      }
+      setPlaceValues(initialValues)
+    } else {
+      for (const nodeId of priorStateNodeIds) {
+        const weight = maxPriorWeight.get(nodeId) ?? 1
+        initial.set(nodeId, tokenMultiplier * weight)
+      }
+      for (const nodeId of postStateNodeIds) {
+        if (!priorStateNodeIds.has(nodeId)) initial.set(nodeId, 0)
+      }
     }
     setMarking(initial)
-  }, [priorStateNodeIds, postStateNodeIds, tokenMultiplier, maxPriorWeight])
+  }, [graphData, hasFunctions, priorStateNodeIds, postStateNodeIds, tokenMultiplier, maxPriorWeight])
+
+  // Evaluate all Function transitions in topological order
+  const evaluateAll = useCallback(async () => {
+    const functionNodes = graphData.nodes.filter((n) => n.role === 'Function')
+    if (functionNodes.length === 0) return
+
+    // Build adjacency: a Function depends on another if its input places are outputs of the other
+    const outputToFunction = new Map<string, string>() // placeId → functionId that produces it
+    for (const fn of functionNodes) {
+      const outEdges = graphData.edges.filter((e) => e.source_id === fn.id && e.name === 'has post_state')
+      for (const e of outEdges) outputToFunction.set(e.target_id, fn.id)
+    }
+
+    // Topological sort via Kahn's algorithm
+    const inDeg = new Map<string, number>()
+    const adj = new Map<string, string[]>()
+    for (const fn of functionNodes) {
+      inDeg.set(fn.id, 0)
+      adj.set(fn.id, [])
+    }
+    for (const fn of functionNodes) {
+      const inEdges = graphData.edges.filter((e) => e.source_id === fn.id && e.name === 'has prior_state')
+      for (const e of inEdges) {
+        const producer = outputToFunction.get(e.target_id)
+        if (producer && producer !== fn.id) {
+          adj.get(producer)!.push(fn.id)
+          inDeg.set(fn.id, (inDeg.get(fn.id) ?? 0) + 1)
+        }
+      }
+    }
+
+    const queue: string[] = []
+    for (const [id, deg] of inDeg) {
+      if (deg === 0) queue.push(id)
+    }
+
+    const sorted: string[] = []
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      sorted.push(current)
+      for (const next of adj.get(current) ?? []) {
+        const newDeg = (inDeg.get(next) ?? 1) - 1
+        inDeg.set(next, newDeg)
+        if (newDeg === 0) queue.push(next)
+      }
+    }
+
+    // Fire each Function transition in order
+    let currentValues = new Map(placeValues)
+    let currentMarking = new Map(marking)
+
+    for (const fnId of sorted) {
+      const fn = graphData.nodes.find((n) => n.id === fnId)
+      if (!fn) continue
+
+      const exprAttr = graphData.attributes.find(
+        (a) => a.source_id === fnId && a.name.toLowerCase() === 'expression'
+      )
+      if (!exprAttr) continue
+
+      const inputEdges = graphData.edges.filter((e) => e.source_id === fnId && e.name === 'has prior_state')
+      const outputEdges = graphData.edges.filter((e) => e.source_id === fnId && e.name === 'has post_state')
+
+      // Build scope
+      const scope: Record<string, number> = {}
+      for (const edge of inputEdges) {
+        const inputNode = graphData.nodes.find((n) => n.id === edge.target_id)
+        if (inputNode) {
+          const val = currentValues.get(edge.target_id)
+          if (val !== undefined) {
+            scope[inputNode.base_name] = val
+            scope[edge.target_id] = val
+          } else {
+            const valAttr = graphData.attributes.find(
+              (a) => a.source_id === edge.target_id && a.name.toLowerCase() === 'value'
+            )
+            if (valAttr) {
+              const numVal = parseFloat(valAttr.value)
+              if (!isNaN(numVal)) {
+                scope[inputNode.base_name] = numVal
+                scope[edge.target_id] = numVal
+              }
+            }
+          }
+        }
+      }
+
+      // Add abbreviation aliases
+      for (const [abbrev, info] of Object.entries(graphData.abbreviations)) {
+        const nodeVal = currentValues.get(info.nodeId)
+        if (nodeVal !== undefined) {
+          scope[abbrev] = nodeVal
+        } else {
+          const valAttr = graphData.attributes.find(
+            (a) => a.source_id === info.nodeId && a.name === info.fullName
+          )
+          if (valAttr) {
+            const numVal = parseFloat(valAttr.value)
+            if (!isNaN(numVal)) scope[abbrev] = numVal
+          }
+        }
+      }
+
+      const result = await evaluateExpression(exprAttr.value, scope)
+      if (result.value !== null) {
+        // Update token flow
+        for (const edge of inputEdges) {
+          currentMarking.set(edge.target_id, (currentMarking.get(edge.target_id) ?? 0) - edge.weight)
+        }
+        for (const edge of outputEdges) {
+          currentMarking.set(edge.target_id, (currentMarking.get(edge.target_id) ?? 0) + edge.weight)
+          currentValues.set(edge.target_id, result.value)
+        }
+      }
+    }
+
+    setMarking(new Map(currentMarking))
+    setPlaceValues(new Map(currentValues))
+  }, [graphData, placeValues, marking])
 
   // Check if any transition is enabled (for deadlock detection)
   const hasEnabledTransition = useMemo(() => {
@@ -492,11 +775,14 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       // 6. Create node elements
       for (const node of inMemoryGraph.nodes) {
         if (isTransitionRole(node.role)) {
+          const isFn = node.role === 'Function'
+          const exprAttr = isFn ? graphData.attributes.find((a) => a.source_id === node.id && a.name.toLowerCase() === 'expression') : null
           cyNodes.push({
             data: {
               id: node.id,
-              label: node.name,
+              label: isFn && exprAttr ? `${node.name}\nf(x) = ${exprAttr.value}` : node.name,
               type: 'pn-transition',
+              isFunction: isFn,
               partition: 1,
               enabled: isTransitionEnabled(node.id, marking)
             }
@@ -511,9 +797,10 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             data: {
               id: node.id,
               label: node.name,
-              displayLabel: placeDisplayLabel(node.name, tokens, isAccountingMode, currencySymbol),
+              displayLabel: placeDisplayLabel(node.name, tokens, isAccountingMode, currencySymbol, placeValues.get(node.id)),
               type: 'pn-place',
               tokenCount: tokens,
+              computedValue: placeValues.get(node.id) ?? null,
               partition: isPrior ? 0 : 2,
               ...(hasGroup && { parent: groupId })
             }
@@ -746,6 +1033,37 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             'background-color': '#94a3b8'
           }
         },
+        // Function transition — wider bar with expression label
+        {
+          selector: 'node[type="pn-transition"][?isFunction]',
+          style: {
+            width: 30,
+            height: 50,
+            shape: 'round-rectangle',
+            'background-color': '#7c3aed',
+            'border-width': 2,
+            'border-color': '#6d28d9',
+            'font-size': '9px',
+            'text-max-width': '120px'
+          }
+        },
+        // Enabled Function transition
+        {
+          selector: 'node[type="pn-transition"][?isFunction][?enabled]',
+          style: {
+            'background-color': '#7c3aed',
+            'border-color': '#5b21b6'
+          }
+        },
+        // Computed value badge on place nodes
+        {
+          selector: 'node[type="pn-place"][computedValue]',
+          style: {
+            'border-color': '#2563eb',
+            'border-width': 3,
+            'background-color': '#eff6ff'
+          }
+        },
         // Compound group: prior states
         {
           selector: ':parent[groupType="prior"]',
@@ -893,16 +1211,26 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       cy.destroy()
       cyRef.current = null
     }
-  }, [cytoscapeModules, inMemoryGraph, graphMode, layoutConfig, marking, priorStateNodeIds, postStateNodeIds, isTransitionEnabled, fireTransition, graphData, isAccountingMode, currencySymbol])
+  }, [cytoscapeModules, inMemoryGraph, graphMode, layoutConfig, marking, placeValues, priorStateNodeIds, postStateNodeIds, isTransitionEnabled, fireTransition, graphData, isAccountingMode, currencySymbol])
 
-  // Update Cytoscape node data when marking changes (without full re-render)
+  // Update Cytoscape node data when marking or placeValues change (without full re-render)
   useEffect(() => {
     if (!cyRef.current || graphMode !== 'petri-net') return
     for (const [placeId, count] of marking) {
       const node = cyRef.current.$id(placeId)
       if (node.length) {
         node.data('tokenCount', count)
-        node.data('displayLabel', placeDisplayLabel(node.data('label'), count, isAccountingMode, currencySymbol))
+        node.data('computedValue', placeValues.get(placeId) ?? null)
+        node.data('displayLabel', placeDisplayLabel(node.data('label'), count, isAccountingMode, currencySymbol, placeValues.get(placeId)))
+      }
+    }
+    // Also update places that only have value changes (not in marking)
+    for (const [placeId, val] of placeValues) {
+      const node = cyRef.current.$id(placeId)
+      if (node.length) {
+        node.data('computedValue', val)
+        const count = marking.get(placeId) ?? 0
+        node.data('displayLabel', placeDisplayLabel(node.data('label'), count, isAccountingMode, currencySymbol, val))
       }
     }
     for (const node of graphData.nodes) {
@@ -914,7 +1242,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         }
       }
     }
-  }, [marking, graphMode, graphData, isTransitionEnabled, isAccountingMode, currencySymbol])
+  }, [marking, placeValues, graphMode, graphData, isTransitionEnabled, isAccountingMode, currencySymbol])
 
   // Handle morph change (concept map mode)
   const handleMorphChange = useCallback(
@@ -1100,6 +1428,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
               Reset
             </button>
           )}
+          {isPetriNet && hasFunctions && (
+            <button onClick={() => void evaluateAll()} title='Evaluate all Function transitions in order'>
+              Evaluate All
+            </button>
+          )}
           <button onClick={handleValidate} title='Validate against schemas'>
             Validate
           </button>
@@ -1136,8 +1469,18 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             {isPetriNet && selectedNodeData.transitionData && (
               <div className={styles['transition-panel']}>
                 <div className={styles['transition-label']}>
-                  {isAccountingMode ? 'Accounting Transaction' : 'Petri Net Transition'}
+                  {selectedNode.role === 'Function' ? 'Function Transition' : isAccountingMode ? 'Accounting Transaction' : 'Petri Net Transition'}
                 </div>
+                {selectedNode.role === 'Function' && (() => {
+                  const exprAttr = graphData.attributes.find(
+                    (a) => a.source_id === selectedNode.id && a.name.toLowerCase() === 'expression'
+                  )
+                  return exprAttr ? (
+                    <div className={styles['expression-display']}>
+                      <strong>f(x)</strong> = <code>{exprAttr.value}</code>
+                    </div>
+                  ) : null
+                })()}
                 <div className={styles['transition-flow']}>
                   <div className={styles['transition-flow-group']}>
                     <span className={styles['transition-flow-heading']}>
@@ -1205,6 +1548,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                       : (priorStateNodeIds.has(selectedNode.id) ? 'Prior State (Input)' : 'Post State (Output)')
                     }
                   </span>
+                  {placeValues.has(selectedNode.id) && (
+                    <span className={styles['computed-badge']}>
+                      Value: <strong>{placeValues.get(selectedNode.id)}</strong>
+                    </span>
+                  )}
                 </div>
               </div>
             )}

@@ -627,3 +627,45 @@
     color: #fcd34d;
   }
 }
+
+.computed-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #dbeafe;
+  color: #1e40af;
+
+  :global(body[data-bs-theme='dark']) & {
+    background: #1e3a5f;
+    color: #93c5fd;
+  }
+}
+
+.expression-display {
+  margin-bottom: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  background: #faf5ff;
+  border: 1px solid #e9d5ff;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  color: #6b21a8;
+
+  code {
+    font-family: monospace;
+    background: #f3e8ff;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.125rem;
+  }
+
+  :global(body[data-bs-theme='dark']) & {
+    background: #2e1065;
+    border-color: #7c3aed;
+    color: #c4b5fd;
+
+    code {
+      background: #3b0764;
+    }
+  }
+}

@@ -8,17 +8,19 @@ import type { CnlOperation } from './types'
 const HEADING_REGEX = /^\s*(#+)\s*(?:\*([^*]+)\*\s+)?(?:\*\*(.+?)\*\*\s*)?(.+?)(?:\s*\[(.+?)\])?$/
 const SIMPLE_HEADING_REGEX = /^\s*(#+)\s*(.+?)$/
 const RELATION_REGEX = /^\s*<(.+?)>\s*([^;\n]*?)(?:;|$)/gm
-const FUNCTION_REGEX = /^\s*has\s+function\s+"([^"]+)"\s*;/gm
 const DESCRIPTION_REGEX = /```description\n([\s\S]*?)\n```/
 const GRAPH_DESCRIPTION_REGEX = /```graph-description\n([\s\S]*?)\n```/
 const MINDMAP_HEADING_REGEX = /^\s*#\s+(.+?)\s+<([^>]+)>\s*$/
 const MINDMAP_ITEM_REGEX = /^(\s*)-\s+(.+)$/
 const CURRENCY_REGEX = /^\s*currency\s*:\s*([^;\n]+?)\s*;?\s*$/im
+const EQUATION_REGEX = /^\s*equation\s*:\s*(.+?)\s*;?\s*$/m
 
-/** Maps accounting relation names to their Petri net equivalents. */
-const ACCOUNTING_RELATION_MAP: Record<string, string> = {
+/** Maps relation aliases to their canonical Petri net equivalents. */
+const RELATION_ALIAS_MAP: Record<string, string> = {
   debit: 'has post_state',
-  credit: 'has prior_state'
+  credit: 'has prior_state',
+  input: 'has prior_state',
+  output: 'has post_state'
 }
 
 interface NodeBlock {
@@ -329,7 +331,7 @@ function processNodeHeading(heading: string): { id: string; type: string; payloa
 }
 
 /**
- * Process the neighborhood (attributes, relations, functions, descriptions) of a node.
+ * Process the neighborhood (attributes, relations, descriptions) of a node.
  */
 function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
   const ops: CnlOperation[] = []
@@ -351,14 +353,14 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
     const trimmed = line.trim()
     if (!trimmed.includes(':')) return false
     if (trimmed.startsWith('<')) return false
-    if (trimmed.match(/^\s*has\s+function\s+"/)) return false
+    if (/^\s*equation\s*:/i.test(trimmed)) return false
     return true
   })
   for (const line of attributeLines) {
-    const basicMatch = line.match(/^\s*(?:has\s+)?([^:<]+):\s*([^;]+);?/)
+    const basicMatch = line.match(/^\s*(?:has\s+)?([^:<{]+?)(?:\s*\{(\w+)\})?\s*:\s*([^;]+);?/)
     if (!basicMatch) continue
 
-    const [, name, fullValue] = basicMatch
+    const [, name, abbreviation, fullValue] = basicMatch
     let value = fullValue.trim()
     let unit: string | null = null
     let adverb: string | null = null
@@ -399,6 +401,7 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
       name: name.trim(),
       value
     }
+    if (abbreviation) attributePayload.abbreviation = abbreviation
     if (unit) attributePayload.unit = unit
     if (quantifier) attributePayload.quantifier = quantifier
     if (adverb) attributePayload.adverb = adverb
@@ -407,21 +410,13 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
     ops.push({ type: 'addAttribute', payload: attributePayload, id: attrId })
   }
 
-  // Process functions
-  const functionMatches = [...content.matchAll(FUNCTION_REGEX)]
-  for (const match of functionMatches) {
-    const [, name] = match
-    const funcId = `func_${nodeId}_${name.trim().toLowerCase().replace(/\s+/g, '_')}`
-    ops.push({ type: 'applyFunction', payload: { source: nodeId, name: name.trim() }, id: funcId })
-  }
-
   // Process relations
   const relationMatches = [...content.matchAll(RELATION_REGEX)]
   for (const match of relationMatches) {
     const [, relationName, targets] = match
     const trimmedRelName = relationName.trim()
-    const isAccountingRelation = trimmedRelName in ACCOUNTING_RELATION_MAP
-    const mappedRelName = ACCOUNTING_RELATION_MAP[trimmedRelName] ?? trimmedRelName
+    const isAccountingRelation = trimmedRelName === 'debit' || trimmedRelName === 'credit'
+    const mappedRelName = RELATION_ALIAS_MAP[trimmedRelName] ?? trimmedRelName
     for (const rawTarget of targets
       .split(';')
       .map((t) => t.trim())
@@ -507,14 +502,14 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
     const trimmed = line.trim()
     if (!trimmed.includes(':')) return false
     if (trimmed.startsWith('<')) return false
-    if (trimmed.match(/^\s*has\s+function\s+"/)) return false
+    if (/^\s*equation\s*:/i.test(trimmed)) return false
     return true
   })
   for (const line of attributeLines) {
-    const basicMatch = line.match(/^\s*(?:has\s+)?([^:<]+):\s*([^;]+);?/)
+    const basicMatch = line.match(/^\s*(?:has\s+)?([^:<{]+?)(?:\s*\{(\w+)\})?\s*:\s*([^;]+);?/)
     if (!basicMatch) continue
 
-    const [, name, fullValue] = basicMatch
+    const [, name, abbreviation, fullValue] = basicMatch
     let value = fullValue.trim()
     let unit: string | null = null
     let adverb: string | null = null
@@ -556,6 +551,7 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
       value,
       morphId
     }
+    if (abbreviation) attributePayload.abbreviation = abbreviation
     if (unit) attributePayload.unit = unit
     if (quantifier) attributePayload.quantifier = quantifier
     if (adverb) attributePayload.adverb = adverb
@@ -564,21 +560,13 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
     ops.push({ type: 'addAttribute', payload: attributePayload, id: attrId })
   }
 
-  // Process functions
-  const functionMatches = [...content.matchAll(FUNCTION_REGEX)]
-  for (const match of functionMatches) {
-    const [, name] = match
-    const funcId = `func_${nodeId}_${name.trim().toLowerCase().replace(/\s+/g, '_')}`
-    ops.push({ type: 'applyFunction', payload: { source: nodeId, name: name.trim() }, id: funcId })
-  }
-
   // Process relations (with morphId tagging)
   const relationMatches = [...content.matchAll(RELATION_REGEX)]
   for (const match of relationMatches) {
     const [, relationName, targets] = match
     const trimmedRelName = relationName.trim()
-    const isAccountingRelation = trimmedRelName in ACCOUNTING_RELATION_MAP
-    const mappedRelName = ACCOUNTING_RELATION_MAP[trimmedRelName] ?? trimmedRelName
+    const isAccountingRelation = trimmedRelName === 'debit' || trimmedRelName === 'credit'
+    const mappedRelName = RELATION_ALIAS_MAP[trimmedRelName] ?? trimmedRelName
     for (const rawTarget of targets
       .split(';')
       .map((t) => t.trim())
@@ -704,6 +692,14 @@ export function getOperationsFromCnl(cnlText: string): CnlOperation[] {
   const currencyMatch = cnlText.match(CURRENCY_REGEX)
   if (currencyMatch) {
     operations.push({ type: 'setCurrency', payload: { currency: currencyMatch[1].trim() }, id: 'graph_currency' })
+  }
+
+  // equation directive (graph-level: "equation: (a + b) * c;")
+  const equationMatch = cnlText.match(EQUATION_REGEX)
+  if (equationMatch) {
+    const expression = equationMatch[1].trim()
+    const eqId = `eq_${fnv1aHash(expression)}`
+    operations.push({ type: 'addEquation', payload: { expression }, id: eqId })
   }
 
   return operations

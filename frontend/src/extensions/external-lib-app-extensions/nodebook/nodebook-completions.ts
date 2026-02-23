@@ -119,6 +119,16 @@ export function buildNodeBookInBlockCompletions(): CompletionSource[] {
       }
     }
 
+    // Add parser-level relation aliases
+    if (!seen.has('input')) {
+      seen.add('input')
+      options.push({ label: 'input', detail: 'Alias for "has prior_state" (Function/Transition input)', apply: 'input> ' })
+    }
+    if (!seen.has('output')) {
+      seen.add('output')
+      options.push({ label: 'output', detail: 'Alias for "has post_state" (Function/Transition output)', apply: 'output> ' })
+    }
+
     return { from, options, filter: true }
   }
 
@@ -152,6 +162,13 @@ export function buildNodeBookInBlockCompletions(): CompletionSource[] {
       detail: `${at.data_type}${at.unit ? ' (' + at.unit + ')' : ''}`,
       apply: at.name + ': '
     }))
+
+    // Add expression: and equation: as special completions
+    options.push(
+      { label: 'expression', detail: 'Math expression for a [Function] transition', apply: 'expression: ' },
+      { label: 'equation', detail: 'Auto-generate Petri net from a math expression', apply: 'equation: ' },
+      { label: 'value', detail: 'Numeric value for a place node', apply: 'value: ' }
+    )
 
     return { from, options, filter: true }
   }

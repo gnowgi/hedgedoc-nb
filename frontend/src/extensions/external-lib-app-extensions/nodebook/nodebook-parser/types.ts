@@ -55,6 +55,8 @@ export interface CnlGraphData {
   nodes: CnlNode[]
   edges: CnlEdge[]
   attributes: CnlAttribute[]
+  abbreviations: Record<string, { fullName: string; nodeId: string }>
+  equations: Array<{ id: string; expression: string }>
   description: string | null
   currency: string | null
   errors: CnlParseError[]
@@ -116,7 +118,7 @@ export type OperationType =
   | 'addMorph'
   | 'addRelation'
   | 'addAttribute'
-  | 'applyFunction'
+  | 'addEquation'
   | 'updateNode'
   | 'updateGraphDescription'
   | 'setCurrency'
