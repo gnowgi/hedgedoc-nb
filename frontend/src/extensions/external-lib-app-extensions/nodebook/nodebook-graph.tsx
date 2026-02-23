@@ -19,8 +19,25 @@ import { getMergedSchemas } from './nodebook-parser/schema-store'
 import styles from './nodebook-graph.module.scss'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAsync } from 'react-use'
+import {
+  ZoomIn as IconZoomIn,
+  ZoomOut as IconZoomOut,
+  Fullscreen as IconFit,
+  Mouse as IconMouse,
+  ArrowCounterclockwise as IconReset,
+  PlayFill as IconPlay,
+  ShieldCheck as IconValidate,
+  Image as IconPng,
+  FileEarmarkCode as IconSvg,
+  Calculator as IconEvalAll
+} from 'react-bootstrap-icons'
 
 const log = new Logger('NodeBookGraph')
+
+/** Detect Bootstrap dark mode from the body element. */
+function isDarkMode(): boolean {
+  return typeof document !== 'undefined' && document.body.getAttribute('data-bs-theme') === 'dark'
+}
 
 /** Map currency codes to their symbols. */
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -126,6 +143,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [marking, setMarking] = useState<Map<string, number>>(new Map())
   const [placeValues, setPlaceValues] = useState<Map<string, number>>(new Map())
   const [tokenMultiplier, setTokenMultiplier] = useState<number>(1)
+  const [scrollZoomEnabled, setScrollZoomEnabled] = useState(false)
 
   // Parse CNL synchronously (pure regex, microsecond-fast)
   const { parsedGraphData, operations } = useMemo(() => {
@@ -898,7 +916,8 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       cyRef.current.destroy()
     }
 
-    // Build style array
+    // Build style array — adapt colors for dark mode
+    const dark = isDarkMode()
     const graphStyles: Array<cytoscape.StylesheetStyle | cytoscape.StylesheetCSS> = [
       // Standard concept map / mindmap node style
       {
@@ -947,13 +966,13 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         selector: 'edge',
         style: {
           width: 2,
-          'line-color': '#94a3b8',
-          'target-arrow-color': '#64748b',
+          'line-color': dark ? '#64748b' : '#94a3b8',
+          'target-arrow-color': dark ? '#94a3b8' : '#64748b',
           'target-arrow-shape': 'triangle',
           'curve-style': 'bezier',
           label: 'data(label)',
           'font-size': '9px',
-          color: '#475569',
+          color: dark ? '#cbd5e1' : '#1e293b',
           'text-rotation': 'autorotate',
           'text-margin-y': -8
         }
@@ -967,11 +986,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           selector: 'node[type="pn-place"]',
           style: {
             shape: 'round-rectangle',
-            'background-color': '#ffffff',
+            'background-color': dark ? '#1e293b' : '#ffffff',
             'border-width': 3,
-            'border-color': '#334155',
+            'border-color': dark ? '#94a3b8' : '#334155',
             label: 'data(displayLabel)',
-            color: '#1e293b',
+            color: dark ? '#e2e8f0' : '#1e293b',
             'text-valign': 'center',
             'text-halign': 'center',
             'font-size': '11px',
@@ -986,7 +1005,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         {
           selector: 'node[type="pn-place"][tokenCount > 0]',
           style: {
-            'border-color': '#334155',
+            'border-color': dark ? '#94a3b8' : '#334155',
             'border-width': 3
           }
         },
@@ -994,9 +1013,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         {
           selector: 'node[type="pn-place"][tokenCount = 0]',
           style: {
-            'background-color': '#f1f5f9',
+            'background-color': dark ? '#0f172a' : '#f1f5f9',
             'border-style': 'dashed',
-            color: '#94a3b8'
+            color: dark ? '#64748b' : '#64748b'
           }
         },
         // Transition bar
@@ -1006,10 +1025,10 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             shape: 'rectangle',
             width: 15,
             height: 60,
-            'background-color': '#1e293b',
+            'background-color': dark ? '#94a3b8' : '#1e293b',
             'border-width': 0,
             label: 'data(label)',
-            color: '#334155',
+            color: dark ? '#e2e8f0' : '#1e293b',
             'text-valign': 'bottom',
             'text-margin-y': 8,
             'font-size': '10px',
@@ -1059,26 +1078,26 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         {
           selector: 'node[type="pn-place"][computedValue]',
           style: {
-            'border-color': '#2563eb',
+            'border-color': dark ? '#60a5fa' : '#2563eb',
             'border-width': 3,
-            'background-color': '#eff6ff'
+            'background-color': dark ? '#1e3a5f' : '#eff6ff'
           }
         },
         // Compound group: prior states
         {
           selector: ':parent[groupType="prior"]',
           style: {
-            'background-color': '#dbeafe',
-            'background-opacity': 0.4,
+            'background-color': dark ? '#1e3a5f' : '#dbeafe',
+            'background-opacity': dark ? 0.5 : 0.4,
             'border-width': 2,
-            'border-color': '#93c5fd',
+            'border-color': dark ? '#3b82f6' : '#93c5fd',
             'border-style': 'dashed',
             padding: '20px',
             shape: 'round-rectangle',
             'text-valign': 'top',
             'text-halign': 'center',
             'font-size': '10px',
-            color: '#1e40af',
+            color: dark ? '#93c5fd' : '#1e3a8a',
             label: 'data(label)'
           }
         },
@@ -1086,17 +1105,17 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         {
           selector: ':parent[groupType="post"]',
           style: {
-            'background-color': '#dcfce7',
-            'background-opacity': 0.4,
+            'background-color': dark ? '#14532d' : '#dcfce7',
+            'background-opacity': dark ? 0.5 : 0.4,
             'border-width': 2,
-            'border-color': '#86efac',
+            'border-color': dark ? '#22c55e' : '#86efac',
             'border-style': 'dashed',
             padding: '20px',
             shape: 'round-rectangle',
             'text-valign': 'top',
             'text-halign': 'center',
             'font-size': '10px',
-            color: '#166534',
+            color: dark ? '#86efac' : '#14532d',
             label: 'data(label)'
           }
         },
@@ -1104,15 +1123,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         {
           selector: 'edge[edgeType="prior_state"]',
           style: {
-            'line-color': '#3b82f6',
-            'target-arrow-color': '#2563eb',
+            'line-color': dark ? '#60a5fa' : '#3b82f6',
+            'target-arrow-color': dark ? '#93c5fd' : '#2563eb',
             'target-arrow-shape': 'triangle',
             width: 3,
             'curve-style': 'bezier',
             label: 'data(label)',
             'font-size': '14px',
-            color: '#1e40af',
-            'text-background-color': '#ffffff',
+            color: dark ? '#93c5fd' : '#1e3a8a',
+            'text-background-color': dark ? '#1e293b' : '#ffffff',
             'text-background-opacity': 0.8,
             'text-background-padding': '2px',
             'text-rotation': 'autorotate',
@@ -1123,15 +1142,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         {
           selector: 'edge[edgeType="post_state"]',
           style: {
-            'line-color': '#22c55e',
-            'target-arrow-color': '#16a34a',
+            'line-color': dark ? '#4ade80' : '#22c55e',
+            'target-arrow-color': dark ? '#86efac' : '#16a34a',
             'target-arrow-shape': 'triangle',
             width: 3,
             'curve-style': 'bezier',
             label: 'data(label)',
             'font-size': '14px',
-            color: '#166534',
-            'text-background-color': '#ffffff',
+            color: dark ? '#86efac' : '#14532d',
+            'text-background-color': dark ? '#1e293b' : '#ffffff',
             'text-background-opacity': 0.8,
             'text-background-padding': '2px',
             'text-rotation': 'autorotate',
@@ -1143,12 +1162,12 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           selector: 'node[type="pn-orphan"]',
           style: {
             shape: 'rectangle',
-            'background-color': '#f8fafc',
+            'background-color': dark ? '#1e293b' : '#f8fafc',
             'border-width': 2,
-            'border-color': '#94a3b8',
+            'border-color': dark ? '#64748b' : '#94a3b8',
             'border-style': 'dashed',
             label: 'data(label)',
-            color: '#64748b',
+            color: dark ? '#cbd5e1' : '#334155',
             'text-valign': 'center',
             'text-halign': 'center',
             'font-size': '10px',
@@ -1167,7 +1186,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       elements: [...cyNodes, ...cyEdges],
       style: graphStyles,
       layout: layoutConfig as cytoscape.LayoutOptions,
-      userZoomingEnabled: true,
+      userZoomingEnabled: scrollZoomEnabled,
       userPanningEnabled: true,
       boxSelectionEnabled: false
     })
@@ -1211,6 +1230,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       cy.destroy()
       cyRef.current = null
     }
+  // Note: scrollZoomEnabled is intentionally excluded — toggling it updates the live cy instance directly via toggleScrollZoom
   }, [cytoscapeModules, inMemoryGraph, graphMode, layoutConfig, marking, placeValues, priorStateNodeIds, postStateNodeIds, isTransitionEnabled, fireTransition, graphData, isAccountingMode, currencySymbol])
 
   // Update Cytoscape node data when marking or placeValues change (without full re-render)
@@ -1290,6 +1310,33 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     link.href = pngData
     link.download = 'nodebook-graph.png'
     link.click()
+  }, [])
+
+  const handleZoomIn = useCallback(() => {
+    if (!cyRef.current) return
+    const cy = cyRef.current
+    cy.zoom({ level: cy.zoom() * 1.3, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } })
+  }, [])
+
+  const handleZoomOut = useCallback(() => {
+    if (!cyRef.current) return
+    const cy = cyRef.current
+    cy.zoom({ level: cy.zoom() / 1.3, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } })
+  }, [])
+
+  const handleFitGraph = useCallback(() => {
+    if (!cyRef.current) return
+    cyRef.current.fit(undefined, 30)
+  }, [])
+
+  const toggleScrollZoom = useCallback(() => {
+    setScrollZoomEnabled((prev) => {
+      const next = !prev
+      if (cyRef.current) {
+        cyRef.current.userZoomingEnabled(next)
+      }
+      return next
+    })
   }, [])
 
   const handleExportSvg = useCallback(() => {
@@ -1425,22 +1472,38 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           )}
           {isPetriNet && !isAccountingMode && (
             <button onClick={resetMarking} title='Reset token marking to initial state'>
-              Reset
+              <IconReset size={14} />
             </button>
           )}
           {isPetriNet && hasFunctions && (
             <button onClick={() => void evaluateAll()} title='Evaluate all Function transitions in order'>
-              Evaluate All
+              <IconEvalAll size={14} />
             </button>
           )}
+          <button onClick={handleZoomIn} title='Zoom in'>
+            <IconZoomIn size={14} />
+          </button>
+          <button onClick={handleZoomOut} title='Zoom out'>
+            <IconZoomOut size={14} />
+          </button>
+          <button onClick={handleFitGraph} title='Fit graph to view'>
+            <IconFit size={14} />
+          </button>
+          <button
+            onClick={toggleScrollZoom}
+            className={scrollZoomEnabled ? styles['toggle-active'] : undefined}
+            title={scrollZoomEnabled ? 'Disable scroll-to-zoom (currently on)' : 'Enable scroll-to-zoom (currently off)'}
+          >
+            <IconMouse size={14} />
+          </button>
           <button onClick={handleValidate} title='Validate against schemas'>
-            Validate
+            <IconValidate size={14} />
           </button>
           <button onClick={handleExportPng} title='Export as PNG'>
-            PNG
+            <IconPng size={14} />
           </button>
           <button onClick={handleExportSvg} title='Export as SVG'>
-            SVG
+            <IconSvg size={14} />
           </button>
         </div>
 

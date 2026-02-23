@@ -36,7 +36,7 @@ services:
     environment:
       HD_BASE_URL: "${HD_BASE_URL}"
     ports:
-      - "80:80"
+      - "3080:3080"
       - "443:443"
       - "443:443/udp"
     volumes:
