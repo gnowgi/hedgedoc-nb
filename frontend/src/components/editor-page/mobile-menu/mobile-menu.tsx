@@ -23,6 +23,7 @@ import { UserElement } from '../../layout/app-bar/app-bar-elements/user-element'
 import React, { useCallback, useState } from 'react'
 import { Offcanvas } from 'react-bootstrap'
 import { useIsOwner } from '../../../hooks/common/use-is-owner'
+import { ChangeEditorContentContextProvider } from '../change-content-context/codemirror-reference-context'
 
 export interface MobileMenuProps {
   show: boolean
@@ -52,46 +53,48 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ show, onHide }) => {
         <Offcanvas.Title>Menu</Offcanvas.Title>
       </Offcanvas.Header>
       <Offcanvas.Body>
-        <div className={styles['sidebar-entries']}>
-          <UsersOnlineSidebarMenu
-            menuId={DocumentSidebarMenuSelection.USERS_ONLINE}
-            selectedMenuId={selectedMenu}
-            onClick={toggleValue}
-          />
-          <NoteInfoSidebarMenu
-            menuId={DocumentSidebarMenuSelection.NOTE_INFO}
-            selectedMenuId={selectedMenu}
-            onClick={toggleValue}
-          />
-          <RevisionSidebarEntry hide={selectionIsNotNone} />
-          <PermissionsSidebarEntry hide={selectionIsNotNone} />
-          <AliasesSidebarEntry hide={selectionIsNotNone} />
-          <MediaBrowserSidebarMenu
-            onClick={toggleValue}
-            selectedMenuId={selectedMenu}
-            menuId={DocumentSidebarMenuSelection.MEDIA_BROWSER}
-          />
-          <ImportMenuSidebarMenu
-            menuId={DocumentSidebarMenuSelection.IMPORT}
-            selectedMenuId={selectedMenu}
-            onClick={toggleValue}
-          />
-          <ExportSidebarMenu
-            menuId={DocumentSidebarMenuSelection.EXPORT}
-            selectedMenuId={selectedMenu}
-            onClick={toggleValue}
-          />
-          <ShareNoteSidebarEntry hide={selectionIsNotNone} />
-          {isOwner && <DeleteNoteSidebarEntry hide={selectionIsNotNone} />}
-          <PinNoteSidebarEntry hide={selectionIsNotNone} />
-        </div>
-        <hr />
-        <div className={styles['navbar-items']}>
-          <HelpDropdown />
-          <SettingsButton />
-          <NewNoteButton />
-          <UserElement />
-        </div>
+        <ChangeEditorContentContextProvider>
+          <div className={styles['sidebar-entries']}>
+            <UsersOnlineSidebarMenu
+              menuId={DocumentSidebarMenuSelection.USERS_ONLINE}
+              selectedMenuId={selectedMenu}
+              onClick={toggleValue}
+            />
+            <NoteInfoSidebarMenu
+              menuId={DocumentSidebarMenuSelection.NOTE_INFO}
+              selectedMenuId={selectedMenu}
+              onClick={toggleValue}
+            />
+            <RevisionSidebarEntry hide={selectionIsNotNone} />
+            <PermissionsSidebarEntry hide={selectionIsNotNone} />
+            <AliasesSidebarEntry hide={selectionIsNotNone} />
+            <MediaBrowserSidebarMenu
+              onClick={toggleValue}
+              selectedMenuId={selectedMenu}
+              menuId={DocumentSidebarMenuSelection.MEDIA_BROWSER}
+            />
+            <ImportMenuSidebarMenu
+              menuId={DocumentSidebarMenuSelection.IMPORT}
+              selectedMenuId={selectedMenu}
+              onClick={toggleValue}
+            />
+            <ExportSidebarMenu
+              menuId={DocumentSidebarMenuSelection.EXPORT}
+              selectedMenuId={selectedMenu}
+              onClick={toggleValue}
+            />
+            <ShareNoteSidebarEntry hide={selectionIsNotNone} />
+            {isOwner && <DeleteNoteSidebarEntry hide={selectionIsNotNone} />}
+            <PinNoteSidebarEntry hide={selectionIsNotNone} />
+          </div>
+          <hr />
+          <div className={styles['navbar-items']}>
+            <HelpDropdown />
+            <SettingsButton />
+            <NewNoteButton />
+            <UserElement />
+          </div>
+        </ChangeEditorContentContextProvider>
       </Offcanvas.Body>
     </Offcanvas>
   )
