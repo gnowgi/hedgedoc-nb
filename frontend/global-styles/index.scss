@@ -76,3 +76,9 @@
 .overflow-y-hidden {
   overflow-y: hidden !important;
 }
+
+@supports (height: 100dvh) {
+  .vh-100 {
+    height: 100dvh !important;
+  }
+}

@@ -1191,6 +1191,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       boxSelectionEnabled: false
     })
 
+    // Fit graph to container after layout completes
+    cy.on('layoutstop', () => {
+      cy.fit(undefined, 30)
+    })
+
     // Tap handlers
     if (isPetriNet) {
       // Click enabled transition to fire it
