@@ -130,6 +130,16 @@ export interface CnlOperation {
   source?: 'mindmap' | 'cnl'
 }
 
+export interface InferredEdge extends CnlEdge {
+  proofPath: string[]
+  inferenceRule: string
+}
+
+export interface InferenceResult {
+  inferredEdges: InferredEdge[]
+  errors: CnlParseError[]
+}
+
 export interface MorphData {
   morphId: string
   nodeId: string

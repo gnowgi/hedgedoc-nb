@@ -13,7 +13,8 @@ import { expressionToPetriNetOps } from './nodebook-parser/equation-to-pn'
 import { MorphRegistry } from './nodebook-parser/morph-registry'
 import { evaluateExpression } from './nodebook-parser/nodebook-evaluator'
 import { operationsToGraph } from './nodebook-parser/operations-to-graph'
-import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode, CnlParseError } from './nodebook-parser/types'
+import { TransitiveClosureEngine } from './nodebook-parser/inference-engine'
+import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode, CnlParseError, InferredEdge, InferenceResult } from './nodebook-parser/types'
 import { validateOperations } from './nodebook-parser/validate-operations'
 import { getMergedSchemas } from './nodebook-parser/schema-store'
 import styles from './nodebook-graph.module.scss'
@@ -29,7 +30,8 @@ import {
   ShieldCheck as IconValidate,
   Image as IconPng,
   FileEarmarkCode as IconSvg,
-  Calculator as IconEvalAll
+  Calculator as IconEvalAll,
+  Diagram3 as IconInference
 } from 'react-bootstrap-icons'
 
 const log = new Logger('NodeBookGraph')
@@ -124,6 +126,7 @@ interface InMemoryGraph {
   nodes: CnlNode[]
   edges: CnlEdge[]
   attributes: CnlAttribute[]
+  inferredEdges: InferredEdge[]
 }
 
 type GraphMode = 'mindmap' | 'petri-net' | 'concept-map'
@@ -144,6 +147,8 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [placeValues, setPlaceValues] = useState<Map<string, number>>(new Map())
   const [tokenMultiplier, setTokenMultiplier] = useState<number>(1)
   const [scrollZoomEnabled, setScrollZoomEnabled] = useState(false)
+  const [showInferredEdges, setShowInferredEdges] = useState(true)
+  const [highlightedProofPath, setHighlightedProofPath] = useState<string[] | null>(null)
 
   // Parse CNL synchronously (pure regex, microsecond-fast)
   const { parsedGraphData, operations } = useMemo(() => {
@@ -193,6 +198,14 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     if (isMindmapOnly) return 'mindmap'
     return 'concept-map'
   }, [graphData, operations])
+
+  // Run transitive inference (skip in petri-net mode)
+  const inferenceResult: InferenceResult = useMemo(() => {
+    if (graphMode === 'petri-net') return { inferredEdges: [], errors: [] }
+    const engine = new TransitiveClosureEngine()
+    const merged = getMergedSchemas()
+    return engine.infer(graphData, merged)
+  }, [graphData, graphMode])
 
   // Detect cycles in concept-map graphs (for stress layout)
   const hasCycle = useMemo(() => {
@@ -649,9 +662,10 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     setInMemoryGraph({
       nodes: graphData.nodes.map((n) => ({ ...n })),
       edges: filteredEdges,
-      attributes: filteredAttributes
+      attributes: filteredAttributes,
+      inferredEdges: showInferredEdges ? inferenceResult.inferredEdges : []
     })
-  }, [graphData])
+  }, [graphData, inferenceResult, showInferredEdges])
 
   // Dynamic library loading — ELK replaces dagre
   const {
@@ -911,6 +925,22 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       }
     }
 
+    // Add inferred edges (concept-map / mindmap only)
+    for (const edge of inMemoryGraph.inferredEdges) {
+      if (!nodeIds.has(edge.source_id) || !nodeIds.has(edge.target_id)) continue
+      cyEdges.push({
+        data: {
+          id: edge.id,
+          source: edge.source_id,
+          target: edge.target_id,
+          label: edge.name,
+          edgeType: 'inferred',
+          proofPath: JSON.stringify(edge.proofPath),
+          inferenceRule: edge.inferenceRule
+        }
+      })
+    }
+
     // Destroy previous instance
     if (cyRef.current) {
       cyRef.current.destroy()
@@ -975,6 +1005,32 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           color: dark ? '#cbd5e1' : '#1e293b',
           'text-rotation': 'autorotate',
           'text-margin-y': -8
+        }
+      },
+      // Inferred edge style — dashed purple
+      {
+        selector: 'edge[edgeType="inferred"]',
+        style: {
+          width: 1.5,
+          'line-style': 'dashed',
+          'line-color': dark ? '#a78bfa' : '#8b5cf6',
+          'line-dash-pattern': [6, 3] as unknown as undefined,
+          'target-arrow-color': dark ? '#a78bfa' : '#8b5cf6',
+          'target-arrow-shape': 'triangle',
+          opacity: 0.7,
+          'font-size': '8px',
+          color: dark ? '#a78bfa' : '#7c3aed'
+        }
+      },
+      // Proof highlight style — amber glow on explicit edges forming the proof
+      {
+        selector: '.proof-highlight',
+        style: {
+          'line-color': '#f59e0b',
+          'target-arrow-color': '#f59e0b',
+          width: 3,
+          opacity: 1,
+          'z-index': 999
         }
       }
     ]
@@ -1223,9 +1279,26 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       })
     }
 
+    // Click inferred edge to highlight its proof path
+    cy.on('tap', 'edge[edgeType="inferred"]', (evt) => {
+      const proofPathStr = evt.target.data('proofPath')
+      if (!proofPathStr) return
+      const proofPath = JSON.parse(proofPathStr) as string[]
+      // Clear previous highlights
+      cy.edges().removeClass('proof-highlight')
+      // Highlight proof path edges
+      for (const edgeId of proofPath) {
+        cy.$id(edgeId).addClass('proof-highlight')
+      }
+      setHighlightedProofPath(proofPath)
+    })
+
     cy.on('tap', (evt) => {
       if (evt.target === cy) {
         setSelectedNodeId(null)
+        // Clear proof highlights
+        cy.edges().removeClass('proof-highlight')
+        setHighlightedProofPath(null)
       }
     })
 
@@ -1301,10 +1374,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       setInMemoryGraph({
         nodes: updatedNodes,
         edges: filteredEdges,
-        attributes: filteredAttributes
+        attributes: filteredAttributes,
+        inferredEdges: showInferredEdges ? inferenceResult.inferredEdges : []
       })
     },
-    [inMemoryGraph, graphData]
+    [inMemoryGraph, graphData, inferenceResult, showInferredEdges]
   )
 
   // Export handlers
@@ -1504,6 +1578,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           <button onClick={handleValidate} title='Validate against schemas'>
             <IconValidate size={14} />
           </button>
+          {!isPetriNet && inferenceResult.inferredEdges.length > 0 && (
+            <button
+              onClick={() => setShowInferredEdges((prev) => !prev)}
+              className={showInferredEdges ? styles['toggle-active'] : undefined}
+              title={showInferredEdges ? `Hide inferred edges (${inferenceResult.inferredEdges.length})` : `Show inferred edges (${inferenceResult.inferredEdges.length})`}
+            >
+              <IconInference size={14} />
+            </button>
+          )}
           <button onClick={handleExportPng} title='Export as PNG'>
             <IconPng size={14} />
           </button>
@@ -1645,6 +1728,41 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                 </div>
               </div>
             )}
+
+            {/* Inferred relations (concept map mode only) */}
+            {!isPetriNet && showInferredEdges && inMemoryGraph && (() => {
+              const inferredRels = inMemoryGraph.inferredEdges.filter((e) => e.source_id === selectedNode.id)
+              if (inferredRels.length === 0) return null
+              return (
+                <div className={styles['inferred-section']}>
+                  <h5>Inferred Relations <span className={styles['inferred-badge']}>inferred</span></h5>
+                  <ul>
+                    {inferredRels.map((rel) => {
+                      const targetNode = inMemoryGraph.nodes.find((n) => n.id === rel.target_id)
+                      return (
+                        <li key={rel.id}>
+                          <strong>{rel.name}</strong> &rarr; {targetNode?.name ?? rel.target_id}
+                          <button
+                            className={styles['proof-button']}
+                            onClick={() => {
+                              const cy = cyRef.current
+                              if (!cy) return
+                              cy.edges().removeClass('proof-highlight')
+                              for (const edgeId of rel.proofPath) {
+                                cy.$id(edgeId).addClass('proof-highlight')
+                              }
+                              setHighlightedProofPath(rel.proofPath)
+                            }}
+                          >
+                            show proof ({rel.proofPath.length} steps)
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )
+            })()}
 
             {/* Morph sections */}
             {selectedNodeData.morphSections.map(
