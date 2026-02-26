@@ -369,6 +369,30 @@
       "contributors": "Count of contributors",
       "wordCount": "Count of words"
     },
+    "nodeBookInfo": {
+      "title": "nodeBook Info",
+      "score": "Graph Score",
+      "categories": {
+        "coverage": "Coverage",
+        "connectivity": "Connectivity",
+        "typing": "Typing",
+        "inference": "Inference",
+        "schema": "Schema",
+        "processes": "Processes",
+        "computation": "Computation",
+        "queries": "Queries",
+        "morphs": "Morphs"
+      },
+      "stats": {
+        "nodes": "Nodes",
+        "edges": "Edges",
+        "attributes": "Attributes",
+        "inferred": "Inferred edges",
+        "queries": "Queries",
+        "morphs": "Morphs",
+        "blocks": "Blocks"
+      }
+    },
     "mediaBrowser": {
       "title": "Media",
       "deleteMedia": "Delete uploaded file",

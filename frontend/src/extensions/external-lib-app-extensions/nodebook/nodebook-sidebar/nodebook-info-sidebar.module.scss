@@ -1,0 +1,63 @@
+/*!
+ * SPDX-FileCopyrightText: 2025 The HedgeDoc developers (see AUTHORS file)
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+.score-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px 8px;
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.score-label {
+  margin-top: 4px;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color, #6c757d);
+  letter-spacing: 0.05em;
+}
+
+.categories {
+  padding: 8px;
+}
+
+.category-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 0.8em;
+}
+
+.category-name {
+  flex: 1 1 0;
+  color: var(--bs-body-color, #212529);
+}
+
+.category-score {
+  flex: 0 0 auto;
+  margin-right: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.category-bar-track {
+  flex: 0 0 50px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bs-border-color, #dee2e6);
+  overflow: hidden;
+}
+
+.category-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.divider {
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+  margin: 4px 0;
+}
