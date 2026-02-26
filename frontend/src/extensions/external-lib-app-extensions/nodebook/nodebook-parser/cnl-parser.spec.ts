@@ -21,6 +21,58 @@ function getGoalStrings(ops: CnlOperation[]): string[] {
   return getQueries(ops).map((q) => q.goalString)
 }
 
+describe('role synonym normalization', () => {
+  it.each(['class', 'concept', 'type', 'universal', 'common noun'])(
+    '[%s] normalizes to class',
+    (synonym) => {
+      const ops = getOperationsFromCnl(`# Thing [${synonym}]`)
+      const node = ops.find((op) => op.type === 'addNode')
+      expect(node).toBeDefined()
+      const options = (node!.payload as { options: { role: string } }).options
+      expect(options.role).toBe('class')
+    }
+  )
+
+  it.each(['individual', 'particular', 'token', 'member', 'proper noun'])(
+    '[%s] normalizes to individual',
+    (synonym) => {
+      const ops = getOperationsFromCnl(`# Alice [${synonym}]`)
+      const node = ops.find((op) => op.type === 'addNode')
+      expect(node).toBeDefined()
+      const options = (node!.payload as { options: { role: string } }).options
+      expect(options.role).toBe('individual')
+    }
+  )
+
+  it('non-synonym roles are preserved as-is', () => {
+    for (const role of ['Transition', 'Account', 'planet', 'star']) {
+      const ops = getOperationsFromCnl(`# Thing [${role}]`)
+      const node = ops.find((op) => op.type === 'addNode')
+      expect(node).toBeDefined()
+      const options = (node!.payload as { options: { role: string } }).options
+      expect(options.role).toBe(role)
+    }
+  })
+
+  it('is case insensitive', () => {
+    for (const variant of ['Class', 'CLASS', 'Concept', 'UNIVERSAL', 'Proper Noun', 'INDIVIDUAL']) {
+      const ops = getOperationsFromCnl(`# Thing [${variant}]`)
+      const node = ops.find((op) => op.type === 'addNode')
+      expect(node).toBeDefined()
+      const options = (node!.payload as { options: { role: string } }).options
+      expect(['class', 'individual']).toContain(options.role)
+    }
+  })
+
+  it('untyped nodes default to individual', () => {
+    const ops = getOperationsFromCnl('# Alice')
+    const node = ops.find((op) => op.type === 'addNode')
+    expect(node).toBeDefined()
+    const options = (node!.payload as { options: { role: string } }).options
+    expect(options.role).toBe('individual')
+  })
+})
+
 describe('getOperationsFromCnl — Wh-word queries', () => {
   describe('node-scoped queries', () => {
     it('<rel> what; — object unknown', () => {

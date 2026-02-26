@@ -38,6 +38,24 @@ const RELATION_ALIAS_MAP: Record<string, string> = {
   output: 'has post_state'
 }
 
+/** Maps role synonyms to their canonical form. */
+const ROLE_SYNONYM_MAP: Record<string, string> = {
+  'class': 'class',
+  'concept': 'class',
+  'type': 'class',
+  'universal': 'class',
+  'common noun': 'class',
+  'individual': 'individual',
+  'particular': 'individual',
+  'token': 'individual',
+  'member': 'individual',
+  'proper noun': 'individual'
+}
+
+function normalizeRole(role: string): string {
+  return ROLE_SYNONYM_MAP[role.toLowerCase()] ?? role
+}
+
 interface NodeBlock {
   heading: string
   content: string[]
@@ -330,13 +348,13 @@ function processNodeHeading(heading: string): { id: string; type: string; payloa
 
   return {
     id,
-    type: nodeType,
+    type: normalizeRole(nodeType),
     payload: {
       base_name: baseName.trim(),
       displayName: displayName!.trim(),
       options: {
         id,
-        role: nodeType,
+        role: normalizeRole(nodeType),
         parent_types: [],
         adjective: adjective ? adjective.trim() : null,
         quantifier: quantifier ? quantifier.trim() : null

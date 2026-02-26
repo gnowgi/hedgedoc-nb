@@ -906,3 +906,13 @@
     color: #60a5fa;
   }
 }
+
+.source-view {
+  width: 100%;
+  max-height: 500px;
+  overflow: auto;
+
+  @media (max-width: 576px) {
+    max-height: 300px;
+  }
+}

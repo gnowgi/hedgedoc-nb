@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { AsyncLoadingBoundary } from '../../../components/common/async-loading-boundary/async-loading-boundary'
+import HighlightedCode from '../../../components/common/highlighted-code/highlighted-code'
 import { ApplicationErrorAlert } from '../../../components/common/application-error-alert/application-error-alert'
 import type { CodeProps } from '../../../components/markdown-renderer/replace-components/code-block-component-replacer'
 import { cypressId } from '../../../utils/cypress-attribute'
@@ -32,7 +33,8 @@ import {
   FileEarmarkCode as IconSvg,
   Calculator as IconEvalAll,
   Diagram3 as IconInference,
-  Search as IconQuery
+  Search as IconQuery,
+  Code as IconCode
 } from 'react-bootstrap-icons'
 
 const log = new Logger('NodeBookGraph')
@@ -153,6 +155,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [queryResults, setQueryResults] = useState<QueryResult[]>([])
   const [isQueryRunning, setIsQueryRunning] = useState(false)
   const [showQueryPanel, setShowQueryPanel] = useState(true)
+  const [showSource, setShowSource] = useState(false)
 
   // Parse CNL synchronously (pure regex, microsecond-fast)
   const { parsedGraphData, operations } = useMemo(() => {
@@ -732,7 +735,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         elk: {
           algorithm: 'mrtree',
           'elk.direction': 'RIGHT',
-          'elk.spacing.nodeNode': '30'
+          'elk.spacing.nodeNode': '40',
+          'elk.separateConnectedComponents': 'true',
+          'elk.mrtree.compaction': 'true'
         }
       }
     }
@@ -743,8 +748,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         nodeDimensionsIncludeLabels: true,
         elk: {
           algorithm: 'stress',
-          'elk.stress.desiredEdgeLength': '120',
-          'elk.spacing.nodeNode': '50'
+          'elk.stress.desiredEdgeLength': '150',
+          'elk.spacing.nodeNode': '60',
+          'elk.separateConnectedComponents': 'true'
         }
       }
     }
@@ -756,12 +762,14 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       elk: {
         algorithm: 'layered',
         'elk.direction': 'RIGHT',
-        'elk.layered.spacing.nodeNodeBetweenLayers': hasTransitions ? '120' : '80',
-        'elk.spacing.nodeNode': '40',
+        'elk.layered.spacing.nodeNodeBetweenLayers': hasTransitions ? '120' : '100',
+        'elk.spacing.nodeNode': hasTransitions ? '40' : '50',
         'elk.edgeRouting': 'ORTHOGONAL',
         'elk.hierarchyHandling': hasTransitions ? 'INCLUDE_CHILDREN' : 'SEPARATE_CHILDREN',
-        'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+        'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
         'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+        'elk.separateConnectedComponents': 'true',
+        'elk.layered.compaction.postCompaction.strategy': 'EDGE_LENGTH',
         ...(hasTransitions && { 'elk.partitioning.activate': 'true' })
       }
     }
@@ -1609,6 +1617,13 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
               <IconEvalAll size={14} />
             </button>
           )}
+          <button
+            onClick={() => setShowSource((prev) => !prev)}
+            className={showSource ? styles['toggle-active'] : undefined}
+            title={showSource ? 'Show graph view' : 'Show CNL source'}
+          >
+            <IconCode size={14} />
+          </button>
           <button onClick={handleZoomIn} title='Zoom in'>
             <IconZoomIn size={14} />
           </button>
@@ -1654,7 +1669,10 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           </button>
         </div>
 
-        <div ref={containerRef} className={styles['graph-canvas']} />
+        <div className={styles['source-view']} style={{ display: showSource ? undefined : 'none' }}>
+          <HighlightedCode code={'```nodeBook\n' + code + '\n```'} language='cnl' wrapLines={false} />
+        </div>
+        <div ref={containerRef} className={styles['graph-canvas']} style={{ display: showSource ? 'none' : undefined }} />
 
         {/* Query results panel */}
         {showQueryPanel && (graphData.queries ?? []).length > 0 && (

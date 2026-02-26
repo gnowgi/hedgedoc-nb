@@ -40,6 +40,7 @@ import { StatusBar } from './status-bar/status-bar'
 import { ToolBar } from './tool-bar/tool-bar'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
+import { cnlLanguageDescription } from '../../../extensions/external-lib-app-extensions/nodebook/nodebook-codemirror-language'
 import { lintGutter } from '@codemirror/lint'
 import { oneDark } from '@codemirror/theme-one-dark'
 import ReactCodeMirror from '@uiw/react-codemirror'
@@ -103,7 +104,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ scrollState, onScroll, o
       lintGutter(),
       markdown({
         base: markdownLanguage,
-        codeLanguages: (input) => findLanguageByCodeBlockName(languages, input)
+        codeLanguages: (input) => findLanguageByCodeBlockName([cnlLanguageDescription, ...languages], input)
       }),
       remoteCursorsExtension,
       lineWrappingExtension,
