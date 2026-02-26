@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode, CnlOperation, Morph } from './types'
+import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode, CnlOperation, CnlQuery, Morph } from './types'
 
 let basicMorphCounter = 0
 
@@ -33,6 +33,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
   const attributes: CnlAttribute[] = []
   const abbreviations: Record<string, { fullName: string; nodeId: string }> = {}
   const expressions: Array<{ id: string; expression: string }> = []
+  const queries: CnlQuery[] = []
   const errors: Array<{ message: string; line?: number }> = []
   let description: string | null = null
   let currency: string | null = null
@@ -206,6 +207,9 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
     } else if (op.type === 'addExpression') {
       const payload = op.payload as { expression: string }
       expressions.push({ id: op.id, expression: payload.expression })
+    } else if (op.type === 'addQuery') {
+      const payload = op.payload as { id: string; goalString: string; displayString?: string; line?: number }
+      queries.push({ id: payload.id, goalString: payload.goalString, displayString: payload.displayString, line: payload.line })
     }
   }
 
@@ -215,6 +219,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
     attributes,
     abbreviations,
     expressions,
+    queries,
     description,
     currency,
     errors

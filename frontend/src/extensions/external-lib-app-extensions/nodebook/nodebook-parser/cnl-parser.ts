@@ -14,6 +14,21 @@ const MINDMAP_HEADING_REGEX = /^\s*#\s+(.+?)\s+<([^>]+)>\s*$/
 const MINDMAP_ITEM_REGEX = /^(\s*)-\s+(.+)$/
 const CURRENCY_REGEX = /^\s*currency\s*:\s*([^;\n]+?)\s*;?\s*$/im
 const EXPRESSION_REGEX = /^\s*expression\s*:\s*(.+?)\s*;?\s*$/m
+const QUERY_REGEX = /^\s*\?-\s*(.+?)\s*\.?\s*$/
+
+// CNL-native query patterns (Wh-words: what, who, where, when, how)
+const WH = '(?:what|who|where|when|how)'
+const CNL_QUERY_TARGET_REGEX = new RegExp(`^\\s*<(.+?)>\\s*${WH}\\s*;`, 'i')           // <rel> what;     (node-scoped: what is this node <rel> to?)
+const CNL_QUERY_SOURCE_REGEX = new RegExp(`^\\s*${WH}\\s+<(.+?)>\\s*([^;\\n]*?);`, 'i') // who <rel> Target; (graph-level: who <rel> Target?)
+const CNL_QUERY_RELATION_REGEX = new RegExp(`^\\s*<(${WH})>\\s*([^;\\n]*?)\\s*;`, 'i')  // <how> Target;   (node-scoped: how does this node relate to Target?)
+const CNL_QUERY_ATTR_REGEX = new RegExp(`^\\s*${WH}\\s*:\\s*([^;\\n]+?)\\s*;`, 'i')     // what: value;    (what attribute has this value?)
+const CNL_QUERY_VALUE_REGEX = new RegExp(`^\\s*(?:has\\s+)?([^?<:;\\n]+?)\\s*:\\s*${WH}\\s*;`, 'i') // attr: what;  (what is the value of this attr?)
+
+/** Escape a string for use as a Prolog atom (single-quoted). */
+function prologAtom(s: string): string {
+  const escaped = s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+  return `'${escaped}'`
+}
 
 /** Maps relation aliases to their canonical Petri net equivalents. */
 const RELATION_ALIAS_MAP: Record<string, string> = {
@@ -348,11 +363,75 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
     content = content.replace(DESCRIPTION_REGEX, '').trim()
   }
 
+  // Process CNL queries (node-scoped: <rel> what; , <how> Target; , what: value; , attr: what;)
+  const cnlQueryLines = new Set<string>()
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim()
+
+    // <rel> what; — "What is this node <rel> to?"
+    const targetMatch = trimmed.match(CNL_QUERY_TARGET_REGEX)
+    if (targetMatch) {
+      const rel = targetMatch[1].trim()
+      const goalString = `relation(${prologAtom(nodeId)}, X, ${prologAtom(rel)})`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // <how> Target; — "How does this node relate to Target?"
+    const relationMatch = trimmed.match(CNL_QUERY_RELATION_REGEX)
+    if (relationMatch) {
+      const targetName = relationMatch[2].trim()
+      const targetId = cleanName(targetName)
+      const goalString = `relation(${prologAtom(nodeId)}, ${prologAtom(targetId)}, X)`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // attr: what; — "What is the value of this attribute?"
+    const valueMatch = trimmed.match(CNL_QUERY_VALUE_REGEX)
+    if (valueMatch) {
+      const attrName = valueMatch[1].trim()
+      const goalString = `attribute(${prologAtom(nodeId)}, ${prologAtom(attrName)}, X)`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // what: value; — "WHAT has this value?" — inherently graph-level (unknown subject),
+    // so we only mark it as a query line (to prevent mis-parsing as attribute) but
+    // do NOT generate a node-scoped query. The graph-level scan handles it.
+    const attrMatch = trimmed.match(CNL_QUERY_ATTR_REGEX)
+    if (attrMatch) {
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // who <rel> Target; — graph-level query even inside a node block
+    const sourceMatch = trimmed.match(CNL_QUERY_SOURCE_REGEX)
+    if (sourceMatch) {
+      const rel = sourceMatch[1].trim()
+      const targetName = sourceMatch[2].trim()
+      const targetId = cleanName(targetName)
+      const goalString = `relation(X, ${prologAtom(targetId)}, ${prologAtom(rel)})`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+  }
+
   // Process attributes — any line with ":" is an attribute (has prefix is optional)
   const attributeLines = content.split('\n').filter((line) => {
     const trimmed = line.trim()
+    if (cnlQueryLines.has(trimmed)) return false
     if (!trimmed.includes(':')) return false
     if (trimmed.startsWith('<')) return false
+    if (trimmed.startsWith('?-')) return false
     if (/^\s*expression\s*:/i.test(trimmed)) return false
     return true
   })
@@ -408,6 +487,11 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
     if (modality) attributePayload.modality = modality
 
     ops.push({ type: 'addAttribute', payload: attributePayload, id: attrId })
+  }
+
+  // Filter out CNL query lines from content before relation processing
+  if (cnlQueryLines.size > 0) {
+    content = content.split('\n').filter((line) => !cnlQueryLines.has(line.trim())).join('\n')
   }
 
   // Process relations
@@ -497,11 +581,70 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
     content = content.replace(DESCRIPTION_REGEX, '').trim()
   }
 
+  // Process CNL queries (node-scoped, within morph)
+  const cnlQueryLines = new Set<string>()
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim()
+
+    const targetMatch = trimmed.match(CNL_QUERY_TARGET_REGEX)
+    if (targetMatch) {
+      const rel = targetMatch[1].trim()
+      const goalString = `relation(${prologAtom(nodeId)}, X, ${prologAtom(rel)})`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}_${morphId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    const relationMatch = trimmed.match(CNL_QUERY_RELATION_REGEX)
+    if (relationMatch) {
+      const targetName = relationMatch[2].trim()
+      const targetId = cleanName(targetName)
+      const goalString = `relation(${prologAtom(nodeId)}, ${prologAtom(targetId)}, X)`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}_${morphId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    const valueMatch = trimmed.match(CNL_QUERY_VALUE_REGEX)
+    if (valueMatch) {
+      const attrName = valueMatch[1].trim()
+      const goalString = `attribute(${prologAtom(nodeId)}, ${prologAtom(attrName)}, X)`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}_${morphId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // what: value; — graph-level only (see processNeighborhood comment)
+    const attrMatch = trimmed.match(CNL_QUERY_ATTR_REGEX)
+    if (attrMatch) {
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // who <rel> Target; — graph-level query even inside a morph block
+    const sourceMatch = trimmed.match(CNL_QUERY_SOURCE_REGEX)
+    if (sourceMatch) {
+      const rel = sourceMatch[1].trim()
+      const targetName = sourceMatch[2].trim()
+      const targetId = cleanName(targetName)
+      const goalString = `relation(X, ${prologAtom(targetId)}, ${prologAtom(rel)})`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}_${morphId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+  }
+
   // Process attributes — any line with ":" is an attribute (has prefix is optional)
   const attributeLines = content.split('\n').filter((line) => {
     const trimmed = line.trim()
+    if (cnlQueryLines.has(trimmed)) return false
     if (!trimmed.includes(':')) return false
     if (trimmed.startsWith('<')) return false
+    if (trimmed.startsWith('?-')) return false
     if (/^\s*expression\s*:/i.test(trimmed)) return false
     return true
   })
@@ -558,6 +701,11 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
     if (modality) attributePayload.modality = modality
 
     ops.push({ type: 'addAttribute', payload: attributePayload, id: attrId })
+  }
+
+  // Filter out CNL query lines from content before relation processing
+  if (cnlQueryLines.size > 0) {
+    content = content.split('\n').filter((line) => !cnlQueryLines.has(line.trim())).join('\n')
   }
 
   // Process relations (with morphId tagging)
@@ -700,6 +848,114 @@ export function getOperationsFromCnl(cnlText: string): CnlOperation[] {
     const expression = expressionMatch[1].trim()
     const eqId = `eq_${fnv1aHash(expression)}`
     operations.push({ type: 'addExpression', payload: { expression }, id: eqId })
+  }
+
+  // Parse ?- query lines (graph-level Prolog queries)
+  const allLines = cnlText.split('\n')
+  for (let lineIdx = 0; lineIdx < allLines.length; lineIdx++) {
+    const queryMatch = allLines[lineIdx].match(QUERY_REGEX)
+    if (queryMatch) {
+      const goalString = queryMatch[1].trim()
+      const queryId = `query_${fnv1aHash(goalString)}_${lineIdx}`
+      operations.push({
+        type: 'addQuery',
+        payload: { id: queryId, goalString, line: lineIdx + 1 },
+        id: queryId
+      })
+    }
+  }
+
+  // Parse graph-level CNL queries (who <rel> Target; , what: value; , attr: what;)
+  // These are lines NOT inside a # node heading block.
+  // Wh-word query lines are excluded from nodeBlockLineIndices so they are
+  // always processed by the graph-level scan (even when placed after a heading).
+  const nodeBlockLineIndices = new Set<number>()
+  const rawLines = cnlText.split('\n')
+  let inNodeBlock = false
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i]
+    const trimmed = line.trim()
+
+    // Wh-word query lines are never part of a node block — always graph-level
+    if (CNL_QUERY_SOURCE_REGEX.test(trimmed)) continue
+    if (CNL_QUERY_ATTR_REGEX.test(trimmed)) continue
+    if (CNL_QUERY_VALUE_REGEX.test(trimmed)) continue
+
+    if (/^\s*#\s+/.test(line) && !/^\s*##/.test(line)) {
+      inNodeBlock = true
+      nodeBlockLineIndices.add(i)
+    } else if (inNodeBlock) {
+      nodeBlockLineIndices.add(i)
+    }
+  }
+
+  // Deduplicate by goalString to avoid duplicates when a query line is
+  // processed both by processNeighborhood() and the graph-level scan.
+  const seenGoalStrings = new Set<string>()
+  for (const op of operations) {
+    if (op.type === 'addQuery') {
+      const payload = op.payload as { goalString: string }
+      seenGoalStrings.add(payload.goalString)
+    }
+  }
+
+  for (let lineIdx = 0; lineIdx < rawLines.length; lineIdx++) {
+    if (nodeBlockLineIndices.has(lineIdx)) continue
+    const trimmed = rawLines[lineIdx].trim()
+    if (!trimmed) continue
+
+    // who <rel> Target; — "Who <rel> Target?"
+    const sourceMatch = trimmed.match(CNL_QUERY_SOURCE_REGEX)
+    if (sourceMatch) {
+      const rel = sourceMatch[1].trim()
+      const targetName = sourceMatch[2].trim()
+      const targetId = cleanName(targetName)
+      const goalString = `relation(X, ${prologAtom(targetId)}, ${prologAtom(rel)})`
+      if (!seenGoalStrings.has(goalString)) {
+        const queryId = `query_${fnv1aHash(goalString)}_${lineIdx}`
+        operations.push({
+          type: 'addQuery',
+          payload: { id: queryId, goalString, displayString: trimmed, line: lineIdx + 1 },
+          id: queryId
+        })
+        seenGoalStrings.add(goalString)
+      }
+      continue
+    }
+
+    // attr: what; — "What has this attribute?" (graph-level)
+    const valueMatch = trimmed.match(CNL_QUERY_VALUE_REGEX)
+    if (valueMatch) {
+      const attrName = valueMatch[1].trim()
+      const goalString = `attribute(X, ${prologAtom(attrName)}, Y)`
+      if (!seenGoalStrings.has(goalString)) {
+        const queryId = `query_${fnv1aHash(goalString)}_${lineIdx}`
+        operations.push({
+          type: 'addQuery',
+          payload: { id: queryId, goalString, displayString: trimmed, line: lineIdx + 1 },
+          id: queryId
+        })
+        seenGoalStrings.add(goalString)
+      }
+      continue
+    }
+
+    // what: value; — "What node has attribute value?"
+    const attrMatch = trimmed.match(CNL_QUERY_ATTR_REGEX)
+    if (attrMatch) {
+      const value = attrMatch[1].trim()
+      const goalString = `attribute(X, Y, ${prologAtom(value)})`
+      if (!seenGoalStrings.has(goalString)) {
+        const queryId = `query_${fnv1aHash(goalString)}_${lineIdx}`
+        operations.push({
+          type: 'addQuery',
+          payload: { id: queryId, goalString, displayString: trimmed, line: lineIdx + 1 },
+          id: queryId
+        })
+        seenGoalStrings.add(goalString)
+      }
+      continue
+    }
   }
 
   return operations

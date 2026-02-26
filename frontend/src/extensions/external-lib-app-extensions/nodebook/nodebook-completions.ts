@@ -173,5 +173,61 @@ export function buildNodeBookInBlockCompletions(): CompletionSource[] {
     return { from, options, filter: true }
   }
 
-  return [nodeTypeCompletion, relationCompletion, attributeKeyCompletion]
+  const queryPredicateCompletion = (context: CompletionContext): CompletionResult | null => {
+    const docText = context.state.doc.toString()
+    if (!isInsideNodeBookFence(docText, context.pos)) return null
+
+    const lineBefore = getLineTextBefore(context)
+
+    // Must start with ?- and be typing a predicate
+    const queryMatch = lineBefore.match(/^\s*\?-\s*(\w*)$/)
+    if (!queryMatch) return null
+
+    const typed = queryMatch[1]
+    const from = context.pos - typed.length
+
+    const options = [
+      { label: 'node(', detail: 'node(Id, Name, Role)', apply: 'node(' },
+      { label: 'relation(', detail: 'relation(Source, Target, RelName)', apply: 'relation(' },
+      { label: 'explicit_relation(', detail: 'explicit_relation(Source, Target, RelName)', apply: 'explicit_relation(' },
+      { label: 'attribute(', detail: 'attribute(NodeId, AttrName, Value)', apply: 'attribute(' },
+      { label: 'attribute_unit(', detail: 'attribute_unit(NodeId, AttrName, Unit)', apply: 'attribute_unit(' },
+      { label: 'has_type(', detail: 'has_type(NodeId, TypeName)', apply: 'has_type(' },
+      { label: 'transitive(', detail: 'transitive(RelName)', apply: 'transitive(' },
+      { label: 'symmetric(', detail: 'symmetric(RelName)', apply: 'symmetric(' },
+      { label: 'inverse(', detail: 'inverse(RelName, InvName)', apply: 'inverse(' }
+    ]
+
+    return { from, options, filter: true }
+  }
+
+  const cnlQueryCompletion = (context: CompletionContext): CompletionResult | null => {
+    const docText = context.state.doc.toString()
+    if (!isInsideNodeBookFence(docText, context.pos)) return null
+
+    const lineBefore = getLineTextBefore(context)
+
+    // Trigger on Wh-words at line start (or after <)
+    const whMatch = lineBefore.match(/^\s*(wh|whe|wha|what|who|wher|where|when|how)$/i)
+    if (!whMatch && !context.explicit) return null
+
+    // Don't trigger on heading lines or lines with colons already
+    if (/^\s*#/.test(lineBefore)) return null
+    if (/^\s*```/.test(lineBefore)) return null
+
+    const typed = whMatch ? whMatch[1] : ''
+    const from = context.pos - typed.length
+
+    const options = [
+      { label: '<rel> what;', detail: 'Object unknown — what is this node <rel> to?', apply: '<rel> what;' },
+      { label: '<how> Target;', detail: 'Relation unknown — how does this node relate to Target?', apply: '<how> Target;' },
+      { label: 'what: value;', detail: 'Attribute name unknown — what attribute has this value?', apply: 'what: value;' },
+      { label: 'attr: what;', detail: 'Value unknown — what is the value of this attribute?', apply: 'attr: what;' },
+      { label: 'who <rel> Target;', detail: 'Subject unknown (graph-level) — who <rel> Target?', apply: 'who <rel> Target;' }
+    ]
+
+    return { from, options, filter: true }
+  }
+
+  return [nodeTypeCompletion, relationCompletion, attributeKeyCompletion, queryPredicateCompletion, cnlQueryCompletion]
 }

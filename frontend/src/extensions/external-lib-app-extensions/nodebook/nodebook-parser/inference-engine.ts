@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import type { MergedSchemas } from './schema-store'
-import type { CnlGraphData, InferredEdge, InferenceResult } from './types'
+import { executePrologQueries, queryInferredRelations } from './prolog-bridge'
+import type { CnlGraphData, CnlQuery, InferredEdge, InferenceResult, PrologInferenceResult, QueryResult } from './types'
 
 /**
  * Interface for inference engines that derive implicit edges from explicit graph data.
@@ -194,5 +195,56 @@ export class TransitiveClosureEngine implements InferenceEngine {
     }
 
     return { inferredEdges, errors: [] }
+  }
+}
+
+/**
+ * Interface for async inference engines (e.g., Prolog-based).
+ */
+export interface AsyncInferenceEngine {
+  inferAsync(graphData: CnlGraphData, schemas: MergedSchemas, queries?: CnlQuery[]): Promise<PrologInferenceResult>
+}
+
+/**
+ * Tau Prolog-based inference engine.
+ * Replaces BFS with Prolog-derived transitive closure and supports user queries.
+ */
+export class PrologInferenceEngine implements AsyncInferenceEngine {
+  async inferAsync(graphData: CnlGraphData, schemas: MergedSchemas, queries: CnlQuery[] = []): Promise<PrologInferenceResult> {
+    // 1. Query inferred relations from Prolog
+    const inferredRelations = await queryInferredRelations(graphData, schemas)
+
+    // Build set of existing explicit + already-seen inferred keys
+    const existingKeys = new Set<string>()
+    for (const edge of graphData.edges) {
+      existingKeys.add(`${edge.source_id}|${edge.target_id}|${edge.name}`)
+    }
+
+    const inferredEdges: InferredEdge[] = []
+    for (const rel of inferredRelations) {
+      const key = `${rel.source}|${rel.target}|${rel.relation}`
+      if (existingKeys.has(key)) continue
+      existingKeys.add(key)
+
+      const id = `inferred_${fnv1aHash(key)}`
+      inferredEdges.push({
+        id,
+        source_id: rel.source,
+        target_id: rel.target,
+        name: rel.relation,
+        weight: 1,
+        morph_ids: [],
+        proofPath: [],
+        inferenceRule: 'prolog_derived'
+      })
+    }
+
+    // 2. Execute user queries
+    let queryResults: QueryResult[] = []
+    if (queries.length > 0) {
+      queryResults = await executePrologQueries(graphData, schemas, queries)
+    }
+
+    return { inferredEdges, errors: [], queryResults }
   }
 }

@@ -13,8 +13,8 @@ import { expressionToPetriNetOps } from './nodebook-parser/equation-to-pn'
 import { MorphRegistry } from './nodebook-parser/morph-registry'
 import { evaluateExpression } from './nodebook-parser/nodebook-evaluator'
 import { operationsToGraph } from './nodebook-parser/operations-to-graph'
-import { TransitiveClosureEngine } from './nodebook-parser/inference-engine'
-import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode, CnlParseError, InferredEdge, InferenceResult } from './nodebook-parser/types'
+import { TransitiveClosureEngine, PrologInferenceEngine } from './nodebook-parser/inference-engine'
+import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode, CnlParseError, InferredEdge, InferenceResult, PrologInferenceResult, QueryResult } from './nodebook-parser/types'
 import { validateOperations } from './nodebook-parser/validate-operations'
 import { getMergedSchemas } from './nodebook-parser/schema-store'
 import styles from './nodebook-graph.module.scss'
@@ -31,7 +31,8 @@ import {
   Image as IconPng,
   FileEarmarkCode as IconSvg,
   Calculator as IconEvalAll,
-  Diagram3 as IconInference
+  Diagram3 as IconInference,
+  Search as IconQuery
 } from 'react-bootstrap-icons'
 
 const log = new Logger('NodeBookGraph')
@@ -149,6 +150,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [scrollZoomEnabled, setScrollZoomEnabled] = useState(false)
   const [showInferredEdges, setShowInferredEdges] = useState(true)
   const [highlightedProofPath, setHighlightedProofPath] = useState<string[] | null>(null)
+  const [queryResults, setQueryResults] = useState<QueryResult[]>([])
+  const [isQueryRunning, setIsQueryRunning] = useState(false)
+  const [showQueryPanel, setShowQueryPanel] = useState(true)
 
   // Parse CNL synchronously (pure regex, microsecond-fast)
   const { parsedGraphData, operations } = useMemo(() => {
@@ -159,7 +163,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     } catch (error) {
       log.error('Error parsing CNL', error)
       return {
-        parsedGraphData: { nodes: [], edges: [], attributes: [], abbreviations: {}, expressions: [], description: null, currency: null, errors: [{ message: String(error) }] } as CnlGraphData,
+        parsedGraphData: { nodes: [], edges: [], attributes: [], abbreviations: {}, expressions: [], queries: [], description: null, currency: null, errors: [{ message: String(error) }] } as CnlGraphData,
         operations: []
       }
     }
@@ -199,12 +203,40 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     return 'concept-map'
   }, [graphData, operations])
 
-  // Run transitive inference (skip in petri-net mode)
-  const inferenceResult: InferenceResult = useMemo(() => {
-    if (graphMode === 'petri-net') return { inferredEdges: [], errors: [] }
-    const engine = new TransitiveClosureEngine()
+  // Run inference asynchronously: try PrologInferenceEngine, fallback to TransitiveClosureEngine
+  const [inferenceResult, setInferenceResult] = useState<InferenceResult>({ inferredEdges: [], errors: [] })
+  useEffect(() => {
+    if (graphMode === 'petri-net') {
+      setInferenceResult({ inferredEdges: [], errors: [] })
+      setQueryResults([])
+      return
+    }
+    let cancelled = false
     const merged = getMergedSchemas()
-    return engine.infer(graphData, merged)
+    const queries = graphData.queries ?? []
+
+    if (queries.length > 0) {
+      setIsQueryRunning(true)
+    }
+
+    void (async () => {
+      try {
+        const engine = new PrologInferenceEngine()
+        const result = await engine.inferAsync(graphData, merged, queries)
+        if (cancelled) return
+        setInferenceResult(result)
+        setQueryResults(result.queryResults)
+      } catch {
+        // Fallback to TransitiveClosureEngine if Prolog fails
+        if (cancelled) return
+        const fallback = new TransitiveClosureEngine()
+        setInferenceResult(fallback.infer(graphData, merged))
+        setQueryResults([])
+      } finally {
+        if (!cancelled) setIsQueryRunning(false)
+      }
+    })()
+    return () => { cancelled = true }
   }, [graphData, graphMode])
 
   // Detect cycles in concept-map graphs (for stress layout)
@@ -1482,6 +1514,24 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     return { attributes: nodeAttributes, relations: nodeRelations, morphSections, transitionData }
   }, [selectedNode, inMemoryGraph, graphData])
 
+  // Map node IDs → "DisplayName [role]" for resolving Prolog atoms in query results
+  const nodeDisplayMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const node of graphData.nodes) {
+      const label = node.role && node.role !== 'individual' && node.role !== 'class'
+        ? `${node.name} [${node.role}]`
+        : node.name
+      map.set(node.id, label)
+    }
+    return map
+  }, [graphData.nodes])
+
+  /** Strip Prolog single-quotes and resolve to display name if it's a known node ID. */
+  const resolveBinding = useCallback((raw: string): string => {
+    const stripped = raw.replace(/^'(.*)'$/, '$1')
+    return nodeDisplayMap.get(stripped) ?? raw
+  }, [nodeDisplayMap])
+
   if (graphData.errors.length > 0 && graphData.nodes.length === 0) {
     return <ApplicationErrorAlert>{graphData.errors.map((e) => e.message).join('; ')}</ApplicationErrorAlert>
   }
@@ -1587,6 +1637,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
               <IconInference size={14} />
             </button>
           )}
+          {(graphData.queries ?? []).length > 0 && (
+            <button
+              onClick={() => setShowQueryPanel((prev) => !prev)}
+              className={showQueryPanel ? styles['toggle-active'] : undefined}
+              title={showQueryPanel ? 'Hide query results panel' : 'Show query results panel'}
+            >
+              <IconQuery size={14} />
+            </button>
+          )}
           <button onClick={handleExportPng} title='Export as PNG'>
             <IconPng size={14} />
           </button>
@@ -1596,6 +1655,63 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         </div>
 
         <div ref={containerRef} className={styles['graph-canvas']} />
+
+        {/* Query results panel */}
+        {showQueryPanel && (graphData.queries ?? []).length > 0 && (
+          <div className={styles['query-results-panel']}>
+            <h4>
+              Query Results
+              {isQueryRunning && <span className={styles['query-spinner']}> Running...</span>}
+              <button className={styles['close-button']} onClick={() => setShowQueryPanel(false)}>
+                &times;
+              </button>
+            </h4>
+            {queryResults.map((result) => (
+              <div key={result.queryId} className={styles['query-result-item']}>
+                <div className={styles['query-goal']}>
+                  <code>{result.displayString ?? `?- ${result.goalString}.`}</code>
+                </div>
+                {result.error && (
+                  <div className={styles['query-error']}>Error: {result.error}</div>
+                )}
+                {result.timedOut && (
+                  <div className={styles['query-warning']}>Query timed out</div>
+                )}
+                {!result.error && !result.timedOut && result.bindings.length === 0 && (
+                  <div className={styles['query-no-results']}>false (no results)</div>
+                )}
+                {!result.error && result.bindings.length > 0 && (() => {
+                  // Check if all bindings are empty (ground query returning true)
+                  const allEmpty = result.bindings.every((b) => Object.keys(b).length === 0)
+                  if (allEmpty) {
+                    return <div className={styles['query-no-results']}>true ({result.bindings.length} solution{result.bindings.length > 1 ? 's' : ''})</div>
+                  }
+                  // Get all variable names across all bindings
+                  const vars = Array.from(new Set(result.bindings.flatMap((b) => Object.keys(b))))
+                  return (
+                    <table className={styles['query-bindings-table']}>
+                      <thead>
+                        <tr>
+                          {vars.map((v) => <th key={v}>{v}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {result.bindings.map((binding, i) => (
+                          <tr key={i}>
+                            {vars.map((v) => <td key={v}>{resolveBinding(binding[v] ?? '')}</td>)}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )
+                })()}
+              </div>
+            ))}
+            {!isQueryRunning && queryResults.length === 0 && (graphData.queries ?? []).length > 0 && (
+              <div className={styles['query-no-results']}>Queries pending...</div>
+            )}
+          </div>
+        )}
 
         {selectedNode && selectedNodeData && (
           <div className={styles['node-detail-panel']}>
@@ -1742,20 +1858,22 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                       return (
                         <li key={rel.id}>
                           <strong>{rel.name}</strong> &rarr; {targetNode?.name ?? rel.target_id}
-                          <button
-                            className={styles['proof-button']}
-                            onClick={() => {
-                              const cy = cyRef.current
-                              if (!cy) return
-                              cy.edges().removeClass('proof-highlight')
-                              for (const edgeId of rel.proofPath) {
-                                cy.$id(edgeId).addClass('proof-highlight')
-                              }
-                              setHighlightedProofPath(rel.proofPath)
-                            }}
-                          >
-                            show proof ({rel.proofPath.length} steps)
-                          </button>
+                          {rel.proofPath.length > 0 && (
+                            <button
+                              className={styles['proof-button']}
+                              onClick={() => {
+                                const cy = cyRef.current
+                                if (!cy) return
+                                cy.edges().removeClass('proof-highlight')
+                                for (const edgeId of rel.proofPath) {
+                                  cy.$id(edgeId).addClass('proof-highlight')
+                                }
+                                setHighlightedProofPath(rel.proofPath)
+                              }}
+                            >
+                              show proof ({rel.proofPath.length} steps)
+                            </button>
+                          )}
                         </li>
                       )
                     })}

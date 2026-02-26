@@ -51,12 +51,20 @@ export interface CnlParseError {
   line?: number
 }
 
+export interface CnlQuery {
+  id: string
+  goalString: string
+  displayString?: string
+  line?: number
+}
+
 export interface CnlGraphData {
   nodes: CnlNode[]
   edges: CnlEdge[]
   attributes: CnlAttribute[]
   abbreviations: Record<string, { fullName: string; nodeId: string }>
   expressions: Array<{ id: string; expression: string }>
+  queries: CnlQuery[]
   description: string | null
   currency: string | null
   errors: CnlParseError[]
@@ -119,6 +127,7 @@ export type OperationType =
   | 'addRelation'
   | 'addAttribute'
   | 'addExpression'
+  | 'addQuery'
   | 'updateNode'
   | 'updateGraphDescription'
   | 'setCurrency'
@@ -146,4 +155,21 @@ export interface MorphData {
   morphName: string
   relationIds: string[]
   attributeIds: string[]
+}
+
+export interface QueryBindings {
+  [variable: string]: string
+}
+
+export interface QueryResult {
+  queryId: string
+  goalString: string
+  displayString?: string
+  bindings: QueryBindings[]
+  error: string | null
+  timedOut: boolean
+}
+
+export interface PrologInferenceResult extends InferenceResult {
+  queryResults: QueryResult[]
 }

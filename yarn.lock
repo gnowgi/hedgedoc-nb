@@ -3101,6 +3101,7 @@ __metadata:
     sanitize-filename: "npm:1.6.3"
     sass: "npm:1.97.0"
     sharp: "npm:0.34.5"
+    tau-prolog: "npm:^0.3.4"
     tlds: "npm:1.261.0"
     ts-loader: "npm:9.5.4"
     ts-mockery: "npm:1.2.0"
@@ -15543,6 +15544,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"readline-sync@npm:1.4.9":
+  version: 1.4.9
+  resolution: "readline-sync@npm:1.4.9"
+  checksum: 10c0/0b013fe85c45fa25c341ab510ac05450f3339fcca031cafaaf19f5d1ef28467663d5d3fa1873dc5e100c42534150d9bcba0e4055a08a949f4d56010efe184aa1
+  languageName: node
+  linkType: hard
+
 "real-require@npm:^0.2.0":
   version: 0.2.0
   resolution: "real-require@npm:0.2.0"
@@ -16932,6 +16940,15 @@ __metadata:
   version: 3.0.2
   resolution: "tarn@npm:3.0.2"
   checksum: 10c0/ea2344e3d21936111176375bd6f34eba69a38ef1bc59434d523fd313166f8a28a47b0a847846c119f72dcf2c1e1231596d74ac3fcfc3cc73966b3d293a327269
+  languageName: node
+  linkType: hard
+
+"tau-prolog@npm:^0.3.4":
+  version: 0.3.4
+  resolution: "tau-prolog@npm:0.3.4"
+  dependencies:
+    readline-sync: "npm:1.4.9"
+  checksum: 10c0/f9384bfb9d946bdc905042b642e783a3cc112910eda5cce30ece32ac59dbdcf8db407c119dda69494306eb8a5e1befd855c87ebb4510d90b1fe3ade1ffe0bd9c
   languageName: node
   linkType: hard
 

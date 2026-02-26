@@ -34,7 +34,8 @@ export class NodeBookAppExtension extends AppExtension {
           { i18nKey: 'petriNet' },
           { i18nKey: 'accounting' },
           { i18nKey: 'mindMap' },
-          { i18nKey: 'morphs' }
+          { i18nKey: 'morphs' },
+          { i18nKey: 'queries' }
         ]
       },
       { i18nKey: 'nodeBook-schema', categoryI18nKey: 'charts' }
@@ -59,6 +60,10 @@ export class NodeBookAppExtension extends AppExtension {
       basicCompletion(
         codeFenceRegex,
         '```nodeBook\n# Central Topic <relation>\n- Branch 1\n  - Sub-branch 1\n  - Sub-branch 2\n- Branch 2\n```'
+      ),
+      basicCompletion(
+        codeFenceRegex,
+        '```nodeBook\n# Socrates [individual]\n<member_of> Greek;\n<member_of> what;\n\n# Greek [class]\n<is_a> Human;\n\n# Human [class]\n<is_a> Mortal;\n\n# Mortal [class]\n\nwho <is_a> Mortal;\n```'
       ),
       basicCompletion(
         codeFenceRegex,

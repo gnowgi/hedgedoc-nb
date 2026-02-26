@@ -93,6 +93,15 @@ const rawNextConfig = {
       '.mjs': ['.mjs']
     }
 
+    // tau-prolog's core.js optionally requires 'fs' and 'readline-sync' (which
+    // needs 'child_process') for file-based consult and REPL.
+    // In the browser we don't need these, so tell webpack to provide empty modules.
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      child_process: false
+    }
+
     return config
   },
   reactStrictMode: false,
