@@ -916,3 +916,35 @@
     max-height: 300px;
   }
 }
+
+// Print snapshot — hidden on screen, visible in print
+.print-snapshot {
+  display: none;
+
+  img {
+    width: 100%;
+    height: auto;
+  }
+}
+
+@media print {
+  .graph-canvas {
+    display: none !important;
+  }
+
+  .source-view {
+    display: none !important;
+  }
+
+  .print-snapshot {
+    display: block !important;
+    width: 100%;
+    page-break-inside: avoid;
+  }
+
+  .nodebook-container {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}

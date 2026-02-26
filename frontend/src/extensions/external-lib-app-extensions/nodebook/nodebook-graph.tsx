@@ -20,6 +20,7 @@ import { validateOperations } from './nodebook-parser/validate-operations'
 import { getMergedSchemas } from './nodebook-parser/schema-store'
 import styles from './nodebook-graph.module.scss'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useApplicationState } from '../../../hooks/common/use-application-state'
 import { useAsync } from 'react-use'
 import {
   ZoomIn as IconZoomIn,
@@ -156,6 +157,17 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [isQueryRunning, setIsQueryRunning] = useState(false)
   const [showQueryPanel, setShowQueryPanel] = useState(true)
   const [showSource, setShowSource] = useState(false)
+
+  const printMode = useApplicationState((state) => state.printMode)
+
+  const printImage = useMemo(() => {
+    if (!printMode || !cyRef.current) return null
+    try {
+      return cyRef.current.png({ full: true, scale: 2, bg: '#ffffff' })
+    } catch {
+      return null
+    }
+  }, [printMode])
 
   // Parse CNL synchronously (pure regex, microsecond-fast)
   const { parsedGraphData, operations } = useMemo(() => {
@@ -965,10 +977,12 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       }
     }
 
-    // Add inferred edges (concept-map / mindmap only)
+    // Build inferred edges separately — they are added AFTER layout
+    // so ELK positions nodes based only on explicit edges.
+    const inferredCyEdges: cytoscape.ElementDefinition[] = []
     for (const edge of inMemoryGraph.inferredEdges) {
       if (!nodeIds.has(edge.source_id) || !nodeIds.has(edge.target_id)) continue
-      cyEdges.push({
+      inferredCyEdges.push({
         data: {
           id: edge.id,
           source: edge.source_id,
@@ -1047,7 +1061,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           'text-margin-y': -8
         }
       },
-      // Inferred edge style — dashed purple
+      // Inferred edge style — dashed purple, arced to avoid overlapping nodes
       {
         selector: 'edge[edgeType="inferred"]',
         style: {
@@ -1057,9 +1071,13 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           'line-dash-pattern': [6, 3] as unknown as undefined,
           'target-arrow-color': dark ? '#a78bfa' : '#8b5cf6',
           'target-arrow-shape': 'triangle',
+          'curve-style': 'unbundled-bezier',
+          'control-point-distances': [40] as unknown as undefined,
+          'control-point-weights': [0.5] as unknown as undefined,
           opacity: 0.7,
           'font-size': '8px',
-          color: dark ? '#a78bfa' : '#7c3aed'
+          color: dark ? '#a78bfa' : '#7c3aed',
+          'z-index': 0
         }
       },
       // Proof highlight style — amber glow on explicit edges forming the proof
@@ -1287,8 +1305,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       boxSelectionEnabled: false
     })
 
-    // Fit graph to container after layout completes
+    // After layout completes, add inferred edges and fit
     cy.on('layoutstop', () => {
+      if (inferredCyEdges.length > 0) {
+        cy.add(inferredCyEdges)
+      }
       cy.fit(undefined, 30)
     })
 
@@ -1550,10 +1571,10 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     <AsyncLoadingBoundary loading={isLibLoading || !cytoscapeModules} componentName={'nodeBook'} error={libLoadingError}>
       <div className={styles['nodebook-container']} {...cypressId('nodebook-frame')}>
         {hasValidated && validationWarnings.length === 0 && (
-          <div className={styles['validation-pass-banner']}>Validation passed - no schema warnings</div>
+          <div className={`${styles['validation-pass-banner']} d-print-none`}>Validation passed - no schema warnings</div>
         )}
         {hasValidated && validationWarnings.length > 0 && (
-          <div className={styles['warning-banner']}>
+          <div className={`${styles['warning-banner']} d-print-none`}>
             <details>
               <summary>{validationWarnings.length} schema warning(s)</summary>
               <ul>
@@ -1566,19 +1587,19 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         )}
 
         {isAccountingMode && marking.size > 0 && (
-          <div className={styles['deadlock-banner']}>
+          <div className={`${styles['deadlock-banner']} d-print-none`}>
             Balances reflect all transactions in this block
           </div>
         )}
 
         {isPetriNet && !isAccountingMode && !hasEnabledTransition && marking.size > 0 && (
-          <div className={styles['deadlock-banner']}>
+          <div className={`${styles['deadlock-banner']} d-print-none`}>
             Deadlock: no transition can fire
           </div>
         )}
 
         {isAccountingMode && unbalancedTransactions.length > 0 && (
-          <div className={styles['warning-banner']}>
+          <div className={`${styles['warning-banner']} d-print-none`}>
             <details open>
               <summary>{unbalancedTransactions.length} unbalanced transaction(s)</summary>
               <ul>
@@ -1590,7 +1611,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           </div>
         )}
 
-        <div className={styles['export-buttons']}>
+        <div className={`${styles['export-buttons']} d-print-none`}>
           {isPetriNet && !isAccountingMode && (
             <>
               <input
@@ -1674,9 +1695,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         </div>
         <div ref={containerRef} className={styles['graph-canvas']} style={{ display: showSource ? 'none' : undefined }} />
 
+        {printImage && (
+          <div className={styles['print-snapshot']}>
+            <img src={printImage} alt='nodeBook graph' />
+          </div>
+        )}
+
         {/* Query results panel */}
         {showQueryPanel && (graphData.queries ?? []).length > 0 && (
-          <div className={styles['query-results-panel']}>
+          <div className={`${styles['query-results-panel']} d-print-none`}>
             <h4>
               Query Results
               {isQueryRunning && <span className={styles['query-spinner']}> Running...</span>}
@@ -1732,7 +1759,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         )}
 
         {selectedNode && selectedNodeData && (
-          <div className={styles['node-detail-panel']}>
+          <div className={`${styles['node-detail-panel']} d-print-none`}>
             <h4>
               {selectedNode.name}
               <span className={styles['node-type-badge']}>
@@ -1942,7 +1969,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
 
         {/* Accounting balance summary table */}
         {isAccountingMode && marking.size > 0 && (
-          <div className={styles['balance-summary']}>
+          <div className={`${styles['balance-summary']} d-print-none`}>
             <h4>Account Balances</h4>
             <table className={styles['balance-table']}>
               <thead>
