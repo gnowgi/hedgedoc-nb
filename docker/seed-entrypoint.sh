@@ -43,59 +43,35 @@ if [ -z "$EVERYONE_GID" ]; then
   echo "[seed] WARNING: _EVERYONE group not found, skipping group permissions."
 fi
 
-# --- Step 4: Seed notes from /seed-content/*.md ---
-for file in /seed-content/*.md; do
-  alias_name=$(basename "$file" .md)
+# --- Helper: extract frontmatter fields from a markdown file ---
+extract_frontmatter() {
+  local file="$1" field="$2"
+  sed -n '/^---$/,/^---$/{ /^'"$field"': */{ s/^'"$field"': *//; p; } }' "$file"
+}
 
-  # Idempotency: skip if alias already exists
-  EXISTING=$(psql -t -A -c "SELECT 1 FROM alias WHERE alias = '${alias_name}' LIMIT 1;")
-  if [ "$EXISTING" = "1" ]; then
-    echo "[seed] Note '${alias_name}' already exists, skipping."
-    continue
-  fi
+# --- Helper: extract tags from frontmatter ---
+extract_tags() {
+  sed -n '/^---$/,/^---$/{
+    /^tags:/,/^[^ ]/{
+      /^  *- /{ s/^  *- *//; p; }
+    }
+  }' "$1"
+}
 
-  # Extract frontmatter fields
-  title=$(sed -n '/^---$/,/^---$/{ /^title: */{ s/^title: *//; p; } }' "$file")
-  description=$(sed -n '/^---$/,/^---$/{ /^description: */{ s/^description: *//; p; } }' "$file")
-  [ -z "$title" ] && title="$alias_name"
-  [ -z "$description" ] && description=""
+# --- Helper: build revision + tag INSERT SQL ---
+# Appends to the file at $sql. Expects v_note_id to be set in the PL/pgSQL scope.
+build_revision_sql() {
+  local file="$1" rev_uuid="$2" title="$3" description="$4"
 
-  # Generate a revision UUID
-  rev_uuid=$(cat /proc/sys/kernel/random/uuid)
-
-  # Build SQL in a temp file to safely embed raw markdown content
-  # (avoids shell expansion of $ in KaTeX math, template literals, etc.)
-  sql=$(mktemp)
-
-  # -- Open PL/pgSQL block (quoted heredoc: no shell expansion) --
-  cat > "$sql" <<'HEREDOC'
-DO $fn$
-DECLARE
-  v_note_id integer;
-BEGIN
-HEREDOC
-
-  # -- Insert note (dynamic values via echo) --
-  echo "  INSERT INTO note (owner_id, version, created_at, publicly_visible) VALUES (${USER_ID}, 2, NOW(), true);" >> "$sql"
-
-  cat >> "$sql" <<'HEREDOC'
-  SELECT currval(pg_get_serial_sequence('note', 'id')) INTO v_note_id;
-HEREDOC
-
-  # -- Insert alias --
-  echo "  INSERT INTO alias (alias, note_id, is_primary) VALUES ('${alias_name}', v_note_id, true);" >> "$sql"
-
-  # -- Insert revision --
-  # Start the VALUES clause
   echo "  INSERT INTO revision (uuid, note_id, patch, content, title, description, note_type, created_at) VALUES (" >> "$sql"
   echo "    '${rev_uuid}'::uuid, v_note_id, ''," >> "$sql"
 
-  # Content: use PostgreSQL dollar-quoting ($seed$...$seed$) with raw cat (no shell expansion)
+  # Content: PostgreSQL dollar-quoting ($seed$...$seed$) with raw cat (no shell expansion)
   printf '    $seed$' >> "$sql"
   cat "$file" >> "$sql"
   printf '$seed$,\n' >> "$sql"
 
-  # Title: dollar-quoted to handle any special characters
+  # Title: dollar-quoted
   printf '    $t$' >> "$sql"
   printf '%s' "$title" >> "$sql"
   printf '$t$,\n' >> "$sql"
@@ -105,40 +81,103 @@ HEREDOC
   printf '%s' "$description" >> "$sql"
   printf '$d$,\n' >> "$sql"
 
-  # Close VALUES
   cat >> "$sql" <<'HEREDOC'
     'document',
     NOW()
   );
 HEREDOC
 
-  # -- Insert tags --
-  sed -n '/^---$/,/^---$/{
-    /^tags:/,/^[^ ]/{
-      /^  *- /{ s/^  *- *//; p; }
-    }
-  }' "$file" | while IFS= read -r tag; do
+  # Tags
+  extract_tags "$file" | while IFS= read -r tag; do
     [ -z "$tag" ] && continue
     escaped_tag=$(printf '%s' "$tag" | sed "s/'/''/g")
     echo "  INSERT INTO revision_tag (revision_id, tag) VALUES ('${rev_uuid}'::uuid, '${escaped_tag}');" >> "$sql"
   done
+}
 
-  # -- Grant read access to _EVERYONE group --
-  if [ -n "$EVERYONE_GID" ]; then
-    echo "  INSERT INTO note_group_permission (note_id, group_id, can_edit) VALUES (v_note_id, ${EVERYONE_GID}, false);" >> "$sql"
-  fi
+# --- Step 4: Seed notes from /seed-content/*.md (upsert) ---
+for file in /seed-content/*.md; do
+  alias_name=$(basename "$file" .md)
 
-  # -- Close PL/pgSQL block --
-  cat >> "$sql" <<'HEREDOC'
+  title=$(extract_frontmatter "$file" "title")
+  description=$(extract_frontmatter "$file" "description")
+  [ -z "$title" ] && title="$alias_name"
+  [ -z "$description" ] && description=""
+
+  rev_uuid=$(cat /proc/sys/kernel/random/uuid)
+
+  # Check if note already exists
+  NOTE_ID=$(psql -t -A -c "SELECT note_id FROM alias WHERE alias = '${alias_name}' LIMIT 1;")
+
+  if [ -n "$NOTE_ID" ]; then
+    # --- UPSERT path: note exists, check if content changed ---
+    # Compare MD5 of file vs latest revision content
+    file_md5=$(md5sum "$file" | awk '{print $1}')
+    db_md5=$(psql -t -A -c "SELECT md5(content) FROM revision WHERE note_id = ${NOTE_ID} ORDER BY created_at DESC LIMIT 1;")
+
+    if [ "$file_md5" = "$db_md5" ]; then
+      echo "[seed] Note '${alias_name}' is up to date, skipping."
+      continue
+    fi
+
+    echo "[seed] Note '${alias_name}' has changed, updating..."
+
+    sql=$(mktemp)
+
+    cat > "$sql" <<HEREDOC
+DO \$fn\$
+DECLARE
+  v_note_id integer := ${NOTE_ID};
+BEGIN
+HEREDOC
+
+    build_revision_sql "$file" "$rev_uuid" "$title" "$description"
+
+    cat >> "$sql" <<'HEREDOC'
 END
 $fn$;
 HEREDOC
 
-  # Execute and clean up
-  psql -v ON_ERROR_STOP=1 -f "$sql"
-  rm -f "$sql"
+    psql -v ON_ERROR_STOP=1 -f "$sql"
+    rm -f "$sql"
 
-  echo "[seed] Created note: ${alias_name}"
+    echo "[seed] Updated note: ${alias_name}"
+
+  else
+    # --- INSERT path: new note ---
+    sql=$(mktemp)
+
+    cat > "$sql" <<'HEREDOC'
+DO $fn$
+DECLARE
+  v_note_id integer;
+BEGIN
+HEREDOC
+
+    echo "  INSERT INTO note (owner_id, version, created_at, publicly_visible) VALUES (${USER_ID}, 2, NOW(), true);" >> "$sql"
+
+    cat >> "$sql" <<'HEREDOC'
+  SELECT currval(pg_get_serial_sequence('note', 'id')) INTO v_note_id;
+HEREDOC
+
+    echo "  INSERT INTO alias (alias, note_id, is_primary) VALUES ('${alias_name}', v_note_id, true);" >> "$sql"
+
+    build_revision_sql "$file" "$rev_uuid" "$title" "$description"
+
+    if [ -n "$EVERYONE_GID" ]; then
+      echo "  INSERT INTO note_group_permission (note_id, group_id, can_edit) VALUES (v_note_id, ${EVERYONE_GID}, false);" >> "$sql"
+    fi
+
+    cat >> "$sql" <<'HEREDOC'
+END
+$fn$;
+HEREDOC
+
+    psql -v ON_ERROR_STOP=1 -f "$sql"
+    rm -f "$sql"
+
+    echo "[seed] Created note: ${alias_name}"
+  fi
 done
 
 echo "[seed] All notes seeded successfully."
