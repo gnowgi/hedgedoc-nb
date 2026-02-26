@@ -1050,8 +1050,8 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         selector: 'edge',
         style: {
           width: 2,
-          'line-color': dark ? '#64748b' : '#94a3b8',
-          'target-arrow-color': dark ? '#94a3b8' : '#64748b',
+          'line-color': dark ? '#64748b' : '#475569',
+          'target-arrow-color': dark ? '#94a3b8' : '#334155',
           'target-arrow-shape': 'triangle',
           'curve-style': 'bezier',
           label: 'data(label)',
@@ -1067,16 +1067,16 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         style: {
           width: 1.5,
           'line-style': 'dashed',
-          'line-color': dark ? '#a78bfa' : '#8b5cf6',
+          'line-color': dark ? '#a78bfa' : '#7c3aed',
           'line-dash-pattern': [6, 3] as unknown as undefined,
-          'target-arrow-color': dark ? '#a78bfa' : '#8b5cf6',
+          'target-arrow-color': dark ? '#a78bfa' : '#7c3aed',
           'target-arrow-shape': 'triangle',
           'curve-style': 'unbundled-bezier',
           'control-point-distances': [40] as unknown as undefined,
           'control-point-weights': [0.5] as unknown as undefined,
-          opacity: 0.7,
+          opacity: 0.85,
           'font-size': '8px',
-          color: dark ? '#a78bfa' : '#7c3aed',
+          color: dark ? '#a78bfa' : '#5b21b6',
           'z-index': 0
         }
       },
@@ -1129,7 +1129,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           style: {
             'background-color': dark ? '#0f172a' : '#f1f5f9',
             'border-style': 'dashed',
-            color: dark ? '#64748b' : '#64748b'
+            color: dark ? '#64748b' : '#475569'
           }
         },
         // Transition bar
@@ -1163,7 +1163,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         {
           selector: 'node[type="pn-transition"][!enabled]',
           style: {
-            'background-color': '#94a3b8'
+            'background-color': dark ? '#94a3b8' : '#64748b'
           }
         },
         // Function transition — wider bar with expression label
