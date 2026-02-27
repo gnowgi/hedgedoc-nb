@@ -45,7 +45,8 @@ import {
   Calculator as IconEvalAll,
   Diagram3 as IconInference,
   Search as IconQuery,
-  Code as IconCode
+  Code as IconCode,
+  Boxes as IconBoxes
 } from 'react-bootstrap-icons'
 
 const log = new Logger('NodeBookGraph')
@@ -110,6 +111,9 @@ function placeDisplayLabel(
 
 /** Account types recognized for the accounting equation. */
 const ACCOUNT_TYPES = new Set(['Account', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])
+
+/** Relation names that express containment (class hierarchy / membership). */
+const CONTAINMENT_RELATIONS = new Set(['is_a', 'member_of', 'instance_of'])
 
 /** Check if a node role is a transition-like role (Transition or Transaction). */
 function isTransitionRole(role: string): boolean {
@@ -192,6 +196,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [isQueryRunning, setIsQueryRunning] = useState(false)
   const [showQueryPanel, setShowQueryPanel] = useState(true)
   const [showSource, setShowSource] = useState(false)
+  const [showContainment, setShowContainment] = useState(false)
 
   const printMode = useApplicationState((state) => state.printMode)
 
@@ -308,6 +313,111 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     if (graphMode !== 'concept-map') return false
     return graphHasCycle(graphData.edges)
   }, [graphData.edges, graphMode])
+
+  // Check if graph has any containment-eligible edges
+  // Concept-map: is_a / member_of / instance_of; Mindmap: any edge (all are parent→child)
+  const hasContainmentEdges = useMemo(() => {
+    if (graphMode === 'mindmap') return graphData.edges.length > 0
+    if (graphMode === 'concept-map') {
+      const hasExplicit = graphData.edges.some((e) => CONTAINMENT_RELATIONS.has(e.name))
+      const hasInferred = inferenceResult.inferredEdges.some((e) => CONTAINMENT_RELATIONS.has(e.name))
+      return hasExplicit || hasInferred
+    }
+    return false
+  }, [graphData.edges, inferenceResult.inferredEdges, graphMode])
+
+  // Compute containment parent map: child → parent for compound node nesting
+  const { containmentParentMap, nestingDepthMap } = useMemo(() => {
+    const parentMap = new Map<string, string>()
+    const depthMap = new Map<string, number>()
+    if (!showContainment || graphMode === 'petri-net') return { containmentParentMap: parentMap, nestingDepthMap: depthMap }
+
+    // Cycle-safe ancestor walk: returns true if `target` is an ancestor of `start`
+    function wouldCreateCycle(start: string, target: string): boolean {
+      const visited = new Set<string>()
+      const stack = [target]
+      while (stack.length > 0) {
+        const current = stack.pop()!
+        if (current === start) return true
+        if (visited.has(current)) continue
+        visited.add(current)
+        const p = parentMap.get(current)
+        if (p) stack.push(p)
+      }
+      return false
+    }
+
+    if (graphMode === 'mindmap') {
+      // Mindmap: every edge is parent→child (source contains target)
+      // Edge direction is source→target, so target is nested inside source
+      for (const edge of graphData.edges) {
+        if (parentMap.has(edge.target_id)) continue
+        if (!wouldCreateCycle(edge.target_id, edge.source_id)) {
+          parentMap.set(edge.target_id, edge.source_id)
+        }
+      }
+    } else {
+      // Concept-map: use is_a / member_of / instance_of for containment
+      const isaParents = new Map<string, string[]>()
+      const memberOfClass = new Map<string, string[]>()
+      const allEdges = [
+        ...graphData.edges.map((e) => ({ source: e.source_id, target: e.target_id, name: e.name })),
+        ...inferenceResult.inferredEdges.map((e) => ({ source: e.source_id, target: e.target_id, name: e.name }))
+      ]
+
+      for (const edge of allEdges) {
+        if (edge.name === 'is_a') {
+          const list = isaParents.get(edge.source) ?? []
+          if (!list.includes(edge.target)) list.push(edge.target)
+          isaParents.set(edge.source, list)
+        } else if (edge.name === 'member_of' || edge.name === 'instance_of') {
+          const list = memberOfClass.get(edge.source) ?? []
+          if (!list.includes(edge.target)) list.push(edge.target)
+          memberOfClass.set(edge.source, list)
+        }
+      }
+
+      // Assign is_a parents first (pick first candidate that doesn't create a cycle)
+      for (const [childId, candidates] of isaParents) {
+        for (const candidate of candidates) {
+          if (!wouldCreateCycle(childId, candidate)) {
+            parentMap.set(childId, candidate)
+            break
+          }
+        }
+      }
+
+      // Assign member_of/instance_of (skip if already assigned via is_a)
+      for (const [individualId, classes] of memberOfClass) {
+        if (parentMap.has(individualId)) continue
+        for (const classId of classes) {
+          if (!wouldCreateCycle(individualId, classId)) {
+            parentMap.set(individualId, classId)
+            break
+          }
+        }
+      }
+    }
+
+    // Compute nesting depths by walking up the parent chain
+    function getDepth(nodeId: string, visited: Set<string>): number {
+      if (depthMap.has(nodeId)) return depthMap.get(nodeId)!
+      if (visited.has(nodeId)) return 0 // cycle guard
+      visited.add(nodeId)
+      const p = parentMap.get(nodeId)
+      const d = p ? getDepth(p, visited) + 1 : 0
+      depthMap.set(nodeId, d)
+      return d
+    }
+
+    // Compute depth for all nodes that ARE parents (compound nodes)
+    const parentNodeIds = new Set(parentMap.values())
+    for (const nodeId of parentNodeIds) {
+      getDepth(nodeId, new Set())
+    }
+
+    return { containmentParentMap: parentMap, nestingDepthMap: depthMap }
+  }, [showContainment, graphMode, graphData.edges, inferenceResult.inferredEdges])
 
   // Detect accounting mode (Transaction nodes present)
   const isAccountingMode = useMemo(() => graphData.nodes.some((n) => n.role === 'Transaction'), [graphData])
@@ -780,6 +890,25 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
 
   // Build ELK layout config based on graph mode
   const layoutConfig = useMemo(() => {
+    if (graphMode === 'mindmap' && showContainment) {
+      return {
+        name: 'elk',
+        nodeDimensionsIncludeLabels: true,
+        elk: {
+          algorithm: 'layered',
+          'elk.direction': 'DOWN',
+          'elk.layered.spacing.nodeNodeBetweenLayers': '80',
+          'elk.spacing.nodeNode': '50',
+          'elk.edgeRouting': 'ORTHOGONAL',
+          'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+          'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+          'elk.separateConnectedComponents': 'true',
+          'elk.padding': '[top=40,left=30,bottom=30,right=30]',
+          'elk.spacing.componentComponent': '50'
+        }
+      }
+    }
+
     if (graphMode === 'mindmap') {
       return {
         name: 'elk',
@@ -793,7 +922,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       }
     }
 
-    if (graphMode === 'concept-map' && hasCycle) {
+    if (graphMode === 'concept-map' && hasCycle && !showContainment) {
       return {
         name: 'elk',
         nodeDimensionsIncludeLabels: true,
@@ -802,6 +931,28 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           'elk.stress.desiredEdgeLength': '150',
           'elk.spacing.nodeNode': '60',
           'elk.separateConnectedComponents': 'true'
+        }
+      }
+    }
+
+    // Containment mode: top-down layered with compound node support
+    if (graphMode === 'concept-map' && showContainment) {
+      return {
+        name: 'elk',
+        nodeDimensionsIncludeLabels: true,
+        elk: {
+          algorithm: 'layered',
+          'elk.direction': 'DOWN',
+          'elk.layered.spacing.nodeNodeBetweenLayers': '80',
+          'elk.spacing.nodeNode': '50',
+          'elk.edgeRouting': 'ORTHOGONAL',
+          'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+          'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+          'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+          'elk.separateConnectedComponents': 'true',
+          'elk.layered.compaction.postCompaction.strategy': 'EDGE_LENGTH',
+          'elk.padding': '[top=40,left=30,bottom=30,right=30]',
+          'elk.spacing.componentComponent': '50'
         }
       }
     }
@@ -824,7 +975,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         ...(hasTransitions && { 'elk.partitioning.activate': 'true' })
       }
     }
-  }, [graphMode, hasCycle])
+  }, [graphMode, hasCycle, showContainment])
 
   // Render Cytoscape graph
   useEffect(() => {
@@ -967,13 +1118,16 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         if (node.quantifier) {
           displayName = `${quantifierSymbol(node.quantifier)}${displayName}`
         }
+        const containmentParent = showContainment ? containmentParentMap.get(node.id) : undefined
         cyNodes.push({
           data: {
             id: node.id,
             label: displayName,
             type: 'polynode',
             hasMorphs: node.morphs.length > 1,
-            hasQuantifier: !!node.quantifier
+            hasQuantifier: !!node.quantifier,
+            nestingDepth: nestingDepthMap.get(node.id) ?? 0,
+            ...(containmentParent && { parent: containmentParent })
           }
         })
       }
@@ -985,6 +1139,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
 
     for (const edge of inMemoryGraph.edges) {
       if (!nodeIds.has(edge.source_id) || !nodeIds.has(edge.target_id)) continue
+      // In containment mode, hide edges that are represented by nesting
+      // Mindmap: all edges are parent→child; Concept-map: only is_a/member_of/instance_of
+      if (showContainment && (graphMode === 'mindmap' || CONTAINMENT_RELATIONS.has(edge.name))) continue
 
       if (isPetriNet && edge.name === 'has prior_state') {
         // Reverse direction: place → transition (for correct LR flow)
@@ -1035,6 +1192,8 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     const inferredCyEdges: cytoscape.ElementDefinition[] = []
     for (const edge of inMemoryGraph.inferredEdges) {
       if (!nodeIds.has(edge.source_id) || !nodeIds.has(edge.target_id)) continue
+      // In containment mode, hide inferred is_a/member_of/instance_of edges too
+      if (showContainment && CONTAINMENT_RELATIONS.has(edge.name)) continue
       inferredCyEdges.push({
         data: {
           id: edge.id,
@@ -1145,6 +1304,57 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         }
       }
     ]
+
+    // Containment mode: compound parent node styles with color-cycling by nesting depth
+    if (showContainment && (graphMode === 'concept-map' || graphMode === 'mindmap')) {
+      const containmentColors = dark
+        ? [
+            { bg: '#1e3a5f', border: '#3b82f6', text: '#93c5fd' },
+            { bg: '#14532d', border: '#22c55e', text: '#86efac' },
+            { bg: '#2e1065', border: '#7c3aed', text: '#c4b5fd' },
+            { bg: '#78350f', border: '#f59e0b', text: '#fcd34d' },
+            { bg: '#713f12', border: '#eab308', text: '#fde68a' }
+          ]
+        : [
+            { bg: '#dbeafe', border: '#3b82f6', text: '#1e3a8a' },
+            { bg: '#dcfce7', border: '#22c55e', text: '#14532d' },
+            { bg: '#f3e8ff', border: '#8b5cf6', text: '#5b21b6' },
+            { bg: '#ffedd5', border: '#f97316', text: '#9a3412' },
+            { bg: '#fef9c3', border: '#eab308', text: '#854d0e' }
+          ]
+      // Generic :parent style (default for depth 0)
+      graphStyles.push({
+        selector: ':parent',
+        style: {
+          'background-color': containmentColors[0].bg,
+          'background-opacity': dark ? 0.5 : 0.4,
+          'border-width': 2,
+          'border-color': containmentColors[0].border,
+          'border-style': 'solid',
+          padding: '35px',
+          shape: 'round-rectangle',
+          'text-valign': 'top',
+          'text-halign': 'center',
+          'font-size': '11px',
+          'font-weight': 'bold' as unknown as undefined,
+          color: containmentColors[0].text,
+          label: 'data(label)',
+          'min-width': '80px' as unknown as undefined,
+          'min-height': '50px' as unknown as undefined
+        }
+      })
+      // Color-cycle by nesting depth
+      for (let i = 1; i < containmentColors.length; i++) {
+        graphStyles.push({
+          selector: `node[nestingDepth = ${i}]:parent`,
+          style: {
+            'background-color': containmentColors[i].bg,
+            'border-color': containmentColors[i].border,
+            color: containmentColors[i].text
+          }
+        })
+      }
+    }
 
     if (isPetriNet) {
       graphStyles.push(
@@ -1436,7 +1646,10 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     fireTransition,
     graphData,
     isAccountingMode,
-    currencySymbol
+    currencySymbol,
+    showContainment,
+    containmentParentMap,
+    nestingDepthMap
   ])
 
   // Update Cytoscape node data when marking or placeValues change (without full re-render)
@@ -1757,6 +1970,14 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                   : `Show inferred edges (${inferenceResult.inferredEdges.length})`
               }>
               <IconInference size={14} />
+            </button>
+          )}
+          {!isPetriNet && hasContainmentEdges && (
+            <button
+              onClick={() => setShowContainment((prev) => !prev)}
+              className={showContainment ? styles['toggle-active'] : undefined}
+              title={showContainment ? 'Disable containment view' : 'Enable containment view (nest subclasses inside superclasses)'}>
+              <IconBoxes size={14} />
             </button>
           )}
           {(graphData.queries ?? []).length > 0 && (
