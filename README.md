@@ -41,6 +41,10 @@ We are currently working on HedgeDoc 2, a complete rewrite of HedgeDoc. Please n
   to close non-critical bug reports, if the bug will be non-existent in 2.0.
 - HedgeDoc 2 will be split in two components. The backend and the frontend. Both are present in this repository.
 
+## nodeBook Extension
+
+This fork includes the **nodeBook** extension, which renders Controlled Natural Language (CNL) knowledge graphs inline within markdown documents. Users write structured text inside ` ```nodeBook ` code fences and see interactive graph visualizations powered by Cytoscape.js — with support for typed nodes, weighted relations, polymorphic morphs, schema validation, transitive inference, Prolog queries, and a 9-category scoring rubric. All parsing and rendering is client-side with no backend changes required. See the [nodeBook README](frontend/src/extensions/external-lib-app-extensions/nodebook/README.md) for full documentation.
+
 ## Development
 Information for setting up a local development environment can be found in the [developer documentation](https://docs.hedgedoc.dev/how-to/develop/setup/)
 
