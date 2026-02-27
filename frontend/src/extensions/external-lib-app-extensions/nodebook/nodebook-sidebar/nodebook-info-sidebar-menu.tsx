@@ -13,6 +13,7 @@ import { concatCssClasses } from '../../../../utils/concat-css-classes'
 import { useNodeBookStats } from './use-nodebook-stats'
 import { ScoreRing } from './score-ring'
 import styles from './nodebook-info-sidebar.module.scss'
+import Link from 'next/link'
 import React, { Fragment, useCallback } from 'react'
 import {
   ArrowLeft as IconArrowLeft,
@@ -70,6 +71,9 @@ export const NodeBookInfoSidebarMenu: React.FC<SpecificSidebarMenuProps> = ({
           <span className={styles['score-label']}>
             <Trans i18nKey={'editor.nodeBookInfo.score'} />
           </span>
+          <Link href='/n/graph-score' target='_blank' className={styles['score-link']}>
+            <Trans i18nKey={'editor.nodeBookInfo.howScored'} />
+          </Link>
         </div>
 
         {/* Category breakdown */}

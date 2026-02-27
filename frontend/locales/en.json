@@ -372,6 +372,7 @@
     "nodeBookInfo": {
       "title": "nodeBook Info",
       "score": "Graph Score",
+      "howScored": "How is this scored?",
       "categories": {
         "coverage": "Coverage",
         "connectivity": "Connectivity",

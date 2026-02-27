@@ -20,6 +20,17 @@
   letter-spacing: 0.05em;
 }
 
+.score-link {
+  margin-top: 2px;
+  font-size: 0.7em;
+  color: var(--bs-link-color, #0d6efd);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 .categories {
   padding: 8px;
 }
