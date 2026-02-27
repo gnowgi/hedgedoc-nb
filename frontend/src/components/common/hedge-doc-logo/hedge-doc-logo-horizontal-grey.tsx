@@ -21,17 +21,8 @@ export const HedgeDocLogoHorizontalGrey: React.FC<HedgeDocLogoHorizontalGreyProp
 }) => {
   return (
     <span className={className} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-      <img
-        src='/logo.png'
-        alt='nodeBook'
-        height={size}
-        width={size}
-      />
-      {showText && (
-        <span style={{ fontSize: `${Math.max(size * 0.4, 12)}px`, fontWeight: 'bold' }}>
-          nodeBook
-        </span>
-      )}
+      <img src='/logo.png' alt='nodeBook' height={size} width={size} />
+      {showText && <span style={{ fontSize: `${Math.max(size * 0.4, 12)}px`, fontWeight: 'bold' }}>nodeBook</span>}
     </span>
   )
 }

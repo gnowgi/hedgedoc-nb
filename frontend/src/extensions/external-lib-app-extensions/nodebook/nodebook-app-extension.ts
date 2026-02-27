@@ -45,10 +45,7 @@ export class NodeBookAppExtension extends AppExtension {
   buildAutocompletion(): CompletionSource[] {
     return [
       ...buildNodeBookInBlockCompletions(),
-      basicCompletion(
-        codeFenceRegex,
-        '```nodeBook\n# Node Name [Type]\nattribute: value;\n<relation> Target;\n```'
-      ),
+      basicCompletion(codeFenceRegex, '```nodeBook\n# Node Name [Type]\nattribute: value;\n<relation> Target;\n```'),
       basicCompletion(
         codeFenceRegex,
         '```nodeBook\n# Process [Transition]\n<has prior_state> 2 Input;\n<has post_state> Output;\n```'

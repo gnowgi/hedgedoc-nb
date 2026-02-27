@@ -209,7 +209,12 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
       expressions.push({ id: op.id, expression: payload.expression })
     } else if (op.type === 'addQuery') {
       const payload = op.payload as { id: string; goalString: string; displayString?: string; line?: number }
-      queries.push({ id: payload.id, goalString: payload.goalString, displayString: payload.displayString, line: payload.line })
+      queries.push({
+        id: payload.id,
+        goalString: payload.goalString,
+        displayString: payload.displayString,
+        line: payload.line
+      })
     }
   }
 

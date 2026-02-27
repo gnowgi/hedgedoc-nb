@@ -11,7 +11,12 @@ let plInstance: { create(limit?: number): TauSession } | null = null
 interface TauSession {
   consult(program: string, options?: { success?: () => void; error?: (err: unknown) => void }): void
   query(goal: string, options?: { success?: (goal: unknown) => void; error?: (err: unknown) => void }): void
-  answer(options: { success?: (answer: TauAnswer | false) => void; error?: (err: unknown) => void; fail?: () => void; limit?: number }): void
+  answer(options: {
+    success?: (answer: TauAnswer | false) => void
+    error?: (err: unknown) => void
+    fail?: () => void
+    limit?: number
+  }): void
   format_answer(answer: TauAnswer): string
 }
 
@@ -52,7 +57,9 @@ export function generatePrologProgram(graphData: CnlGraphData, schemas: MergedSc
 
   // Explicit relation facts: explicit_relation(Source, Target, RelName)
   for (const edge of graphData.edges) {
-    lines.push(`explicit_relation(${prologAtom(edge.source_id)}, ${prologAtom(edge.target_id)}, ${prologAtom(edge.name)}).`)
+    lines.push(
+      `explicit_relation(${prologAtom(edge.source_id)}, ${prologAtom(edge.target_id)}, ${prologAtom(edge.name)}).`
+    )
   }
 
   // Attribute facts: attribute(NodeId, AttrName, Value)
@@ -99,7 +106,9 @@ export function generatePrologProgram(graphData: CnlGraphData, schemas: MergedSc
   lines.push(`relation(X, B, 'member_of') :- explicit_relation(X, A, 'member_of'), relation(A, B, 'is_a'), X \\= B.`)
   lines.push('')
   lines.push('% Instance inheritance: instance_of(X,A) + is_a(A,B) => instance_of(X,B)')
-  lines.push(`relation(X, B, 'instance_of') :- explicit_relation(X, A, 'instance_of'), relation(A, B, 'is_a'), X \\= B.`)
+  lines.push(
+    `relation(X, B, 'instance_of') :- explicit_relation(X, A, 'instance_of'), relation(A, B, 'is_a'), X \\= B.`
+  )
 
   return lines.join('\n')
 }

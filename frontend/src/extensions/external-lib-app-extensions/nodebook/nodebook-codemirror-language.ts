@@ -203,8 +203,5 @@ const cnlDarkStyle = HighlightStyle.define(
 export const cnlLanguageDescription = LanguageDescription.of({
   name: 'nodeBook',
   alias: ['cnl'],
-  support: new LanguageSupport(cnlStreamLanguage, [
-    syntaxHighlighting(cnlLightStyle),
-    syntaxHighlighting(cnlDarkStyle)
-  ])
+  support: new LanguageSupport(cnlStreamLanguage, [syntaxHighlighting(cnlLightStyle), syntaxHighlighting(cnlDarkStyle)])
 })

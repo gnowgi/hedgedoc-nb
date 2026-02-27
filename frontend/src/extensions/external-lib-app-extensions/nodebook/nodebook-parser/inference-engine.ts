@@ -210,7 +210,11 @@ export interface AsyncInferenceEngine {
  * Replaces BFS with Prolog-derived transitive closure and supports user queries.
  */
 export class PrologInferenceEngine implements AsyncInferenceEngine {
-  async inferAsync(graphData: CnlGraphData, schemas: MergedSchemas, queries: CnlQuery[] = []): Promise<PrologInferenceResult> {
+  async inferAsync(
+    graphData: CnlGraphData,
+    schemas: MergedSchemas,
+    queries: CnlQuery[] = []
+  ): Promise<PrologInferenceResult> {
     // 1. Query inferred relations from Prolog
     const inferredRelations = await queryInferredRelations(graphData, schemas)
 

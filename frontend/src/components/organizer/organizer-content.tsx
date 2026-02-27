@@ -50,7 +50,11 @@ export const OrganizerContent: React.FC = () => {
         />
       </Col>
       <Col xs={9}>
-        <NoteListPanel selectedPath={selectedPath} tagTree={tagTree} collectAllNotesRecursive={collectAllNotesRecursive} />
+        <NoteListPanel
+          selectedPath={selectedPath}
+          tagTree={tagTree}
+          collectAllNotesRecursive={collectAllNotesRecursive}
+        />
       </Col>
     </Row>
   )

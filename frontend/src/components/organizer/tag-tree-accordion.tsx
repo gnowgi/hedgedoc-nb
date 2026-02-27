@@ -54,9 +54,7 @@ export const TagTreeAccordion: React.FC<TagTreeAccordionProps> = ({
               className={'d-flex justify-content-between align-items-center w-100 me-2'}
               onClick={onHeaderClick(node.fullPath)}
               role={'button'}>
-              <span>
-                {key === UNTAGGED_KEY ? <Trans i18nKey={'organizer.untagged'} /> : node.segment}
-              </span>
+              <span>{key === UNTAGGED_KEY ? <Trans i18nKey={'organizer.untagged'} /> : node.segment}</span>
               <Badge bg={selectedPath === node.fullPath ? 'primary' : 'secondary'} pill>
                 {countAllNotes(node)}
               </Badge>

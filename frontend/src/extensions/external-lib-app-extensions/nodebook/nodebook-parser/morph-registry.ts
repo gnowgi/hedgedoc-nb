@@ -11,7 +11,13 @@ export class MorphRegistry {
   private relationMorphs: Map<string, string[]> = new Map()
   private attributeMorphs: Map<string, string[]> = new Map()
 
-  addMorph(morphId: string, nodeId: string, morphName: string, relationIds: string[] = [], attributeIds: string[] = []): void {
+  addMorph(
+    morphId: string,
+    nodeId: string,
+    morphName: string,
+    relationIds: string[] = [],
+    attributeIds: string[] = []
+  ): void {
     const morphData: MorphData = {
       morphId,
       nodeId,

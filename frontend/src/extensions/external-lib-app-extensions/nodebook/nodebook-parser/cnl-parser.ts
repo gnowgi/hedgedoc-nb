@@ -18,10 +18,10 @@ const QUERY_REGEX = /^\s*\?-\s*(.+?)\s*\.?\s*$/
 
 // CNL-native query patterns (Wh-words: what, who, where, when, how)
 const WH = '(?:what|who|where|when|how)'
-const CNL_QUERY_TARGET_REGEX = new RegExp(`^\\s*<(.+?)>\\s*${WH}\\s*;`, 'i')           // <rel> what;     (node-scoped: what is this node <rel> to?)
+const CNL_QUERY_TARGET_REGEX = new RegExp(`^\\s*<(.+?)>\\s*${WH}\\s*;`, 'i') // <rel> what;     (node-scoped: what is this node <rel> to?)
 const CNL_QUERY_SOURCE_REGEX = new RegExp(`^\\s*${WH}\\s+<(.+?)>\\s*([^;\\n]*?);`, 'i') // who <rel> Target; (graph-level: who <rel> Target?)
-const CNL_QUERY_RELATION_REGEX = new RegExp(`^\\s*<(${WH})>\\s*([^;\\n]*?)\\s*;`, 'i')  // <how> Target;   (node-scoped: how does this node relate to Target?)
-const CNL_QUERY_ATTR_REGEX = new RegExp(`^\\s*${WH}\\s*:\\s*([^;\\n]+?)\\s*;`, 'i')     // what: value;    (what attribute has this value?)
+const CNL_QUERY_RELATION_REGEX = new RegExp(`^\\s*<(${WH})>\\s*([^;\\n]*?)\\s*;`, 'i') // <how> Target;   (node-scoped: how does this node relate to Target?)
+const CNL_QUERY_ATTR_REGEX = new RegExp(`^\\s*${WH}\\s*:\\s*([^;\\n]+?)\\s*;`, 'i') // what: value;    (what attribute has this value?)
 const CNL_QUERY_VALUE_REGEX = new RegExp(`^\\s*(?:has\\s+)?([^?<:;\\n]+?)\\s*:\\s*${WH}\\s*;`, 'i') // attr: what;  (what is the value of this attr?)
 
 /** Escape a string for use as a Prolog atom (single-quoted). */
@@ -40,15 +40,15 @@ const RELATION_ALIAS_MAP: Record<string, string> = {
 
 /** Maps role synonyms to their canonical form. */
 const ROLE_SYNONYM_MAP: Record<string, string> = {
-  'class': 'class',
-  'concept': 'class',
-  'type': 'class',
-  'universal': 'class',
+  class: 'class',
+  concept: 'class',
+  type: 'class',
+  universal: 'class',
   'common noun': 'class',
-  'individual': 'individual',
-  'particular': 'individual',
-  'token': 'individual',
-  'member': 'individual',
+  individual: 'individual',
+  particular: 'individual',
+  token: 'individual',
+  member: 'individual',
   'proper noun': 'individual'
 }
 
@@ -92,9 +92,23 @@ function resetMorphCounter(): void {
 
 /** Words that are the same in singular and plural form. */
 const INVARIANT_WORDS = new Set([
-  'species', 'series', 'means', 'news', 'sheep', 'fish', 'deer',
-  'moose', 'aircraft', 'mathematics', 'physics', 'economics',
-  'politics', 'ethics', 'linguistics', 'thermodynamics', 'genetics'
+  'species',
+  'series',
+  'means',
+  'news',
+  'sheep',
+  'fish',
+  'deer',
+  'moose',
+  'aircraft',
+  'mathematics',
+  'physics',
+  'economics',
+  'politics',
+  'ethics',
+  'linguistics',
+  'thermodynamics',
+  'genetics'
 ])
 
 /**
@@ -340,9 +354,21 @@ function processNodeHeading(heading: string): { id: string; type: string; payloa
     }
   }
 
-  const cleanBaseName = baseName.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').split(/\s+/).map(singularize).join('_')
+  const cleanBaseName = baseName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .split(/\s+/)
+    .map(singularize)
+    .join('_')
   const cleanAdjective = adjective
-    ? adjective.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').split(/\s+/).map(singularize).join('_')
+    ? adjective
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .split(/\s+/)
+        .map(singularize)
+        .join('_')
     : null
   const id = cleanAdjective ? `${cleanAdjective}_${cleanBaseName}` : cleanBaseName
 
@@ -509,7 +535,10 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
 
   // Filter out CNL query lines from content before relation processing
   if (cnlQueryLines.size > 0) {
-    content = content.split('\n').filter((line) => !cnlQueryLines.has(line.trim())).join('\n')
+    content = content
+      .split('\n')
+      .filter((line) => !cnlQueryLines.has(line.trim()))
+      .join('\n')
   }
 
   // Process relations
@@ -723,7 +752,10 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
 
   // Filter out CNL query lines from content before relation processing
   if (cnlQueryLines.size > 0) {
-    content = content.split('\n').filter((line) => !cnlQueryLines.has(line.trim())).join('\n')
+    content = content
+      .split('\n')
+      .filter((line) => !cnlQueryLines.has(line.trim()))
+      .join('\n')
   }
 
   // Process relations (with morphId tagging)

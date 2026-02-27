@@ -1,6 +1,7 @@
 ```graph-description
-This graph introduces nodeBook to the users. 
+This graph introduces nodeBook to the users.
 ```
+
 # nodeBook [App]
 
 ```description
@@ -10,13 +11,14 @@ and describing the nodes with their properties. nodeBook is unique
 application that has special nodes called **transitions** and
 special attributes called **functions**.
 ```
+
 <is a> Note Book;
 <is a> p2p App;
 <constructs> Knoweldge Graph;
 <processes> Controlled Natural Language;
 <decodes> Controlled Natural Language;
 <parses> Controlled Natural Language;
-<consists of> *polymorphic* Nodes;
+<consists of> _polymorphic_ Nodes;
 <consists of> Transitions;
 <consists of> Functions;
 <consists of> Attributes;
@@ -28,34 +30,38 @@ special attributes called **functions**.
 A knowledge graph is made with **nodes** and *edges*, and nothing
 else. Using a knowledge graph we can express **meaning**, without
 worrying too much of about variations in grammar that we find in a
-natural langauge. 
+natural langauge.
 ```
+
 <consists of> Nodes;
 <consists of> Edges;
 
 # CNL [Language]
+
 ```description
-CNL refers to Controlled Natural Language. 
+CNL refers to Controlled Natural Language.
 ```
+
 <refers to> Controlled Natural Language;
-<is a> *special* Language;
+<is a> _special_ Language;
 
 # Nodes [Representation]
 
 ```description
-Any thing about which you want to talk about or describe. 
+Any thing about which you want to talk about or describe.
 
 Nodes are represented in nodeBook as polymorphic nodes: a very special
 implementation of NodeBook's graph database. We allow a nodes to
 change their state. We call them **morphs**, because their structure
-changed due to change in properties. Whenever a node gains 
+changed due to change in properties. Whenever a node gains
 a property or changes the value of a property, we represent them as
 two different states (morphs) of the same node. E.g., Oxygen when it
 gains two more electrons, it becomes an oxide ion. or Alice got
 pregnant. Alice and Oxygen remain as the same node, but their property
-changes. This helps us to represent changes of a node. 
+changes. This helps us to represent changes of a node.
 
 ```
+
 <can be> Concepts;
 <can be> People;
 <can be> Places;
@@ -64,7 +70,7 @@ changes. This helps us to represent changes of a node.
 # Edges [Representation]
 
 ```description
-Any thing about which you want to talk about or describe. 
+Any thing about which you want to talk about or describe.
 ```
 
 <can be> Relations;
@@ -79,20 +85,22 @@ Element. While making the graph we don't care about if the verb phrase
 we use is **is a** or **is an**. We are more tolerant about the
 grammatical exceptions we find in a natural langauge. We focus only on
 meaning, or technically speaking: semantics. We use bare minimum
-syntax of a sentence: subject-predicate-object. 
+syntax of a sentence: subject-predicate-object.
 ```
+
 <is a> Edge;
 
-
-
 # Attributes [Representation]
+
 ```description
 Attributes are **properties** of a node. E.g. color, shape, size,
-mass, weight, length of an object. 
+mass, weight, length of an object.
 ```
+
 <is a> Edges;
 
 # Functions [Representation]
+
 ```description
 Functions are **derived attributes**. E.g., if we know the number of
 protons in an element, we know its atomic number. And if we also know
@@ -101,12 +109,14 @@ mentioning that adding the number of neutrons and protons will be same
 as its atomic mass. Derived attributes (functions) will work for all
 the elements. Similarly, given the position and time of a moving
 object, we can derive new attributes like displacement, speed,
-velocity etc.  Functions are very special to nodeBook. 
+velocity etc.  Functions are very special to nodeBook.
 ```
-<is a> *special* Edge;
-<is a> *derived* Attribute;
+
+<is a> _special_ Edge;
+<is a> _derived_ Attribute;
 
 # Transitions [Representation]
+
 ```description
 
 These are special nodes that help us to represent changes/processes and the
@@ -117,6 +127,7 @@ while sparc, oxygen and hydrogen are prior states. Also, sparc is also
 represented as a trigger, in the absence of which no process
 happens. We can represent such details in nodeBook.
 ```
-<is a> *special* Node;
+
+<is a> _special_ Node;
 <have> Prior State;
 <have> Post State;

@@ -23,26 +23,34 @@ A mindmap of cell structure using nodeBook's mindmap syntax. The `<contains>` re
 
 A more detailed view of the nucleus with descriptions:
 
-```nodeBook
+````nodeBook
 # Nucleus [Organelle]
 ```description
 The nucleus is a membrane-bound organelle found in eukaryotic cells that contains the genetic material (DNA) organized into chromosomes.
-```
+````
+
 <contains> Chromosomes;
 <contains> Nucleolus;
 <surrounded by> Nuclear envelope;
 
 # Chromosomes [Structure]
+
 <consists of> DNA;
 <consists of> Histone proteins;
 
 # DNA [Molecule]
+
 has structure: double helix;
 <encodes> Genes;
 
 # Nucleolus [Structure]
+
 <produces> Ribosomal RNA;
 
 # Nuclear envelope [Membrane]
+
 <has> Nuclear pores;
+
+```
+
 ```

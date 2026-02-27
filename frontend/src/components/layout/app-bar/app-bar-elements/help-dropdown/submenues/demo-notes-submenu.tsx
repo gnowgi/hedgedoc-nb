@@ -15,16 +15,8 @@ export const DemoNotesSubmenu: React.FC = () => {
   return (
     <Fragment>
       <DropdownHeader i18nKey={'appbar.help.demoNotes.header'} />
-      <TranslatedDropdownItem
-        i18nKey={'appbar.help.demoNotes.nodeBook'}
-        icon={IconBook}
-        href={'/n/nodeBook'}
-      />
-      <TranslatedDropdownItem
-        i18nKey={'appbar.help.demoNotes.features'}
-        icon={IconStars}
-        href={'/n/features'}
-      />
+      <TranslatedDropdownItem i18nKey={'appbar.help.demoNotes.nodeBook'} icon={IconBook} href={'/n/nodeBook'} />
+      <TranslatedDropdownItem i18nKey={'appbar.help.demoNotes.features'} icon={IconStars} href={'/n/features'} />
     </Fragment>
   )
 }

@@ -122,11 +122,19 @@ export function buildNodeBookInBlockCompletions(): CompletionSource[] {
     // Add parser-level relation aliases
     if (!seen.has('input')) {
       seen.add('input')
-      options.push({ label: 'input', detail: 'Alias for "has prior_state" (Function/Transition input)', apply: 'input> ' })
+      options.push({
+        label: 'input',
+        detail: 'Alias for "has prior_state" (Function/Transition input)',
+        apply: 'input> '
+      })
     }
     if (!seen.has('output')) {
       seen.add('output')
-      options.push({ label: 'output', detail: 'Alias for "has post_state" (Function/Transition output)', apply: 'output> ' })
+      options.push({
+        label: 'output',
+        detail: 'Alias for "has post_state" (Function/Transition output)',
+        apply: 'output> '
+      })
     }
 
     return { from, options, filter: true }
@@ -189,7 +197,11 @@ export function buildNodeBookInBlockCompletions(): CompletionSource[] {
     const options = [
       { label: 'node(', detail: 'node(Id, Name, Role)', apply: 'node(' },
       { label: 'relation(', detail: 'relation(Source, Target, RelName)', apply: 'relation(' },
-      { label: 'explicit_relation(', detail: 'explicit_relation(Source, Target, RelName)', apply: 'explicit_relation(' },
+      {
+        label: 'explicit_relation(',
+        detail: 'explicit_relation(Source, Target, RelName)',
+        apply: 'explicit_relation('
+      },
       { label: 'attribute(', detail: 'attribute(NodeId, AttrName, Value)', apply: 'attribute(' },
       { label: 'attribute_unit(', detail: 'attribute_unit(NodeId, AttrName, Unit)', apply: 'attribute_unit(' },
       { label: 'has_type(', detail: 'has_type(NodeId, TypeName)', apply: 'has_type(' },
@@ -220,10 +232,22 @@ export function buildNodeBookInBlockCompletions(): CompletionSource[] {
 
     const options = [
       { label: '<rel> what;', detail: 'Object unknown — what is this node <rel> to?', apply: '<rel> what;' },
-      { label: '<how> Target;', detail: 'Relation unknown — how does this node relate to Target?', apply: '<how> Target;' },
-      { label: 'what: value;', detail: 'Attribute name unknown — what attribute has this value?', apply: 'what: value;' },
+      {
+        label: '<how> Target;',
+        detail: 'Relation unknown — how does this node relate to Target?',
+        apply: '<how> Target;'
+      },
+      {
+        label: 'what: value;',
+        detail: 'Attribute name unknown — what attribute has this value?',
+        apply: 'what: value;'
+      },
       { label: 'attr: what;', detail: 'Value unknown — what is the value of this attribute?', apply: 'attr: what;' },
-      { label: 'who <rel> Target;', detail: 'Subject unknown (graph-level) — who <rel> Target?', apply: 'who <rel> Target;' }
+      {
+        label: 'who <rel> Target;',
+        detail: 'Subject unknown (graph-level) — who <rel> Target?',
+        apply: 'who <rel> Target;'
+      }
     ]
 
     return { from, options, filter: true }

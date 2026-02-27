@@ -11,15 +11,6 @@ interface HedgeDocLogoVerticalProps {
   size?: LogoSize | number
 }
 
-export const HedgeDocLogoVertical: React.FC<HedgeDocLogoVerticalProps> = ({
-  size = LogoSize.MEDIUM
-}) => {
-  return (
-    <img
-      src='/logo.png'
-      alt='nodeBook'
-      height={size}
-      width={size}
-    />
-  )
+export const HedgeDocLogoVertical: React.FC<HedgeDocLogoVerticalProps> = ({ size = LogoSize.MEDIUM }) => {
+  return <img src='/logo.png' alt='nodeBook' height={size} width={size} />
 }

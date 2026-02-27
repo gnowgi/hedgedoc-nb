@@ -96,9 +96,7 @@ const SummaryTable: React.FC<{ summaries: CategorySummary[]; directive: SummaryD
   directive
 }) => {
   const filtered =
-    directive.categories.length > 0
-      ? summaries.filter((s) => directive.categories.includes(s.category))
-      : summaries
+    directive.categories.length > 0 ? summaries.filter((s) => directive.categories.includes(s.category)) : summaries
 
   return (
     <div className={styles['ledger-section']}>

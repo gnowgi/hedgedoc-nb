@@ -155,10 +155,7 @@ export const Splitter: React.FC<SplitterProps> = ({ additionalContainerClassName
           onTouchEnd={onStopResizing}
           onMouseUp={onStopResizing}></div>
       )}
-      <div
-        id={'editor-edit-pane'}
-        className={styles['left']}
-        style={{ width: leftWidth }}>
+      <div id={'editor-edit-pane'} className={styles['left']} style={{ width: leftWidth }}>
         <div className={styles['inner']}>{left}</div>
       </div>
       {!isMobile && (
@@ -172,10 +169,7 @@ export const Splitter: React.FC<SplitterProps> = ({ additionalContainerClassName
           dividerButtonsShift={dividerButtonsShift}
         />
       )}
-      <div
-        id={'editor-view-pane'}
-        className={styles['right']}
-        style={{ width: rightWidth }}>
+      <div id={'editor-view-pane'} className={styles['right']} style={{ width: rightWidth }}>
         <div className={styles['inner']}>{right}</div>
       </div>
     </div>

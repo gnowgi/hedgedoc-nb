@@ -14,7 +14,12 @@ declare module 'tau-prolog' {
   interface Session {
     consult(program: string, options?: { success?: () => void; error?: (err: unknown) => void }): void
     query(goal: string, options?: { success?: (goal: unknown) => void; error?: (err: unknown) => void }): void
-    answer(options: { success?: (answer: Answer | false) => void; error?: (err: unknown) => void; fail?: () => void; limit?: number }): void
+    answer(options: {
+      success?: (answer: Answer | false) => void
+      error?: (err: unknown) => void
+      fail?: () => void
+      limit?: number
+    }): void
     format_answer(answer: Answer): string
   }
 

@@ -25,7 +25,12 @@ export const OrganizerSearch: React.FC<OrganizerSearchProps> = ({ searchFilter, 
 
   return (
     <InputGroup className='mb-3'>
-      <FormControl placeholder={placeholderText} aria-label={placeholderText} onChange={onChange} value={searchFilter} />
+      <FormControl
+        placeholder={placeholderText}
+        aria-label={placeholderText}
+        onChange={onChange}
+        value={searchFilter}
+      />
       <button className={styles.innerBtn} onClick={clearSearch}>
         <UiIcon icon={X} />
       </button>

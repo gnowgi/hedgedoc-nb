@@ -11,9 +11,9 @@ export interface ScoreRingProps {
 }
 
 function getScoreColor(score: number): string {
-  if (score <= 30) return '#dc3545'  // red
-  if (score <= 60) return '#ffc107'  // amber
-  return '#198754'                   // green
+  if (score <= 30) return '#dc3545' // red
+  if (score <= 60) return '#ffc107' // amber
+  return '#198754' // green
 }
 
 export const ScoreRing: React.FC<ScoreRingProps> = ({ score, size = 90 }) => {

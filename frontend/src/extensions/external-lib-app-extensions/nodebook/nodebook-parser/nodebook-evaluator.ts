@@ -4,7 +4,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-let mathjsInstance: { evaluate: (expr: string, scope: Record<string, number>) => number; parse: (expr: string) => unknown } | null = null
+let mathjsInstance: {
+  evaluate: (expr: string, scope: Record<string, number>) => number
+  parse: (expr: string) => unknown
+} | null = null
 
 /**
  * Lazily load and cache a sandboxed math.js instance.

@@ -57,7 +57,10 @@ const NoteItem: React.FC<{ note: NoteExploreEntryInterface }> = ({ note }) => {
           <UserAvatarForUsername username={note.owner} />
           <br />
           <small className={'text-muted'}>
-            <Trans i18nKey={'explore.timestamps.lastUpdated'} values={{ timeAgo: formatChangedAt(note.lastChangedAt) }} />
+            <Trans
+              i18nKey={'explore.timestamps.lastUpdated'}
+              values={{ timeAgo: formatChangedAt(note.lastChangedAt) }}
+            />
           </small>
         </div>
       </div>

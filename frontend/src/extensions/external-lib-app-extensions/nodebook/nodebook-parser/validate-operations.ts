@@ -3,7 +3,11 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { attributeTypes as defaultAttributeTypes, nodeTypes as defaultNodeTypes, relationTypes as defaultRelationTypes } from './schemas'
+import {
+  attributeTypes as defaultAttributeTypes,
+  nodeTypes as defaultNodeTypes,
+  relationTypes as defaultRelationTypes
+} from './schemas'
 import type { MergedSchemas } from './schema-store'
 import type { CnlOperation, CnlParseError } from './types'
 
@@ -49,7 +53,9 @@ export function validateOperations(operations: CnlOperation[], schemas?: MergedS
       const options = op.payload.options as { role?: string } | undefined
       const role = options?.role
       if (role && role !== 'individual' && role !== 'class' && !nodeTypes.find((nt) => nt.name === role)) {
-        errors.push({ message: `Unknown node type "${role}". Known types: ${nodeTypes.map((nt) => nt.name).join(', ')}` })
+        errors.push({
+          message: `Unknown node type "${role}". Known types: ${nodeTypes.map((nt) => nt.name).join(', ')}`
+        })
       }
     } else if (op.type === 'addAttribute') {
       const name = op.payload.name as string
@@ -79,7 +85,9 @@ export function validateOperations(operations: CnlOperation[], schemas?: MergedS
   // Warn about consolidated surface forms (plural/case variants merged into one node)
   for (const [nodeId, forms] of surfaceForms) {
     if (forms.size > 1) {
-      const formList = Array.from(forms).map((f) => `"${f}"`).join(', ')
+      const formList = Array.from(forms)
+        .map((f) => `"${f}"`)
+        .join(', ')
       errors.push({
         message: `Multiple forms ${formList} were consolidated into a single node "${nodeId}". Use a consistent name to avoid confusion.`
       })

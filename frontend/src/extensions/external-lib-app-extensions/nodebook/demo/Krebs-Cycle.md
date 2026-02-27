@@ -3,6 +3,7 @@
 The citric acid cycle (also called the Krebs cycle or TCA cycle) is the central metabolic hub of aerobic respiration. It takes place in the mitochondrial matrix and oxidises acetyl-CoA derived from carbohydrates, fats, and proteins. Each turn of the cycle produces 3 NADH, 1 FADH2, 1 GTP, and 2 CO2.
 
 In Petri net terms:
+
 - **Metabolites** (citrate, isocitrate, etc.) are **places**
 - **Enzymes** are **transitions**
 - **Stoichiometric coefficients** are **arc weights**

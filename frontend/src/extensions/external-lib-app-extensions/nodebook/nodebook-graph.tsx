@@ -15,7 +15,17 @@ import { MorphRegistry } from './nodebook-parser/morph-registry'
 import { evaluateExpression } from './nodebook-parser/nodebook-evaluator'
 import { operationsToGraph } from './nodebook-parser/operations-to-graph'
 import { TransitiveClosureEngine, PrologInferenceEngine } from './nodebook-parser/inference-engine'
-import type { CnlAttribute, CnlEdge, CnlGraphData, CnlNode, CnlParseError, InferredEdge, InferenceResult, PrologInferenceResult, QueryResult } from './nodebook-parser/types'
+import type {
+  CnlAttribute,
+  CnlEdge,
+  CnlGraphData,
+  CnlNode,
+  CnlParseError,
+  InferredEdge,
+  InferenceResult,
+  PrologInferenceResult,
+  QueryResult
+} from './nodebook-parser/types'
 import { validateOperations } from './nodebook-parser/validate-operations'
 import { getMergedSchemas } from './nodebook-parser/schema-store'
 import styles from './nodebook-graph.module.scss'
@@ -47,10 +57,27 @@ function isDarkMode(): boolean {
 
 /** Map currency codes to their symbols. */
 const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CNY: '¥',
-  PHP: '₱', KRW: '₩', THB: '฿', BRL: 'R$', ZAR: 'R',
-  MXN: '$', CAD: 'C$', AUD: 'A$', CHF: 'CHF', SEK: 'kr',
-  RUB: '₽', TRY: '₺', SAR: '﷼', AED: 'د.إ', NGN: '₦'
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  INR: '₹',
+  JPY: '¥',
+  CNY: '¥',
+  PHP: '₱',
+  KRW: '₩',
+  THB: '฿',
+  BRL: 'R$',
+  ZAR: 'R',
+  MXN: '$',
+  CAD: 'C$',
+  AUD: 'A$',
+  CHF: 'CHF',
+  SEK: 'kr',
+  RUB: '₽',
+  TRY: '₺',
+  SAR: '﷼',
+  AED: 'د.إ',
+  NGN: '₦'
 }
 
 /** Resolve a currency code/symbol to its display symbol. */
@@ -63,7 +90,13 @@ function resolveCurrencySymbol(currency: string | null): string {
 }
 
 /** Build a display label for a Petri-net place: name + token indicator + optional computed value. */
-function placeDisplayLabel(name: string, tokenCount: number, isAccounting: boolean, currencySymbol: string, computedValue?: number | null): string {
+function placeDisplayLabel(
+  name: string,
+  tokenCount: number,
+  isAccounting: boolean,
+  currencySymbol: string,
+  computedValue?: number | null
+): string {
   if (isAccounting) {
     return `${name}\n${currencySymbol}${tokenCount.toFixed(2)}`
   }
@@ -104,7 +137,9 @@ function graphHasCycle(edges: CnlEdge[]): boolean {
     if (!adj.has(edge.source_id)) adj.set(edge.source_id, [])
     adj.get(edge.source_id)!.push(edge.target_id)
   }
-  const WHITE = 0, GRAY = 1, BLACK = 2
+  const WHITE = 0,
+    GRAY = 1,
+    BLACK = 2
   const color = new Map<string, number>()
   for (const [node, neighbors] of adj) {
     color.set(node, WHITE)
@@ -178,7 +213,17 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
     } catch (error) {
       log.error('Error parsing CNL', error)
       return {
-        parsedGraphData: { nodes: [], edges: [], attributes: [], abbreviations: {}, expressions: [], queries: [], description: null, currency: null, errors: [{ message: String(error) }] } as CnlGraphData,
+        parsedGraphData: {
+          nodes: [],
+          edges: [],
+          attributes: [],
+          abbreviations: {},
+          expressions: [],
+          queries: [],
+          description: null,
+          currency: null,
+          errors: [{ message: String(error) }]
+        } as CnlGraphData,
         operations: []
       }
     }
@@ -206,7 +251,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       merged.currency = merged.currency ?? parsedGraphData.currency
       setGraphData(merged)
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [parsedGraphData, operations])
 
   // Determine graph mode
@@ -251,7 +298,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         if (!cancelled) setIsQueryRunning(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [graphData, graphMode])
 
   // Detect cycles in concept-map graphs (for stress layout)
@@ -261,22 +310,13 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   }, [graphData.edges, graphMode])
 
   // Detect accounting mode (Transaction nodes present)
-  const isAccountingMode = useMemo(
-    () => graphData.nodes.some((n) => n.role === 'Transaction'),
-    [graphData]
-  )
+  const isAccountingMode = useMemo(() => graphData.nodes.some((n) => n.role === 'Transaction'), [graphData])
 
   // Detect function mode (Function nodes present)
-  const hasFunctions = useMemo(
-    () => graphData.nodes.some((n) => n.role === 'Function'),
-    [graphData]
-  )
+  const hasFunctions = useMemo(() => graphData.nodes.some((n) => n.role === 'Function'), [graphData])
 
   // Resolve currency symbol from graph data
-  const currencySymbol = useMemo(
-    () => resolveCurrencySymbol(graphData.currency),
-    [graphData.currency]
-  )
+  const currencySymbol = useMemo(() => resolveCurrencySymbol(graphData.currency), [graphData.currency])
 
   // Compute prior/post state sets for Petri net mode
   const { priorStateNodeIds, postStateNodeIds } = useMemo(() => {
@@ -337,9 +377,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       const initialValues = new Map<string, number>()
       for (const node of graphData.nodes) {
         if (isTransitionRole(node.role)) continue
-        const valueAttr = graphData.attributes.find(
-          (a) => a.source_id === node.id && a.name.toLowerCase() === 'value'
-        )
+        const valueAttr = graphData.attributes.find((a) => a.source_id === node.id && a.name.toLowerCase() === 'value')
         if (valueAttr) {
           const numVal = parseFloat(valueAttr.value)
           if (!isNaN(numVal)) {
@@ -363,7 +401,16 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       }
     }
     setMarking(initial)
-  }, [graphData, graphMode, isAccountingMode, hasFunctions, priorStateNodeIds, postStateNodeIds, tokenMultiplier, maxPriorWeight])
+  }, [
+    graphData,
+    graphMode,
+    isAccountingMode,
+    hasFunctions,
+    priorStateNodeIds,
+    postStateNodeIds,
+    tokenMultiplier,
+    maxPriorWeight
+  ])
 
   // Petri net: check if a transition is enabled (respects arc weights)
   const isTransitionEnabled = useCallback(
@@ -429,9 +476,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             scope[abbrev] = nodeVal
           } else {
             // Find the attribute value from the source node
-            const valAttr = graphData.attributes.find(
-              (a) => a.source_id === info.nodeId && a.name === info.fullName
-            )
+            const valAttr = graphData.attributes.find((a) => a.source_id === info.nodeId && a.name === info.fullName)
             if (valAttr) {
               const numVal = parseFloat(valAttr.value)
               if (!isNaN(numVal)) scope[abbrev] = numVal
@@ -493,9 +538,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       const initialValues = new Map<string, number>()
       for (const node of graphData.nodes) {
         if (isTransitionRole(node.role)) continue
-        const valueAttr = graphData.attributes.find(
-          (a) => a.source_id === node.id && a.name.toLowerCase() === 'value'
-        )
+        const valueAttr = graphData.attributes.find((a) => a.source_id === node.id && a.name.toLowerCase() === 'value')
         if (valueAttr) {
           const numVal = parseFloat(valueAttr.value)
           if (!isNaN(numVal)) {
@@ -575,9 +618,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       const fn = graphData.nodes.find((n) => n.id === fnId)
       if (!fn) continue
 
-      const exprAttr = graphData.attributes.find(
-        (a) => a.source_id === fnId && a.name.toLowerCase() === 'definition'
-      )
+      const exprAttr = graphData.attributes.find((a) => a.source_id === fnId && a.name.toLowerCase() === 'definition')
       if (!exprAttr) continue
 
       const inputEdges = graphData.edges.filter((e) => e.source_id === fnId && e.name === 'has prior_state')
@@ -613,9 +654,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         if (nodeVal !== undefined) {
           scope[abbrev] = nodeVal
         } else {
-          const valAttr = graphData.attributes.find(
-            (a) => a.source_id === info.nodeId && a.name === info.fullName
-          )
+          const valAttr = graphData.attributes.find((a) => a.source_id === info.nodeId && a.name === info.fullName)
           if (valAttr) {
             const numVal = parseFloat(valAttr.value)
             if (!isNaN(numVal)) scope[abbrev] = numVal
@@ -860,7 +899,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       for (const node of inMemoryGraph.nodes) {
         if (isTransitionRole(node.role)) {
           const isFn = node.role === 'Function'
-          const exprAttr = isFn ? graphData.attributes.find((a) => a.source_id === node.id && a.name.toLowerCase() === 'definition') : null
+          const exprAttr = isFn
+            ? graphData.attributes.find((a) => a.source_id === node.id && a.name.toLowerCase() === 'definition')
+            : null
           cyNodes.push({
             data: {
               id: node.id,
@@ -876,12 +917,20 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           const groupId = `${assignment.role}-group-${assignment.transId}`
           const hasGroup = groupMembers.has(groupId)
           const isPrior = assignment.role === 'prior'
-          const tokens = marking.get(node.id) ?? (isPrior ? (isAccountingMode ? 0 : tokenMultiplier * (maxPriorWeight.get(node.id) ?? 1)) : 0)
+          const tokens =
+            marking.get(node.id) ??
+            (isPrior ? (isAccountingMode ? 0 : tokenMultiplier * (maxPriorWeight.get(node.id) ?? 1)) : 0)
           cyNodes.push({
             data: {
               id: node.id,
               label: node.name,
-              displayLabel: placeDisplayLabel(node.name, tokens, isAccountingMode, currencySymbol, placeValues.get(node.id)),
+              displayLabel: placeDisplayLabel(
+                node.name,
+                tokens,
+                isAccountingMode,
+                currencySymbol,
+                placeValues.get(node.id)
+              ),
               type: 'pn-place',
               tokenCount: tokens,
               computedValue: placeValues.get(node.id) ?? null,
@@ -941,7 +990,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         // Reverse direction: place → transition (for correct LR flow)
         const arcLabel = isAccountingMode
           ? `${currencySymbol}${edge.weight.toFixed(2)}`
-          : edge.weight > 1 ? circledNumber(edge.weight) : ''
+          : edge.weight > 1
+            ? circledNumber(edge.weight)
+            : ''
         cyEdges.push({
           data: {
             id: edge.id,
@@ -955,7 +1006,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         // Direction already correct: transition → place
         const arcLabel = isAccountingMode
           ? `${currencySymbol}${edge.weight.toFixed(2)}`
-          : edge.weight > 1 ? circledNumber(edge.weight) : ''
+          : edge.weight > 1
+            ? circledNumber(edge.weight)
+            : ''
         cyEdges.push({
           data: {
             id: edge.id,
@@ -1369,8 +1422,22 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       cy.destroy()
       cyRef.current = null
     }
-  // Note: scrollZoomEnabled is intentionally excluded — toggling it updates the live cy instance directly via toggleScrollZoom
-  }, [cytoscapeModules, inMemoryGraph, graphMode, layoutConfig, marking, placeValues, priorStateNodeIds, postStateNodeIds, isTransitionEnabled, fireTransition, graphData, isAccountingMode, currencySymbol])
+    // Note: scrollZoomEnabled is intentionally excluded — toggling it updates the live cy instance directly via toggleScrollZoom
+  }, [
+    cytoscapeModules,
+    inMemoryGraph,
+    graphMode,
+    layoutConfig,
+    marking,
+    placeValues,
+    priorStateNodeIds,
+    postStateNodeIds,
+    isTransitionEnabled,
+    fireTransition,
+    graphData,
+    isAccountingMode,
+    currencySymbol
+  ])
 
   // Update Cytoscape node data when marking or placeValues change (without full re-render)
   useEffect(() => {
@@ -1380,7 +1447,10 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       if (node.length) {
         node.data('tokenCount', count)
         node.data('computedValue', placeValues.get(placeId) ?? null)
-        node.data('displayLabel', placeDisplayLabel(node.data('label'), count, isAccountingMode, currencySymbol, placeValues.get(placeId)))
+        node.data(
+          'displayLabel',
+          placeDisplayLabel(node.data('label'), count, isAccountingMode, currencySymbol, placeValues.get(placeId))
+        )
       }
     }
     // Also update places that only have value changes (not in marking)
@@ -1482,7 +1552,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const handleExportSvg = useCallback(() => {
     if (!cyRef.current) return
     try {
-      const svgContent = (cyRef.current as unknown as { svg: (opts: Record<string, unknown>) => string }).svg({ full: true, scale: 1, bg: '#ffffff' })
+      const svgContent = (cyRef.current as unknown as { svg: (opts: Record<string, unknown>) => string }).svg({
+        full: true,
+        scale: 1,
+        bg: '#ffffff'
+      })
       const blob = new Blob([svgContent], { type: 'image/svg+xml' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -1547,19 +1621,21 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const nodeDisplayMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const node of graphData.nodes) {
-      const label = node.role && node.role !== 'individual' && node.role !== 'class'
-        ? `${node.name} [${node.role}]`
-        : node.name
+      const label =
+        node.role && node.role !== 'individual' && node.role !== 'class' ? `${node.name} [${node.role}]` : node.name
       map.set(node.id, label)
     }
     return map
   }, [graphData.nodes])
 
   /** Strip Prolog single-quotes and resolve to display name if it's a known node ID. */
-  const resolveBinding = useCallback((raw: string): string => {
-    const stripped = raw.replace(/^'(.*)'$/, '$1')
-    return nodeDisplayMap.get(stripped) ?? raw
-  }, [nodeDisplayMap])
+  const resolveBinding = useCallback(
+    (raw: string): string => {
+      const stripped = raw.replace(/^'(.*)'$/, '$1')
+      return nodeDisplayMap.get(stripped) ?? raw
+    },
+    [nodeDisplayMap]
+  )
 
   if (graphData.errors.length > 0 && graphData.nodes.length === 0) {
     return <ApplicationErrorAlert>{graphData.errors.map((e) => e.message).join('; ')}</ApplicationErrorAlert>
@@ -1568,10 +1644,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const isPetriNet = graphMode === 'petri-net'
 
   return (
-    <AsyncLoadingBoundary loading={isLibLoading || !cytoscapeModules} componentName={'nodeBook'} error={libLoadingError}>
+    <AsyncLoadingBoundary
+      loading={isLibLoading || !cytoscapeModules}
+      componentName={'nodeBook'}
+      error={libLoadingError}>
       <div className={styles['nodebook-container']} {...cypressId('nodebook-frame')}>
         {hasValidated && validationWarnings.length === 0 && (
-          <div className={`${styles['validation-pass-banner']} d-print-none`}>Validation passed - no schema warnings</div>
+          <div className={`${styles['validation-pass-banner']} d-print-none`}>
+            Validation passed - no schema warnings
+          </div>
         )}
         {hasValidated && validationWarnings.length > 0 && (
           <div className={`${styles['warning-banner']} d-print-none`}>
@@ -1593,9 +1674,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         )}
 
         {isPetriNet && !isAccountingMode && !hasEnabledTransition && marking.size > 0 && (
-          <div className={`${styles['deadlock-banner']} d-print-none`}>
-            Deadlock: no transition can fire
-          </div>
+          <div className={`${styles['deadlock-banner']} d-print-none`}>Deadlock: no transition can fire</div>
         )}
 
         {isAccountingMode && unbalancedTransactions.length > 0 && (
@@ -1604,7 +1683,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
               <summary>{unbalancedTransactions.length} unbalanced transaction(s)</summary>
               <ul>
                 {unbalancedTransactions.map((t, i) => (
-                  <li key={i}>{t.name}: debits {currencySymbol}{t.debits.toFixed(2)} != credits {currencySymbol}{t.credits.toFixed(2)}</li>
+                  <li key={i}>
+                    {t.name}: debits {currencySymbol}
+                    {t.debits.toFixed(2)} != credits {currencySymbol}
+                    {t.credits.toFixed(2)}
+                  </li>
                 ))}
               </ul>
             </details>
@@ -1641,8 +1724,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           <button
             onClick={() => setShowSource((prev) => !prev)}
             className={showSource ? styles['toggle-active'] : undefined}
-            title={showSource ? 'Show graph view' : 'Show CNL source'}
-          >
+            title={showSource ? 'Show graph view' : 'Show CNL source'}>
             <IconCode size={14} />
           </button>
           <button onClick={handleZoomIn} title='Zoom in'>
@@ -1657,8 +1739,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           <button
             onClick={toggleScrollZoom}
             className={scrollZoomEnabled ? styles['toggle-active'] : undefined}
-            title={scrollZoomEnabled ? 'Disable scroll-to-zoom (currently on)' : 'Enable scroll-to-zoom (currently off)'}
-          >
+            title={
+              scrollZoomEnabled ? 'Disable scroll-to-zoom (currently on)' : 'Enable scroll-to-zoom (currently off)'
+            }>
             <IconMouse size={14} />
           </button>
           <button onClick={handleValidate} title='Validate against schemas'>
@@ -1668,8 +1751,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             <button
               onClick={() => setShowInferredEdges((prev) => !prev)}
               className={showInferredEdges ? styles['toggle-active'] : undefined}
-              title={showInferredEdges ? `Hide inferred edges (${inferenceResult.inferredEdges.length})` : `Show inferred edges (${inferenceResult.inferredEdges.length})`}
-            >
+              title={
+                showInferredEdges
+                  ? `Hide inferred edges (${inferenceResult.inferredEdges.length})`
+                  : `Show inferred edges (${inferenceResult.inferredEdges.length})`
+              }>
               <IconInference size={14} />
             </button>
           )}
@@ -1677,8 +1763,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             <button
               onClick={() => setShowQueryPanel((prev) => !prev)}
               className={showQueryPanel ? styles['toggle-active'] : undefined}
-              title={showQueryPanel ? 'Hide query results panel' : 'Show query results panel'}
-            >
+              title={showQueryPanel ? 'Hide query results panel' : 'Show query results panel'}>
               <IconQuery size={14} />
             </button>
           )}
@@ -1693,7 +1778,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         <div className={styles['source-view']} style={{ display: showSource ? undefined : 'none' }}>
           <HighlightedCode code={'```nodeBook\n' + code + '\n```'} language='cnl' wrapLines={false} />
         </div>
-        <div ref={containerRef} className={styles['graph-canvas']} style={{ display: showSource ? 'none' : undefined }} />
+        <div
+          ref={containerRef}
+          className={styles['graph-canvas']}
+          style={{ display: showSource ? 'none' : undefined }}
+        />
 
         {printImage && (
           <div className={styles['print-snapshot']}>
@@ -1716,40 +1805,46 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                 <div className={styles['query-goal']}>
                   <code>{result.displayString ?? `?- ${result.goalString}.`}</code>
                 </div>
-                {result.error && (
-                  <div className={styles['query-error']}>Error: {result.error}</div>
-                )}
-                {result.timedOut && (
-                  <div className={styles['query-warning']}>Query timed out</div>
-                )}
+                {result.error && <div className={styles['query-error']}>Error: {result.error}</div>}
+                {result.timedOut && <div className={styles['query-warning']}>Query timed out</div>}
                 {!result.error && !result.timedOut && result.bindings.length === 0 && (
                   <div className={styles['query-no-results']}>false (no results)</div>
                 )}
-                {!result.error && result.bindings.length > 0 && (() => {
-                  // Check if all bindings are empty (ground query returning true)
-                  const allEmpty = result.bindings.every((b) => Object.keys(b).length === 0)
-                  if (allEmpty) {
-                    return <div className={styles['query-no-results']}>true ({result.bindings.length} solution{result.bindings.length > 1 ? 's' : ''})</div>
-                  }
-                  // Get all variable names across all bindings
-                  const vars = Array.from(new Set(result.bindings.flatMap((b) => Object.keys(b))))
-                  return (
-                    <table className={styles['query-bindings-table']}>
-                      <thead>
-                        <tr>
-                          {vars.map((v) => <th key={v}>{v}</th>)}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {result.bindings.map((binding, i) => (
-                          <tr key={i}>
-                            {vars.map((v) => <td key={v}>{resolveBinding(binding[v] ?? '')}</td>)}
+                {!result.error &&
+                  result.bindings.length > 0 &&
+                  (() => {
+                    // Check if all bindings are empty (ground query returning true)
+                    const allEmpty = result.bindings.every((b) => Object.keys(b).length === 0)
+                    if (allEmpty) {
+                      return (
+                        <div className={styles['query-no-results']}>
+                          true ({result.bindings.length} solution{result.bindings.length > 1 ? 's' : ''})
+                        </div>
+                      )
+                    }
+                    // Get all variable names across all bindings
+                    const vars = Array.from(new Set(result.bindings.flatMap((b) => Object.keys(b))))
+                    return (
+                      <table className={styles['query-bindings-table']}>
+                        <thead>
+                          <tr>
+                            {vars.map((v) => (
+                              <th key={v}>{v}</th>
+                            ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )
-                })()}
+                        </thead>
+                        <tbody>
+                          {result.bindings.map((binding, i) => (
+                            <tr key={i}>
+                              {vars.map((v) => (
+                                <td key={v}>{resolveBinding(binding[v] ?? '')}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )
+                  })()}
               </div>
             ))}
             {!isQueryRunning && queryResults.length === 0 && (graphData.queries ?? []).length > 0 && (
@@ -1762,9 +1857,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           <div className={`${styles['node-detail-panel']} d-print-none`}>
             <h4>
               {selectedNode.name}
-              <span className={styles['node-type-badge']}>
-                {selectedNode.role}
-              </span>
+              <span className={styles['node-type-badge']}>{selectedNode.role}</span>
               {selectedNode.quantifier && (
                 <span className={styles['quantifier-badge']}>
                   {quantifierSymbol(selectedNode.quantifier).trim()} {selectedNode.quantifier}
@@ -1781,18 +1874,23 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             {isPetriNet && selectedNodeData.transitionData && (
               <div className={styles['transition-panel']}>
                 <div className={styles['transition-label']}>
-                  {selectedNode.role === 'Function' ? 'Function Transition' : isAccountingMode ? 'Accounting Transaction' : 'Petri Net Transition'}
+                  {selectedNode.role === 'Function'
+                    ? 'Function Transition'
+                    : isAccountingMode
+                      ? 'Accounting Transaction'
+                      : 'Petri Net Transition'}
                 </div>
-                {selectedNode.role === 'Function' && (() => {
-                  const exprAttr = graphData.attributes.find(
-                    (a) => a.source_id === selectedNode.id && a.name.toLowerCase() === 'definition'
-                  )
-                  return exprAttr ? (
-                    <div className={styles['definition-display']}>
-                      <strong>f(x)</strong> = <code>{exprAttr.value}</code>
-                    </div>
-                  ) : null
-                })()}
+                {selectedNode.role === 'Function' &&
+                  (() => {
+                    const exprAttr = graphData.attributes.find(
+                      (a) => a.source_id === selectedNode.id && a.name.toLowerCase() === 'definition'
+                    )
+                    return exprAttr ? (
+                      <div className={styles['definition-display']}>
+                        <strong>f(x)</strong> = <code>{exprAttr.value}</code>
+                      </div>
+                    ) : null
+                  })()}
                 <div className={styles['transition-flow']}>
                   <div className={styles['transition-flow-group']}>
                     <span className={styles['transition-flow-heading']}>
@@ -1802,8 +1900,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                       <span key={s.id} className={styles['transition-flow-item']}>
                         {isAccountingMode
                           ? `${currencySymbol}${s.weight.toFixed(2)} ${s.name} (bal: ${currencySymbol}${(marking.get(s.id) ?? 0).toFixed(2)})`
-                          : `${s.weight > 1 ? `${circledNumber(s.weight)} ` : ''}${s.name} (${marking.get(s.id) ?? 0})`
-                        }
+                          : `${s.weight > 1 ? `${circledNumber(s.weight)} ` : ''}${s.name} (${marking.get(s.id) ?? 0})`}
                       </span>
                     ))}
                   </div>
@@ -1818,8 +1915,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                       <span key={s.id} className={styles['transition-flow-item']}>
                         {isAccountingMode
                           ? `${currencySymbol}${s.weight.toFixed(2)} ${s.name} (bal: ${currencySymbol}${(marking.get(s.id) ?? 0).toFixed(2)})`
-                          : `${s.weight > 1 ? `${circledNumber(s.weight)} ` : ''}${s.name} (${marking.get(s.id) ?? 0})`
-                        }
+                          : `${s.weight > 1 ? `${circledNumber(s.weight)} ` : ''}${s.name} (${marking.get(s.id) ?? 0})`}
                       </span>
                     ))}
                   </div>
@@ -1829,8 +1925,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                     <button
                       className={styles['simulate-button']}
                       onClick={() => fireTransition(selectedNode.id)}
-                      disabled={!isTransitionEnabled(selectedNode.id, marking)}
-                    >
+                      disabled={!isTransitionEnabled(selectedNode.id, marking)}>
                       Fire Transition
                     </button>
                     <button className={styles['reset-button']} onClick={resetMarking}>
@@ -1850,15 +1945,18 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                     <strong>
                       {isAccountingMode
                         ? `${currencySymbol}${(marking.get(selectedNode.id) ?? 0).toFixed(2)}`
-                        : marking.get(selectedNode.id) ?? 0
-                      }
+                        : (marking.get(selectedNode.id) ?? 0)}
                     </strong>
                   </span>
                   <span>
-                    Role: {isAccountingMode
-                      ? (priorStateNodeIds.has(selectedNode.id) ? 'Credit Source' : 'Debit Destination')
-                      : (priorStateNodeIds.has(selectedNode.id) ? 'Prior State (Input)' : 'Post State (Output)')
-                    }
+                    Role:{' '}
+                    {isAccountingMode
+                      ? priorStateNodeIds.has(selectedNode.id)
+                        ? 'Credit Source'
+                        : 'Debit Destination'
+                      : priorStateNodeIds.has(selectedNode.id)
+                        ? 'Prior State (Input)'
+                        : 'Post State (Output)'}
                   </span>
                   {placeValues.has(selectedNode.id) && (
                     <span className={styles['computed-badge']}>
@@ -1891,41 +1989,45 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             )}
 
             {/* Inferred relations (concept map mode only) */}
-            {!isPetriNet && showInferredEdges && inMemoryGraph && (() => {
-              const inferredRels = inMemoryGraph.inferredEdges.filter((e) => e.source_id === selectedNode.id)
-              if (inferredRels.length === 0) return null
-              return (
-                <div className={styles['inferred-section']}>
-                  <h5>Inferred Relations <span className={styles['inferred-badge']}>inferred</span></h5>
-                  <ul>
-                    {inferredRels.map((rel) => {
-                      const targetNode = inMemoryGraph.nodes.find((n) => n.id === rel.target_id)
-                      return (
-                        <li key={rel.id}>
-                          <strong>{rel.name}</strong> &rarr; {targetNode?.name ?? rel.target_id}
-                          {rel.proofPath.length > 0 && (
-                            <button
-                              className={styles['proof-button']}
-                              onClick={() => {
-                                const cy = cyRef.current
-                                if (!cy) return
-                                cy.edges().removeClass('proof-highlight')
-                                for (const edgeId of rel.proofPath) {
-                                  cy.$id(edgeId).addClass('proof-highlight')
-                                }
-                                setHighlightedProofPath(rel.proofPath)
-                              }}
-                            >
-                              show proof ({rel.proofPath.length} steps)
-                            </button>
-                          )}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
-              )
-            })()}
+            {!isPetriNet &&
+              showInferredEdges &&
+              inMemoryGraph &&
+              (() => {
+                const inferredRels = inMemoryGraph.inferredEdges.filter((e) => e.source_id === selectedNode.id)
+                if (inferredRels.length === 0) return null
+                return (
+                  <div className={styles['inferred-section']}>
+                    <h5>
+                      Inferred Relations <span className={styles['inferred-badge']}>inferred</span>
+                    </h5>
+                    <ul>
+                      {inferredRels.map((rel) => {
+                        const targetNode = inMemoryGraph.nodes.find((n) => n.id === rel.target_id)
+                        return (
+                          <li key={rel.id}>
+                            <strong>{rel.name}</strong> &rarr; {targetNode?.name ?? rel.target_id}
+                            {rel.proofPath.length > 0 && (
+                              <button
+                                className={styles['proof-button']}
+                                onClick={() => {
+                                  const cy = cyRef.current
+                                  if (!cy) return
+                                  cy.edges().removeClass('proof-highlight')
+                                  for (const edgeId of rel.proofPath) {
+                                    cy.$id(edgeId).addClass('proof-highlight')
+                                  }
+                                  setHighlightedProofPath(rel.proofPath)
+                                }}>
+                                show proof ({rel.proofPath.length} steps)
+                              </button>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )
+              })()}
 
             {/* Morph sections */}
             {selectedNodeData.morphSections.map(
@@ -1940,13 +2042,19 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                             <strong>{attr.name}:</strong> {attr.value}
                             {attr.unit ? ` ${attr.unit}` : ''}
                             {attr.quantifier && (
-                              <span className={`${styles['attr-tag']} ${styles['attr-tag-quantifier']}`}>{attr.quantifier}</span>
+                              <span className={`${styles['attr-tag']} ${styles['attr-tag-quantifier']}`}>
+                                {attr.quantifier}
+                              </span>
                             )}
                             {attr.adverb && (
-                              <span className={`${styles['attr-tag']} ${styles['attr-tag-adverb']}`}>{attr.adverb}</span>
+                              <span className={`${styles['attr-tag']} ${styles['attr-tag-adverb']}`}>
+                                {attr.adverb}
+                              </span>
                             )}
                             {attr.modality && (
-                              <span className={`${styles['attr-tag']} ${styles['attr-tag-modality']}`}>{attr.modality}</span>
+                              <span className={`${styles['attr-tag']} ${styles['attr-tag-modality']}`}>
+                                {attr.modality}
+                              </span>
                             )}
                           </li>
                         ))}
@@ -1956,7 +2064,8 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                       <ul>
                         {section.relations.map((rel) => (
                           <li key={rel.id}>
-                            <strong>{rel.name}</strong>{rel.weight > 1 ? ` ${circledNumber(rel.weight)}` : ''} &rarr; {rel.target_id}
+                            <strong>{rel.name}</strong>
+                            {rel.weight > 1 ? ` ${circledNumber(rel.weight)}` : ''} &rarr; {rel.target_id}
                           </li>
                         ))}
                       </ul>
@@ -1990,7 +2099,10 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
                         <td>
                           <span className={styles['account-type-badge']}>{n.role}</span>
                         </td>
-                        <td className={styles['balance-amount']}>{currencySymbol}{balance.toFixed(2)}</td>
+                        <td className={styles['balance-amount']}>
+                          {currencySymbol}
+                          {balance.toFixed(2)}
+                        </td>
                       </tr>
                     )
                   })}
@@ -2004,9 +2116,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
               )
               if (!hasTypedAccounts) return null
               const sum = (roles: string[]) =>
-                accountNodes
-                  .filter((n) => roles.includes(n.role))
-                  .reduce((s, n) => s + (marking.get(n.id) ?? 0), 0)
+                accountNodes.filter((n) => roles.includes(n.role)).reduce((s, n) => s + (marking.get(n.id) ?? 0), 0)
               const assets = sum(['Asset'])
               const liabilities = sum(['Liability'])
               const equity = sum(['Equity'])
@@ -2014,17 +2124,47 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
               const expenses = sum(['Expense'])
               return (
                 <div className={styles['accounting-equation']}>
-                  <span>Assets: <strong>{currencySymbol}{assets.toFixed(2)}</strong></span>
+                  <span>
+                    Assets:{' '}
+                    <strong>
+                      {currencySymbol}
+                      {assets.toFixed(2)}
+                    </strong>
+                  </span>
                   <span> = </span>
-                  <span>Liabilities: <strong>{currencySymbol}{liabilities.toFixed(2)}</strong></span>
+                  <span>
+                    Liabilities:{' '}
+                    <strong>
+                      {currencySymbol}
+                      {liabilities.toFixed(2)}
+                    </strong>
+                  </span>
                   <span> + </span>
-                  <span>Equity: <strong>{currencySymbol}{equity.toFixed(2)}</strong></span>
+                  <span>
+                    Equity:{' '}
+                    <strong>
+                      {currencySymbol}
+                      {equity.toFixed(2)}
+                    </strong>
+                  </span>
                   {(revenue > 0 || expenses > 0) && (
                     <>
                       <span> + </span>
-                      <span>Revenue: <strong>{currencySymbol}{revenue.toFixed(2)}</strong></span>
+                      <span>
+                        Revenue:{' '}
+                        <strong>
+                          {currencySymbol}
+                          {revenue.toFixed(2)}
+                        </strong>
+                      </span>
                       <span> - </span>
-                      <span>Expenses: <strong>{currencySymbol}{expenses.toFixed(2)}</strong></span>
+                      <span>
+                        Expenses:{' '}
+                        <strong>
+                          {currencySymbol}
+                          {expenses.toFixed(2)}
+                        </strong>
+                      </span>
                     </>
                   )}
                 </div>
