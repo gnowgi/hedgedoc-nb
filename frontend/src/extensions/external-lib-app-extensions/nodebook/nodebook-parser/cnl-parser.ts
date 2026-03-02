@@ -32,10 +32,23 @@ function prologAtom(s: string): string {
 
 /** Maps relation aliases to their canonical Petri net equivalents. */
 const RELATION_ALIAS_MAP: Record<string, string> = {
+  // Accounting
   debit: 'has post_state',
   credit: 'has prior_state',
+  // General
   input: 'has prior_state',
-  output: 'has post_state'
+  output: 'has post_state',
+  in: 'has prior_state',
+  out: 'has post_state',
+  // Mathematics
+  lhs: 'has prior_state',
+  rhs: 'has post_state',
+  // Chemistry
+  reactant: 'has prior_state',
+  product: 'has post_state',
+  // Systems theory
+  'in-flow': 'has prior_state',
+  'out-flow': 'has post_state'
 }
 
 /** Maps role synonyms to their canonical form. */
@@ -547,7 +560,7 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
     const [, relationName, targets] = match
     const trimmedRelName = relationName.trim()
     const isAccountingRelation = trimmedRelName === 'debit' || trimmedRelName === 'credit'
-    const mappedRelName = RELATION_ALIAS_MAP[trimmedRelName] ?? trimmedRelName
+    const mappedRelName = RELATION_ALIAS_MAP[trimmedRelName.toLowerCase()] ?? trimmedRelName
     for (const rawTarget of targets
       .split(';')
       .map((t) => t.trim())
@@ -764,7 +777,7 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
     const [, relationName, targets] = match
     const trimmedRelName = relationName.trim()
     const isAccountingRelation = trimmedRelName === 'debit' || trimmedRelName === 'credit'
-    const mappedRelName = RELATION_ALIAS_MAP[trimmedRelName] ?? trimmedRelName
+    const mappedRelName = RELATION_ALIAS_MAP[trimmedRelName.toLowerCase()] ?? trimmedRelName
     for (const rawTarget of targets
       .split(';')
       .map((t) => t.trim())

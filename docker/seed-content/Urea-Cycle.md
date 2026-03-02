@@ -78,11 +78,11 @@ The first nitrogen enters the cycle: ammonia and CO2 are condensed into carbamoy
 # ADP [Cofactor]
 
 # CPS I [Transition]
-<has prior_state> CO2;
-<has prior_state> NH3;
-<has prior_state 2> ATP;
-<has post_state> Carbamoyl Phosphate;
-<has post_state 2> ADP;
+<reactant> CO2;
+<reactant> NH3;
+<reactant> 2 ATP;
+<product> Carbamoyl Phosphate;
+<product> 2 ADP;
 ```
 
 ### Step 2 — Ornithine Transcarbamylase (OTC)
@@ -96,10 +96,10 @@ Carbamoyl phosphate reacts with ornithine to form citrulline, which is then tran
 # Pi [Metabolite]
 
 # OTC [Transition]
-<has prior_state> Carbamoyl Phosphate;
-<has prior_state> Ornithine;
-<has post_state> Citrulline;
-<has post_state> Pi;
+<reactant> Carbamoyl Phosphate;
+<reactant> Ornithine;
+<product> Citrulline;
+<product> Pi;
 ```
 
 ### Step 3 — Argininosuccinate Synthetase (ASS)
@@ -115,12 +115,12 @@ The second nitrogen enters via aspartate: citrulline and aspartate condense to f
 # PPi [Metabolite]
 
 # Argininosuccinate Synthetase [Transition]
-<has prior_state> Citrulline;
-<has prior_state> Aspartate;
-<has prior_state> ATP;
-<has post_state> Argininosuccinate;
-<has post_state> AMP;
-<has post_state> PPi;
+<reactant> Citrulline;
+<reactant> Aspartate;
+<reactant> ATP;
+<product> Argininosuccinate;
+<product> AMP;
+<product> PPi;
 ```
 
 ### Step 4 — Argininosuccinate Lyase (ASL)
@@ -133,9 +133,9 @@ Argininosuccinate is cleaved into arginine and fumarate. The fumarate enters the
 # Fumarate [Metabolite]
 
 # Argininosuccinate Lyase [Transition]
-<has prior_state> Argininosuccinate;
-<has post_state> Arginine;
-<has post_state> Fumarate;
+<reactant> Argininosuccinate;
+<product> Arginine;
+<product> Fumarate;
 ```
 
 ### Step 5 — Arginase
@@ -149,10 +149,10 @@ The final step: arginine is hydrolysed to ornithine (regenerating the cycle carr
 # Urea [Metabolite]
 
 # Arginase [Transition]
-<has prior_state> Arginine;
-<has prior_state> H2O;
-<has post_state> Ornithine;
-<has post_state> Urea;
+<reactant> Arginine;
+<reactant> H2O;
+<product> Ornithine;
+<product> Urea;
 ```
 
 ## Connection to the Krebs Cycle
@@ -196,15 +196,15 @@ One full turn of the urea cycle:
 # PPi [Metabolite]
 
 # Urea Cycle Net [Transition]
-<has prior_state> NH3;
-<has prior_state> CO2;
-<has prior_state> Aspartate;
-<has prior_state 3> ATP;
-<has prior_state> H2O;
-<has post_state> Urea;
-<has post_state> Fumarate;
-<has post_state 2> ADP;
-<has post_state> AMP;
-<has post_state 2> Pi;
-<has post_state> PPi;
+<reactant> NH3;
+<reactant> CO2;
+<reactant> Aspartate;
+<reactant> 3 ATP;
+<reactant> H2O;
+<product> Urea;
+<product> Fumarate;
+<product> 2 ADP;
+<product> AMP;
+<product> 2 Pi;
+<product> PPi;
 ```

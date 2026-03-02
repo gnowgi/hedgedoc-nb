@@ -69,10 +69,10 @@ In the investment phase, 2 ATP are consumed to phosphorylate glucose into fructo
 # ADP [Metabolite]
 
 # Investment Phase [Transition]
-<has prior_state 1> Glucose;
-<has prior_state 2> ATP;
-<has post_state 1> F16BP;
-<has post_state 2> ADP;
+<reactant> Glucose;
+<reactant> 2 ATP;
+<product> F16BP;
+<product> 2 ADP;
 ```
 
 ## Phase 2 — Energy Payoff (Summary)
@@ -88,12 +88,12 @@ The payoff phase extracts energy from G3P, yielding 4 ATP and 2 NADH (net gain: 
 # ATP [Metabolite]
 
 # Payoff Phase [Transition]
-<has prior_state 2> G3P;
-<has prior_state 2> NAD+;
-<has prior_state 4> ADP;
-<has post_state 2> Pyruvate;
-<has post_state 2> NADH;
-<has post_state 4> ATP;
+<reactant> 2 G3P;
+<reactant> 2 NAD+;
+<reactant> 4 ADP;
+<product> 2 Pyruvate;
+<product> 2 NADH;
+<product> 4 ATP;
 ```
 
 ## Individual Reactions
@@ -109,10 +109,10 @@ The first committed step: glucose is phosphorylated to glucose-6-phosphate, cons
 # ADP [Cofactor]
 
 # Hexokinase [Transition]
-<has prior_state> Glucose;
-<has prior_state> ATP;
-<has post_state> G6P;
-<has post_state> ADP;
+<reactant> Glucose;
+<reactant> ATP;
+<product> G6P;
+<product> ADP;
 ```
 
 ### Step 3 — Phosphofructokinase (PFK-1)
@@ -126,10 +126,10 @@ The key regulatory step: fructose-6-phosphate is phosphorylated to fructose-1,6-
 # ADP [Cofactor]
 
 # Phosphofructokinase [Transition]
-<has prior_state> F6P;
-<has prior_state> ATP;
-<has post_state> F16BP;
-<has post_state> ADP;
+<reactant> F6P;
+<reactant> ATP;
+<product> F16BP;
+<product> ADP;
 ```
 
 ### Step 7 — Phosphoglycerate Kinase
@@ -143,10 +143,10 @@ The first substrate-level phosphorylation: 1,3-BPG donates a phosphate to ADP, f
 # ATP [Cofactor]
 
 # Phosphoglycerate Kinase [Transition]
-<has prior_state> 13BPG;
-<has prior_state> ADP;
-<has post_state> 3PG;
-<has post_state> ATP;
+<reactant> 13BPG;
+<reactant> ADP;
+<product> 3PG;
+<product> ATP;
 ```
 
 ### Step 10 — Pyruvate Kinase
@@ -160,10 +160,10 @@ The final step: PEP transfers its phosphate to ADP, producing pyruvate and ATP.
 # ATP [Cofactor]
 
 # Pyruvate Kinase [Transition]
-<has prior_state> PEP;
-<has prior_state> ADP;
-<has post_state> Pyruvate;
-<has post_state> ATP;
+<reactant> PEP;
+<reactant> ADP;
+<product> Pyruvate;
+<product> ATP;
 ```
 
 ## Net Equation
@@ -183,12 +183,12 @@ The overall reaction of glycolysis summarised as a single transition:
 # H2O [Metabolite]
 
 # Glycolysis Net [Transition]
-<has prior_state 1> Glucose;
-<has prior_state 2> NAD+;
-<has prior_state 2> ADP;
-<has prior_state 2> Pi;
-<has post_state 2> Pyruvate;
-<has post_state 2> NADH;
-<has post_state 2> ATP;
-<has post_state 2> H2O;
+<reactant> Glucose;
+<reactant> 2 NAD+;
+<reactant> 2 ADP;
+<reactant> 2 Pi;
+<product> 2 Pyruvate;
+<product> 2 NADH;
+<product> 2 ATP;
+<product> 2 H2O;
 ```
