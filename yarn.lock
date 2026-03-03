@@ -2875,7 +2875,7 @@ __metadata:
     "@nestjs/config": "npm:3.3.0"
     "@nestjs/core": "npm:10.4.20"
     "@nestjs/event-emitter": "npm:2.1.1"
-    "@nestjs/platform-fastify": "npm:11.1.12"
+    "@nestjs/platform-fastify": "npm:11.1.14"
     "@nestjs/platform-ws": "npm:10.4.20"
     "@nestjs/schedule": "npm:4.1.2"
     "@nestjs/schematics": "npm:10.2.3"
@@ -4237,14 +4237,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/platform-fastify@npm:11.1.12":
-  version: 11.1.12
-  resolution: "@nestjs/platform-fastify@npm:11.1.12"
+"@nestjs/platform-fastify@npm:11.1.14":
+  version: 11.1.14
+  resolution: "@nestjs/platform-fastify@npm:11.1.14"
   dependencies:
     "@fastify/cors": "npm:11.2.0"
     "@fastify/formbody": "npm:8.0.2"
     fast-querystring: "npm:1.1.2"
-    fastify: "npm:5.6.2"
+    fastify: "npm:5.7.4"
     fastify-plugin: "npm:5.1.0"
     find-my-way: "npm:9.4.0"
     light-my-request: "npm:6.6.0"
@@ -4261,7 +4261,7 @@ __metadata:
       optional: true
     "@fastify/view":
       optional: true
-  checksum: 10c0/57c5fa9580768e5d22988fee5bf54d76e0027432dcff566e11a8ce130f5cfe7ddb77e4854be8fe1210f73f52f30c4f6fbac429c6ccb4ac0ae9cd101a734b4cf6
+  checksum: 10c0/d8506f0bb027ac769c830c06fa17cc7fa269378dfa90ab3a4fb4b372dd5434871e6816992c6f98f6165c38070635ef1aceedcd8c715e1a484aeee6960a18ea69
   languageName: node
   linkType: hard
 
