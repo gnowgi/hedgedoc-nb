@@ -3050,7 +3050,7 @@ __metadata:
     diff: "npm:8.0.3"
     dom-serializer: "npm:2.0.0"
     domhandler: "npm:5.0.3"
-    dompurify: "npm:3.3.1"
+    dompurify: "npm:3.4.0"
     dotenv-cli: "npm:11.0.0"
     emoji-picker-element: "npm:1.28.0"
     emoji-picker-element-data: "npm:1.8.0"
@@ -9330,7 +9330,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dompurify@npm:*, dompurify@npm:3.3.1":
+"dompurify@npm:*":
   version: 3.3.1
   resolution: "dompurify@npm:3.3.1"
   dependencies:
@@ -9339,6 +9339,18 @@ __metadata:
     "@types/trusted-types":
       optional: true
   checksum: 10c0/fa0a8c55a436ba0d54389195e3d2337e311f56de709a2fc9efc98dbbc7746fa53bb4b74b6ac043b77a279a8f2ebd8685f0ebaa6e58c9e32e92051d529bc0baf8
+  languageName: node
+  linkType: hard
+
+"dompurify@npm:3.4.0":
+  version: 3.4.0
+  resolution: "dompurify@npm:3.4.0"
+  dependencies:
+    "@types/trusted-types": "npm:^2.0.7"
+  dependenciesMeta:
+    "@types/trusted-types":
+      optional: true
+  checksum: 10c0/5593ac44ee20b9aa521c2120884effc98927fb9128c548183c75e79e0a04357c62ee913a049a267c8f396cb8c9d520ecf72562826c5524c46d4fe03c12063638
   languageName: node
   linkType: hard
 
