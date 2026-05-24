@@ -23,7 +23,6 @@ import type {
   CnlParseError,
   InferredEdge,
   InferenceResult,
-  PrologInferenceResult,
   QueryResult
 } from './nodebook-parser/types'
 import { validateOperations } from './nodebook-parser/validate-operations'
@@ -38,7 +37,6 @@ import {
   Fullscreen as IconFit,
   Mouse as IconMouse,
   ArrowCounterclockwise as IconReset,
-  PlayFill as IconPlay,
   ShieldCheck as IconValidate,
   Image as IconPng,
   FileEarmarkCode as IconSvg,
@@ -110,7 +108,7 @@ function placeDisplayLabel(
 }
 
 /** Account types recognized for the accounting equation. */
-const ACCOUNT_TYPES = new Set(['Account', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])
+const _ACCOUNT_TYPES = new Set(['Account', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])
 
 /** Relation names that express containment (class hierarchy / membership). */
 const CONTAINMENT_RELATIONS = new Set(['is_a', 'member_of', 'instance_of'])
@@ -191,7 +189,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [tokenMultiplier, setTokenMultiplier] = useState<number>(1)
   const [graphInteractionEnabled, setGraphInteractionEnabled] = useState(false)
   const [showInferredEdges, setShowInferredEdges] = useState(true)
-  const [highlightedProofPath, setHighlightedProofPath] = useState<string[] | null>(null)
+  const [, setHighlightedProofPath] = useState<string[] | null>(null)
   const [queryResults, setQueryResults] = useState<QueryResult[]>([])
   const [isQueryRunning, setIsQueryRunning] = useState(false)
   const [showQueryPanel, setShowQueryPanel] = useState(true)
@@ -827,7 +825,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   }, [operations])
 
   // Build morph registry from parsed graph
-  const morphRegistry = useMemo(() => {
+  const _morphRegistry = useMemo(() => {
     const registry = new MorphRegistry()
     for (const node of graphData.nodes) {
       for (const morph of node.morphs) {
@@ -1634,6 +1632,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       cyRef.current = null
     }
     // Note: graphInteractionEnabled is intentionally excluded — toggling it updates the live cy instance directly via toggleGraphInteraction
+    // oxlint-disable-next-line exhaustive-deps
   }, [
     cytoscapeModules,
     inMemoryGraph,

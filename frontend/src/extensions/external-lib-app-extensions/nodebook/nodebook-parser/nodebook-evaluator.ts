@@ -51,7 +51,7 @@ export async function evaluateExpression(
 /**
  * Parse a math expression into an AST (for equation-to-PN decomposition).
  */
-export async function parseExpression(expression: string): Promise<{ ast: unknown | null; error: string | null }> {
+export async function parseExpression(expression: string): Promise<{ ast: unknown; error: string | null }> {
   try {
     const math = await getMathjsInstance()
     if (!math) return { ast: null, error: 'Failed to load math.js' }

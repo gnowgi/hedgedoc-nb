@@ -9,7 +9,7 @@ import type { HLJSApi, Language } from 'highlight.js'
  * highlight.js language definition for CNL (Controlled Natural Language)
  * used in nodeBook code fences.
  */
-export default function cnlLanguage(hljs: HLJSApi): Language {
+export default function cnlLanguage(_hljs: HLJSApi): Language {
   return {
     name: 'cnl',
     aliases: ['nodeBook'],

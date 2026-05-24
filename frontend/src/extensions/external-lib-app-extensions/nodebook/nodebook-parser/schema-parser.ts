@@ -247,7 +247,7 @@ export function parseSchemaBlock(text: string): SchemaParseResult {
         const result = parseNodeTypeLine(fields)
         if (result.error) {
           errors.push({ message: `Line ${lineNum}: ${result.error}`, line: lineNum })
-        } else {
+        } else if (result.value) {
           nodeTypes.push(result.value)
         }
         break
@@ -256,7 +256,7 @@ export function parseSchemaBlock(text: string): SchemaParseResult {
         const result = parseRelationTypeLine(fields)
         if (result.error) {
           errors.push({ message: `Line ${lineNum}: ${result.error}`, line: lineNum })
-        } else {
+        } else if (result.value) {
           relationTypes.push(result.value)
         }
         break
@@ -265,7 +265,7 @@ export function parseSchemaBlock(text: string): SchemaParseResult {
         const result = parseAttributeTypeLine(fields)
         if (result.error) {
           errors.push({ message: `Line ${lineNum}: ${result.error}`, line: lineNum })
-        } else {
+        } else if (result.value) {
           attributeTypes.push(result.value)
         }
         break
@@ -274,7 +274,7 @@ export function parseSchemaBlock(text: string): SchemaParseResult {
         const result = parseTransitionTypeLine(fields)
         if (result.error) {
           errors.push({ message: `Line ${lineNum}: ${result.error}`, line: lineNum })
-        } else {
+        } else if (result.value) {
           transitionTypes.push(result.value)
         }
         break
@@ -283,7 +283,7 @@ export function parseSchemaBlock(text: string): SchemaParseResult {
         const result = parseFunctionTypeLine(fields)
         if (result.error) {
           errors.push({ message: `Line ${lineNum}: ${result.error}`, line: lineNum })
-        } else {
+        } else if (result.value) {
           functionTypes.push(result.value)
         }
         break

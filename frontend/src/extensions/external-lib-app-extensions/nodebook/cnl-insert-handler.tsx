@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { useChangeEditorContentCallback } from '../../../components/editor-page/change-content-context/use-change-editor-content-callback'
-import { store } from '../../../redux'
 import type React from 'react'
 import { useCallback, useEffect } from 'react'
 
@@ -59,7 +58,6 @@ function findInsertPosition(
 ): { edits: Array<{ from: number; to: number; insert: string }> } {
   const lines = markdownContent.split('\n')
   let lastAnalyzeEnd = -1
-  let nextNodeBookFenceStart = -1
   let nextNodeBookFenceEnd = -1
 
   // Find the last ```nodeBook-analyze closing fence
@@ -93,7 +91,6 @@ function findInsertPosition(
     const trimmed = line.trimStart()
     if (charOffset >= lastAnalyzeEnd) {
       if (!inNodeBook && trimmed.startsWith('```nodeBook') && !trimmed.startsWith('```nodeBook-')) {
-        nextNodeBookFenceStart = charOffset
         inNodeBook = true
       } else if (inNodeBook && trimmed === '```') {
         nextNodeBookFenceEnd = charOffset

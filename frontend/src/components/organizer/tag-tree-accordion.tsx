@@ -50,6 +50,7 @@ export const TagTreeAccordion: React.FC<TagTreeAccordionProps> = ({
       {sortedEntries.map(([key, node]) => (
         <Accordion.Item eventKey={key} key={key}>
           <Accordion.Header>
+            {/* oxlint-disable-next-line jsx_a11y/click-events-have-key-events, jsx_a11y/no-static-element-interactions */}
             <span
               className={'d-flex justify-content-between align-items-center w-100 me-2'}
               onClick={onHeaderClick(node.fullPath)}

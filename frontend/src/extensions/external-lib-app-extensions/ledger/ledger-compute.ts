@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { Account, ChartSubject, LedgerData, Transaction } from './ledger-parser'
+import type { ChartSubject, LedgerData, Transaction } from './ledger-parser'
 
 export interface TransactionRow {
   date: string

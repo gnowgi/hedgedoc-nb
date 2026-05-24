@@ -46,16 +46,6 @@ const SEMANTIC_CATEGORIES = new Set([
   'inputOutput',
 ]);
 
-// Categories that spaCy /extract/fast can handle
-const FAST_CATEGORIES = new Set([
-  'nodes',
-  'relations',
-  'adjectives',
-  'adverbs',
-  'quantifiers',
-  'modalities',
-]);
-
 /** Curated set of nominalized processes common in science textbooks.
  *  These are nouns that represent processes/transitions, not static concepts. */
 const NOMINALIZED_PROCESSES = new Set([
@@ -243,12 +233,12 @@ export class NodeBookAnalyzeService {
   async analyze(text: string, categories: string[]): Promise<AnalysisResult> {
     // Prefer NLP microservice if configured
     if (this.config.nlpServiceUrl) {
-      return this.analyzeViaNlpService(text, categories);
+      return await this.analyzeViaNlpService(text, categories);
     }
 
     // Fall back to LLM API
     if (this.config.apiUrl && this.config.apiKey) {
-      return this.analyzeViaLlmApi(text, categories);
+      return await this.analyzeViaLlmApi(text, categories);
     }
 
     throw new Error('No analysis service configured');
