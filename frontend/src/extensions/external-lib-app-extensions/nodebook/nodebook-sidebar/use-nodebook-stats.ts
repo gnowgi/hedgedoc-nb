@@ -5,12 +5,14 @@
  */
 import { useMemo } from 'react'
 import { useNoteMarkdownContent } from '../../../../hooks/common/use-note-markdown-content'
-import { getOperationsFromCnl } from '../nodebook-parser/cnl-parser'
-import { operationsToGraph } from '../nodebook-parser/operations-to-graph'
-import { validateOperations } from '../nodebook-parser/validate-operations'
-import { getMergedSchemas } from '../nodebook-parser/schema-store'
-import { TransitiveClosureEngine } from '../nodebook-parser/inference-engine'
-import type { CnlGraphData } from '../nodebook-parser/types'
+import {
+  getOperationsFromCnl,
+  operationsToGraph,
+  validateOperations,
+  getMergedSchemas,
+  TransitiveClosureEngine
+} from '@nodebook/core'
+import type { CnlGraphData } from '@nodebook/core'
 import { computeNodeBookScore, type NodeBookScore, type NodeBookStats } from './compute-nodebook-score'
 
 /** Regex to extract ```nodeBook blocks (but not ```nodeBook-schema). */

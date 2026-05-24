@@ -189,7 +189,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const [marking, setMarking] = useState<Map<string, number>>(new Map())
   const [placeValues, setPlaceValues] = useState<Map<string, number>>(new Map())
   const [tokenMultiplier, setTokenMultiplier] = useState<number>(1)
-  const [scrollZoomEnabled, setScrollZoomEnabled] = useState(false)
+  const [graphInteractionEnabled, setGraphInteractionEnabled] = useState(false)
   const [showInferredEdges, setShowInferredEdges] = useState(true)
   const [highlightedProofPath, setHighlightedProofPath] = useState<string[] | null>(null)
   const [queryResults, setQueryResults] = useState<QueryResult[]>([])
@@ -330,7 +330,8 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
   const { containmentParentMap, nestingDepthMap } = useMemo(() => {
     const parentMap = new Map<string, string>()
     const depthMap = new Map<string, number>()
-    if (!showContainment || graphMode === 'petri-net') return { containmentParentMap: parentMap, nestingDepthMap: depthMap }
+    if (!showContainment || graphMode === 'petri-net')
+      return { containmentParentMap: parentMap, nestingDepthMap: depthMap }
 
     // Cycle-safe ancestor walk: returns true if `target` is an ancestor of `start`
     function wouldCreateCycle(start: string, target: string): boolean {
@@ -1262,13 +1263,13 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
         selector: 'edge',
         style: {
           width: 2,
-          'line-color': dark ? '#64748b' : '#475569',
+          'line-color': dark ? '#94a3b8' : '#334155',
           'target-arrow-color': dark ? '#94a3b8' : '#334155',
           'target-arrow-shape': 'triangle',
           'curve-style': 'bezier',
           label: 'data(label)',
-          'font-size': '9px',
-          color: dark ? '#cbd5e1' : '#1e293b',
+          'font-size': '10px',
+          color: dark ? '#e2e8f0' : '#000000',
           'text-rotation': 'autorotate',
           'text-margin-y': -8
         }
@@ -1287,8 +1288,8 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
           'control-point-distances': [40] as unknown as undefined,
           'control-point-weights': [0.5] as unknown as undefined,
           opacity: 0.85,
-          'font-size': '8px',
-          color: dark ? '#a78bfa' : '#5b21b6',
+          'font-size': '9px',
+          color: dark ? '#c4b5fd' : '#4c1d95',
           'z-index': 0
         }
       },
@@ -1563,8 +1564,8 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       elements: [...cyNodes, ...cyEdges],
       style: graphStyles,
       layout: layoutConfig as cytoscape.LayoutOptions,
-      userZoomingEnabled: scrollZoomEnabled,
-      userPanningEnabled: true,
+      userZoomingEnabled: graphInteractionEnabled,
+      userPanningEnabled: graphInteractionEnabled,
       boxSelectionEnabled: false
     })
 
@@ -1573,7 +1574,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       if (inferredCyEdges.length > 0) {
         cy.add(inferredCyEdges)
       }
-      cy.fit(undefined, 30)
+      cy.fit(undefined, 50)
     })
 
     // Tap handlers
@@ -1632,7 +1633,7 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
       cy.destroy()
       cyRef.current = null
     }
-    // Note: scrollZoomEnabled is intentionally excluded — toggling it updates the live cy instance directly via toggleScrollZoom
+    // Note: graphInteractionEnabled is intentionally excluded — toggling it updates the live cy instance directly via toggleGraphInteraction
   }, [
     cytoscapeModules,
     inMemoryGraph,
@@ -1749,14 +1750,15 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
 
   const handleFitGraph = useCallback(() => {
     if (!cyRef.current) return
-    cyRef.current.fit(undefined, 30)
+    cyRef.current.fit(undefined, 50)
   }, [])
 
-  const toggleScrollZoom = useCallback(() => {
-    setScrollZoomEnabled((prev) => {
+  const toggleGraphInteraction = useCallback(() => {
+    setGraphInteractionEnabled((prev) => {
       const next = !prev
       if (cyRef.current) {
         cyRef.current.userZoomingEnabled(next)
+        cyRef.current.userPanningEnabled(next)
       }
       return next
     })
@@ -1950,11 +1952,9 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             <IconFit size={14} />
           </button>
           <button
-            onClick={toggleScrollZoom}
-            className={scrollZoomEnabled ? styles['toggle-active'] : undefined}
-            title={
-              scrollZoomEnabled ? 'Disable scroll-to-zoom (currently on)' : 'Enable scroll-to-zoom (currently off)'
-            }>
+            onClick={toggleGraphInteraction}
+            className={graphInteractionEnabled ? styles['toggle-active'] : undefined}
+            title={graphInteractionEnabled ? 'Lock graph (disable pan & zoom)' : 'Unlock graph (enable pan & zoom)'}>
             <IconMouse size={14} />
           </button>
           <button onClick={handleValidate} title='Validate against schemas'>
@@ -1976,7 +1976,11 @@ export const NodeBookGraph: React.FC<CodeProps> = ({ code }) => {
             <button
               onClick={() => setShowContainment((prev) => !prev)}
               className={showContainment ? styles['toggle-active'] : undefined}
-              title={showContainment ? 'Disable containment view' : 'Enable containment view (nest subclasses inside superclasses)'}>
+              title={
+                showContainment
+                  ? 'Disable containment view'
+                  : 'Enable containment view (nest subclasses inside superclasses)'
+              }>
               <IconBoxes size={14} />
             </button>
           )}
