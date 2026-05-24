@@ -10,9 +10,11 @@ import {
 } from '../../../components/editor-page/editor-pane/autocompletions/basic-completion'
 import type { MarkdownRendererExtension } from '../../../components/markdown-renderer/extensions/_base-classes/markdown-renderer-extension'
 import { AppExtension } from '../../_base-classes/app-extension'
-import { buildNodeBookInBlockCompletions } from './nodebook-completions'
+import { buildNodeBookInBlockCompletions } from '@nodebook/react'
+import { CnlInsertHandler } from './cnl-insert-handler'
 import { NodeBookMarkdownExtension } from './nodebook-markdown-extension'
 import type { CompletionSource } from '@codemirror/autocomplete'
+import type React from 'react'
 
 /**
  * Adds support for nodeBook knowledge graph rendering to the markdown renderer.
@@ -22,6 +24,10 @@ import type { CompletionSource } from '@codemirror/autocomplete'
 export class NodeBookAppExtension extends AppExtension {
   buildMarkdownRendererExtensions(): MarkdownRendererExtension[] {
     return [new NodeBookMarkdownExtension()]
+  }
+
+  buildEditorExtensionComponent(): React.FC {
+    return CnlInsertHandler
   }
 
   buildCheatsheetExtensions(): CheatsheetExtension[] {
@@ -38,7 +44,8 @@ export class NodeBookAppExtension extends AppExtension {
           { i18nKey: 'queries' }
         ]
       },
-      { i18nKey: 'nodeBook-schema', categoryI18nKey: 'charts' }
+      { i18nKey: 'nodeBook-schema', categoryI18nKey: 'charts' },
+      { i18nKey: 'nodeBook-analyze', categoryI18nKey: 'charts' }
     ]
   }
 
@@ -65,6 +72,10 @@ export class NodeBookAppExtension extends AppExtension {
       basicCompletion(
         codeFenceRegex,
         '```nodeBook-schema\nnodeType: Planet, A celestial body, parent: Object\nrelationType: orbits, One body orbits another, domain: Planet, range: Star\nattributeType: diameter, float, Size measurement, unit: km, domain: Planet\n```'
+      ),
+      basicCompletion(
+        codeFenceRegex,
+        '```nodeBook-analyze\nPaste a paragraph from your textbook here. Select annotation categories\nfrom the toolbar to see which parts of the text map to graph elements\nlike nodes, relations, adjectives, and more.\n```'
       )
     ]
   }
