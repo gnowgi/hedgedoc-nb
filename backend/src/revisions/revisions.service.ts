@@ -134,6 +134,8 @@ export class RevisionsService {
         recordMap.set(
           revision[FieldNameRevision.uuid],
           RevisionMetadataDto.create({
+            // We're extending a DTO here which is technically a class but valid in this case.
+            // oxlint-disable-next-line typescript/no-misused-spread
             ...currentMappedRevision,
             authorUsernames,
             authorGuestUuids,
@@ -201,10 +203,11 @@ export class RevisionsService {
    * Get a revision by its UUID
    *
    * @param revisionUuid The UUID of the revision to get
+   * @param noteId The id of the note this revision belongs to
    * @returns The revision DTO
    * @throws NotInDBError if the revision with the given UUID does not exist
    */
-  async getRevisionDto(revisionUuid: string): Promise<RevisionDto> {
+  async getRevisionDto(revisionUuid: string, noteId: number): Promise<RevisionDto> {
     const revision = await this.knex(TableRevision)
       .select(
         FieldNameRevision.uuid,
@@ -215,6 +218,7 @@ export class RevisionsService {
         FieldNameRevision.patch,
       )
       .where(FieldNameRevision.uuid, revisionUuid)
+      .andWhere(FieldNameRevision.noteId, noteId)
       .first();
     if (revision === undefined) {
       throw new NotInDBError(
@@ -447,7 +451,7 @@ export class RevisionsService {
     const oldestRevisionToKeepDBTime = dateTimeToDB(oldestRevisionToKeepTime);
     await this.knex.transaction(async (transaction) => {
       // Delete old revisions
-      const noteIdsWhereRevisionsAreDeleted = await transaction(TableRevision)
+      const noteIdsWhereRevisionsWillBeDeleted = await transaction(TableRevision)
         .select(FieldNameRevision.noteId)
         .where(FieldNameRevision.createdAt, '<=', oldestRevisionToKeepDBTime);
 
@@ -456,16 +460,16 @@ export class RevisionsService {
         .delete();
 
       this.logger.log(
-        `${noteIdsWhereRevisionsAreDeleted.length} old revisions were removed from the DB`,
+        `${noteIdsWhereRevisionsWillBeDeleted.length} old revisions were removed from the DB`,
         'removeOldRevisions',
       );
 
-      if (noteIdsWhereRevisionsAreDeleted.length === 0) {
+      if (noteIdsWhereRevisionsWillBeDeleted.length === 0) {
         return;
       }
 
       const uniqueNoteIds = Array.from(
-        new Set(noteIdsWhereRevisionsAreDeleted.map((entry) => entry[FieldNameRevision.noteId])),
+        new Set(noteIdsWhereRevisionsWillBeDeleted.map((entry) => entry[FieldNameRevision.noteId])),
       );
 
       const revisionsToUpdate = await transaction(TableRevision)
@@ -476,7 +480,7 @@ export class RevisionsService {
         )
         .select(
           FieldNameRevision.uuid,
-          FieldNameRevision.noteId,
+          `${TableRevision}.${FieldNameRevision.noteId}`,
           FieldNameRevision.content,
           FieldNameAlias.alias,
         )

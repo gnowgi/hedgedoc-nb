@@ -27,13 +27,13 @@ export class GuestController {
 
   @UseGuards(GuestsEnabledGuard)
   @Post('register')
-  @OpenApi(201, 403)
+  @OpenApi(201, 403, 429)
   async registerGuestUser(
     @Req() request: RequestWithSession,
   ): Promise<GuestRegistrationResponseDto> {
     const [uuid, userId] = await this.usersService.createGuestUser();
     // Log the user in after registration
-    request.session.authProviderType = AuthProviderType.GUEST;
+    request.session.loginAuthProviderType = AuthProviderType.GUEST;
     request.session.userId = userId;
     return GuestRegistrationResponseDto.create({
       uuid,
@@ -42,13 +42,13 @@ export class GuestController {
 
   @UseGuards(GuestsEnabledGuard)
   @Post('login')
-  @OpenApi(204, 400)
+  @OpenApi(204, 400, 429)
   async loginGuestUser(
     @Req() request: RequestWithSession,
     @Body() loginDto: GuestLoginDto,
   ): Promise<void> {
     const userId = await this.usersService.getUserIdByGuestUuid(loginDto.uuid);
-    request.session.authProviderType = AuthProviderType.GUEST;
+    request.session.loginAuthProviderType = AuthProviderType.GUEST;
     request.session.userId = userId;
   }
 }

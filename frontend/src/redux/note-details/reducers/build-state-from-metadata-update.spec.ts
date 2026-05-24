@@ -16,7 +16,8 @@ describe('build state from server permissions', () => {
       permissions: {
         owner: null,
         sharedToGroups: [],
-        sharedToUsers: []
+        sharedToUsers: [],
+        publiclyVisible: false
       },
       editedBy: [],
       primaryAlias: 'test-id',
@@ -34,7 +35,8 @@ describe('build state from server permissions', () => {
       permissions: {
         owner: null,
         sharedToGroups: [],
-        sharedToUsers: []
+        sharedToUsers: [],
+        publiclyVisible: false
       },
       editedBy: [],
       primaryAlias: 'test-id',

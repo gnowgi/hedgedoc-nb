@@ -5,16 +5,14 @@
  */
 import { useApplicationState } from '../../../../../hooks/common/use-application-state'
 import { useIsNotePinned } from '../../../../../hooks/common/use-is-note-pinned'
-import { concatCssClasses } from '../../../../../utils/concat-css-classes'
 import { SidebarButton } from '../../sidebar-button/sidebar-button'
 import type { SpecificSidebarEntryProps } from '../../types'
-import styles from './pin-note-sidebar-entry.module.css'
 import React, { useCallback, useState } from 'react'
-import { Pin as IconPin } from 'react-bootstrap-icons'
+import { Pin as IconPin, PinFill as IconPinFill } from 'react-bootstrap-icons'
 import { Trans, useTranslation } from 'react-i18next'
 import { WaitSpinner } from '../../../../common/wait-spinner/wait-spinner'
 import { useUiNotifications } from '../../../../notifications/ui-notification-boundary'
-import { setPinnedState } from '../../../../../api/explore'
+import { setNotePinStatus } from '../../../../../redux/pinned-notes/methods'
 
 /**
  * Sidebar entry button that toggles the pinned status of the current note in the history.
@@ -34,7 +32,7 @@ export const PinNoteSidebarEntry: React.FC<SpecificSidebarEntryProps> = ({ class
       return
     }
     setLoading(true)
-    setPinnedState(noteAlias, !isPinned)
+    setNotePinStatus(noteAlias, !isPinned)
       .catch(showErrorNotificationBuilder(`explore.pinnedNotes.${isPinned ? 'un' : ''}pinError`, { alias: noteAlias }))
       .finally(() => setLoading(false))
   }, [noteAlias, isPinned, showErrorNotificationBuilder])
@@ -49,11 +47,7 @@ export const PinNoteSidebarEntry: React.FC<SpecificSidebarEntryProps> = ({ class
   }
 
   return (
-    <SidebarButton
-      icon={IconPin}
-      hide={hide}
-      onClick={onPinClicked}
-      className={concatCssClasses(className, { [styles['highlighted']]: isPinned })}>
+    <SidebarButton icon={isPinned ? IconPinFill : IconPin} hide={hide} onClick={onPinClicked} className={className}>
       <Trans i18nKey={`explore.pinnedNotes.is${isPinned ? 'Pinned' : 'Unpinned'}`} />
     </SidebarButton>
   )

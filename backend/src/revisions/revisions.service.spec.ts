@@ -3,6 +3,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { describe, it, expect, beforeAll, beforeEach, afterEach, jest } from '@jest/globals';
+import type { SpyInstance } from 'jest-mock';
 import {
   FieldNameAlias,
   FieldNameAuthorshipInfo,
@@ -155,8 +157,7 @@ describe('RevisionsService', () => {
   });
 
   describe('purgeRevisions', () => {
-    let spyOnGetPrimaryAlias: jest.SpyInstance;
-    // oxlint-disable-next-line func-style
+    let spyOnGetPrimaryAlias: SpyInstance<typeof aliasService.getPrimaryAliasByNoteId>;
     const buildMockSelect = (returnValues: unknown) => {
       mockSelect(tracker, [], TableRevision, [FieldNameRevision.noteId], returnValues);
     };
@@ -218,11 +219,13 @@ describe('RevisionsService', () => {
           FieldNameRevision.patch,
         ],
         TableRevision,
-        FieldNameRevision.uuid,
+        [FieldNameRevision.uuid, FieldNameRevision.noteId],
         [],
       );
-      await expect(service.getRevisionDto(mockRevisionUuid1)).rejects.toThrow(NotInDBError);
-      expectBindings(tracker, 'select', [[mockRevisionUuid1]], true);
+      await expect(service.getRevisionDto(mockRevisionUuid1, mockNoteId)).rejects.toThrow(
+        NotInDBError,
+      );
+      expectBindings(tracker, 'select', [[mockRevisionUuid1, mockNoteId]], true);
     });
 
     it('correctly returns the fetched revision', async () => {
@@ -237,7 +240,7 @@ describe('RevisionsService', () => {
           FieldNameRevision.patch,
         ],
         TableRevision,
-        FieldNameRevision.uuid,
+        [FieldNameRevision.uuid, FieldNameRevision.noteId],
         [
           {
             [FieldNameRevision.uuid]: mockRevisionUuid1,
@@ -252,7 +255,7 @@ describe('RevisionsService', () => {
           },
         ],
       );
-      const result = await service.getRevisionDto(mockRevisionUuid1);
+      const result = await service.getRevisionDto(mockRevisionUuid1, mockNoteId);
       expect(result).toStrictEqual({
         uuid: mockRevisionUuid1,
         content: mockContent1,
@@ -262,7 +265,7 @@ describe('RevisionsService', () => {
         description: mockDescription,
         patch: mockPatch,
       });
-      expectBindings(tracker, 'select', [[mockRevisionUuid1]], true);
+      expectBindings(tracker, 'select', [[mockRevisionUuid1, mockNoteId]], true);
     });
   });
 
@@ -561,7 +564,7 @@ describe('RevisionsService', () => {
         tracker,
         [
           FieldNameRevision.uuid,
-          FieldNameRevision.noteId,
+          `${TableRevision}"."${FieldNameRevision.noteId}`,
           FieldNameRevision.content,
           FieldNameAlias.alias,
         ],
@@ -570,7 +573,7 @@ describe('RevisionsService', () => {
         [
           {
             [FieldNameRevision.uuid]: mockRevisionUuid1,
-            [FieldNameRevision.noteId]: mockNoteId,
+            [`${TableRevision}.${FieldNameRevision.noteId}`]: mockNoteId,
             [FieldNameRevision.content]: mockContent1,
             [FieldNameAlias.alias]: mockPrimaryAlias,
           },

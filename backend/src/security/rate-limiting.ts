@@ -17,10 +17,10 @@ interface RateLimitConfig {
  * Extracts the user ID from the session if present.
  *
  * @param req The incoming Fastify request
- * @returns The user ID if authenticated, undefined otherwise
+ * @returns The user ID if authenticated, null otherwise
  */
-function getUserIdFromSession(req: FastifyRequest): number | undefined {
-  return (req as RequestWithSession).session?.userId;
+function getUserIdFromSession(req: FastifyRequest): number | null {
+  return (req as RequestWithSession).session?.userId ?? null;
 }
 
 /**
@@ -33,7 +33,7 @@ function getUserIdFromSession(req: FastifyRequest): number | undefined {
  */
 export function generateRateLimitKey(req: FastifyRequest): string {
   const userId = getUserIdFromSession(req);
-  if (userId !== undefined) {
+  if (userId !== null) {
     return `user:${userId}`;
   }
   return `ip:${req.ip}`;
@@ -53,18 +53,25 @@ function getRateLimitConfigByRequest(
   const path = req.routeOptions?.url ?? req.url;
   const userId = getUserIdFromSession(req);
 
-  // Auth endpoints
-  if (path.includes('/api/private/auth/')) {
+  // Logout and monitoring are never rate-limited
+  if (path === '/api/private/auth/logout' || path.startsWith('/api/private/monitoring')) {
+    return {
+      max: Infinity,
+    };
+  }
+
+  // Auth endpoints except logout
+  if (path.startsWith('/api/private/auth/')) {
     return securityConfig.rateLimit.auth;
   }
 
   // Public API, authenticated
-  if (path.startsWith('/api/v2') && userId !== undefined) {
+  if (path.startsWith('/api/v2') && userId !== null) {
     return securityConfig.rateLimit.publicApi;
   }
 
   // Private API, authenticated
-  if (path.startsWith('/api/private') && userId !== undefined) {
+  if (path.startsWith('/api/private') && userId !== null) {
     return securityConfig.rateLimit.authenticated;
   }
 

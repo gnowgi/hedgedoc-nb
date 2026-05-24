@@ -14,6 +14,8 @@ import InfiniteScroll from 'react-infinite-scroll-component'
 import { useUiNotifications } from '../../../notifications/ui-notification-boundary'
 import { useApplicationState } from '../../../../hooks/common/use-application-state'
 import equal from 'fast-deep-equal'
+import styles from './note-entry.module.css'
+import { RateLimitError } from '../../../../api/common/api-error'
 
 export interface NotesListProps {
   mode: Mode
@@ -32,7 +34,7 @@ export interface NotesListProps {
  */
 export const NotesList: React.FC<NotesListProps> = ({ mode, sort, searchFilter, typeFilter }) => {
   const [entries, setEntries] = useState<NoteExploreEntryInterface[]>([])
-  const { showErrorNotificationBuilder } = useUiNotifications()
+  const { showErrorNotificationBuilder, dispatchUiNotification } = useUiNotifications()
   const [moreDataAvailable, setMoreDataAvailable] = useState(true)
   const lastPage = useRef<number>(0)
   const lastFilters = useRef({})
@@ -57,9 +59,19 @@ export const NotesList: React.FC<NotesListProps> = ({ mode, sort, searchFilter, 
             setEntries((prev) => [...prev, ...data])
           }
         })
-        .catch(showErrorNotificationBuilder('explore.errorLoadingEntries'))
+        .catch((error: unknown) => {
+          if (error instanceof RateLimitError) {
+            dispatchUiNotification('errors.rateLimitExceeded.title', 'errors.rateLimitExceeded.description', {
+              contentI18nOptions: {
+                resetIn: error.getResetIn()
+              }
+            })
+            return
+          }
+          showErrorNotificationBuilder('explore.errorLoadingEntries')(error as Error)
+        })
     },
-    [mode, sort, searchFilter, typeFilter, showErrorNotificationBuilder]
+    [mode, sort, searchFilter, typeFilter, showErrorNotificationBuilder, dispatchUiNotification]
   )
 
   const updateExplorePage = useCallback(() => {
@@ -92,6 +104,7 @@ export const NotesList: React.FC<NotesListProps> = ({ mode, sort, searchFilter, 
 
   return (
     <InfiniteScroll
+      className={styles['infinite-scroll']}
       dataLength={entries.length}
       next={fetchNextPage}
       hasMore={moreDataAvailable}
@@ -101,7 +114,7 @@ export const NotesList: React.FC<NotesListProps> = ({ mode, sort, searchFilter, 
         </div>
       }
       endMessage={
-        <div className={'text-center fs-4'}>
+        <div className={'text-center fs-4 mt-4'}>
           <p>
             <Trans i18nKey={'explore.noMoreNotesFound'} />
           </p>

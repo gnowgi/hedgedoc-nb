@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { SortMode } from '@hedgedoc/commons';
 import { NoteType } from '@hedgedoc/database';
 import { PRIVATE_API_PREFIX } from '../../src/app.module';
@@ -431,8 +432,12 @@ describe('Explore', () => {
     it('throws error if note is forbidden', async () => {
       await agentUser1
         .put(`${PRIVATE_API_PREFIX}/explore/pin/${forbiddenAlias}`)
+        .set('Content-Type', 'application/json')
+        .send({
+          isPinned: true,
+        })
         .expect('Content-Type', /json/)
-        .expect(400);
+        .expect(403);
     });
   });
 });

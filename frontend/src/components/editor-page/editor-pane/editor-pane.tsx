@@ -138,7 +138,10 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ scrollState, onScroll, o
 
   const isMobile = useIsMobile()
   const basicSetupOptions = useMemo(
-    () => (isMobile ? { lineNumbers: false, foldGutter: false, highlightActiveLineGutter: false } : true),
+    () =>
+      isMobile
+        ? { lineNumbers: false, foldGutter: false, highlightActiveLineGutter: false, history: false }
+        : { history: false },
     [isMobile]
   )
 
@@ -173,7 +176,11 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ scrollState, onScroll, o
   }, [dispatchUiNotification, userMayEdit])
 
   return (
+    // The pane has event handlers for tracking the active scroll source. It is not directly interactive.
+    // oxlint-disable-next-line jsx_a11y/no-static-element-interactions
     <div
+      role={'region'}
+      aria-label={'Editor pane'}
       className={`d-flex flex-column h-100 position-relative`}
       onTouchStart={onMakeScrollSource}
       onMouseEnter={onMakeScrollSource}

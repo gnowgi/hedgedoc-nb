@@ -20,10 +20,16 @@
     "jest/valid-expect": "error",
     "jest/expect-expect": ["error", {
       "assertFunctionNames": ["expect*", "screen.*", "test*"]
-    }]
+    }],
+    "nextjs/no-img-element": "off"
   },
   "env": {
     "browser": true,
     "jest": true
+  },
+  "options": {
+    "typeAware": true,
+    "typeCheck": true,
+    "maxWarnings": 0
   }
 }

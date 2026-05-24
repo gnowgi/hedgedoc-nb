@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { describe, it, expect } from '@jest/globals';
 import { AuthProviderType, PermissionLevel, PermissionLevelNames } from '@hedgedoc/commons';
 import { ConfigModule, registerAs } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -73,12 +74,16 @@ describe('FrontendConfigService', () => {
         enableRegistration: true,
       },
     ];
-    for (const authConfigConfigured of [ldap, oidc]) {
+    for (const [providerType, authConfigConfigured] of [
+      ['ldap', ldap],
+      ['oidc', oidc],
+    ] as const) {
       it(`works with ${JSON.stringify(authConfigConfigured)}`, async () => {
         const appConfig: AppConfig = {
           baseUrl: domain,
           rendererBaseUrl: 'https://renderer.example.org',
           backendPort: 3000,
+          backendBindIp: '127.0.0.1',
           log: {
             level: Loglevel.ERROR,
             showTimestamp: false,
@@ -86,9 +91,9 @@ describe('FrontendConfigService', () => {
         };
         const authConfig: AuthConfig = {
           ...emptyAuthConfig,
-          ...authConfigConfigured,
+          [providerType]: authConfigConfigured,
         };
-        const module: TestingModule = await Test.createTestingModule({
+        const testingModule: TestingModule = await Test.createTestingModule({
           imports: [
             ConfigModule.forRoot({
               isGlobal: true,
@@ -128,7 +133,7 @@ describe('FrontendConfigService', () => {
           ],
           providers: [FrontendConfigService],
         }).compile();
-        const service = module.get(FrontendConfigService);
+        const service = testingModule.get(FrontendConfigService);
         const config = await service.getFrontendConfig();
         if (authConfig.local.enableLogin) {
           expect(config.authProviders).toContainEqual({
@@ -148,6 +153,7 @@ describe('FrontendConfigService', () => {
             type: AuthProviderType.LDAP,
             providerName: authConfig.ldap[0].providerName,
             identifier: authConfig.ldap[0].identifier,
+            theme: null,
           });
         }
         if (authConfig.oidc.length > 0) {
@@ -157,6 +163,7 @@ describe('FrontendConfigService', () => {
             type: AuthProviderType.OIDC,
             providerName: authConfig.oidc[0].providerName,
             identifier: authConfig.oidc[0].identifier,
+            theme: null,
           });
         }
       });
@@ -179,6 +186,7 @@ describe('FrontendConfigService', () => {
                 baseUrl: domain,
                 rendererBaseUrl: 'https://renderer.example.org',
                 backendPort: 3000,
+                backendBindIp: '127.0.0.1',
                 log: {
                   level: Loglevel.ERROR,
                   showTimestamp: false,
@@ -214,6 +222,7 @@ describe('FrontendConfigService', () => {
                   default: {
                     everyone: PermissionLevel.READ,
                     loggedIn: PermissionLevel.WRITE,
+                    publiclyVisible: false,
                   },
                   maxGuestLevel: PermissionLevel.FULL,
                 },

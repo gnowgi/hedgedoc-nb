@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import request from 'supertest';
 import { PRIVATE_API_PREFIX } from '../../src/app.module';
 import {
@@ -41,6 +42,15 @@ describe('Users', () => {
         .expect(200);
       expect(responseUser1.body.usernameAvailable).toBe(false);
 
+      const responseUser1Lowercase = await agent
+        .post(`${PRIVATE_API_PREFIX}/users/check`)
+        .send({
+          username: username1.toLowerCase(),
+        })
+        .expect('Content-Type', /json/)
+        .expect(200);
+      expect(responseUser1Lowercase.body.usernameAvailable).toBe(false);
+
       const responseUser2 = await agent
         .post(`${PRIVATE_API_PREFIX}/users/check`)
         .send({
@@ -70,6 +80,13 @@ describe('Users', () => {
         .expect(200);
       expect(responseUser1.body.username).toBe(username1);
       expect(responseUser1.body.displayName).toBe(displayName1);
+
+      const responseUser1Lowercase = await agent
+        .get(`${PRIVATE_API_PREFIX}/users/profile/${username1.toLowerCase()}`)
+        .expect('Content-Type', /json/)
+        .expect(200);
+      expect(responseUser1Lowercase.body.username).toBe(username1);
+      expect(responseUser1Lowercase.body.displayName).toBe(displayName1);
 
       const responseUser2 = await agent
         .get(`${PRIVATE_API_PREFIX}/users/profile/${username2}`)

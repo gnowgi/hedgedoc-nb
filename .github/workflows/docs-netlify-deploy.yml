@@ -13,7 +13,8 @@ permissions:
   contents: read
 
 env:
-  NETLIFY_VERSION: 13.2.2
+  # renovate: datasource=npm depName=netlify-cli
+  NETLIFY_VERSION: 26.0.0
   NODEJS_VERSION: 24
   PYTHON_VERSION: 3.11
 
@@ -31,10 +32,10 @@ jobs:
     name: Deploys to netlify
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@v6.0.2
 
       - name: Set up NodeJS
-        uses: actions/setup-node@v6.1.0
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: ${{ env.NODEJS_VERSION }}
 
@@ -52,4 +53,4 @@ jobs:
       - name: Run netlify CLI deployment
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        run: "npx -y netlify-cli@${{ env.NETLIFY_VERSION }} deploy --build --prod --message \"${{ github.event.head_commit.id }}\""
+        run: "npx -y netlify-cli@${{ env.NETLIFY_VERSION }} deploy --prod --message \"${{ github.event.head_commit.id }}\""

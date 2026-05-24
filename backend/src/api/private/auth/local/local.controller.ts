@@ -47,14 +47,14 @@ export class LocalController {
       registerDto.displayName,
     );
     // Log the user in after registration
-    request.session.authProviderType = AuthProviderType.LOCAL;
+    request.session.loginAuthProviderType = AuthProviderType.LOCAL;
     request.session.userId = userId;
-    request.session.pendingUser = undefined;
+    request.session.pendingUser = null;
   }
 
   @UseGuards(LoginEnabledGuard, SessionGuard)
   @Put()
-  @OpenApi(200, 400, 401)
+  @OpenApi(200, 400, 401, 403, 429)
   async updatePassword(
     @RequestUserId() userId: number,
     @Body() changePasswordDto: UpdatePasswordDto,
@@ -70,7 +70,7 @@ export class LocalController {
 
   @UseGuards(LoginEnabledGuard)
   @Post('login')
-  @OpenApi(201, 400, 401)
+  @OpenApi(201, 400, 401, 429)
   async login(
     @Req()
     request: RequestWithSession,
@@ -82,8 +82,8 @@ export class LocalController {
         loginDto.password,
       );
       request.session.userId = identity[FieldNameIdentity.userId];
-      request.session.authProviderType = AuthProviderType.LOCAL;
-      request.session.pendingUser = undefined;
+      request.session.loginAuthProviderType = AuthProviderType.LOCAL;
+      request.session.pendingUser = null;
     } catch (error) {
       this.logger.log(`Failed to log in user: ${String(error)}`, 'login');
       throw new UnauthorizedException('Invalid username or password');

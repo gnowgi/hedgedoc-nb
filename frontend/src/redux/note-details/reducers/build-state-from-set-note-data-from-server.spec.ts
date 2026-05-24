@@ -50,7 +50,8 @@ describe('build state from set note data from server', () => {
               canEdit: true,
               username: 'shareusername'
             }
-          ]
+          ],
+          publiclyVisible: false
         },
         tags: ['tag'],
         title: 'title',
@@ -77,7 +78,7 @@ describe('build state from set note data from server', () => {
         lang: 'en',
         license: '',
         dir: NoteTextDirection.LTR,
-        newlinesAreBreaks: true,
+        breaks: true,
         type: NoteType.DOCUMENT,
         opengraph: {},
         slideOptions: {
@@ -118,7 +119,8 @@ describe('build state from set note data from server', () => {
             canEdit: true,
             username: 'shareusername'
           }
-        ]
+        ],
+        publiclyVisible: false
       }
     }
 

@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { PUBLIC_API_PREFIX } from '../../src/app.module';
 import { NotePermissionsDto } from '../../src/dtos/note-permissions.dto';
 import { NotInDBError } from '../../src/errors/errors';
@@ -89,7 +90,7 @@ describe('Notes', () => {
     });
     it('errors with a forbidden note id', async () => {
       await agent
-        .get(`${PUBLIC_API_PREFIX}/notes/forbiddenNoteId`)
+        .get(`${PUBLIC_API_PREFIX}/notes/${forbiddenAlias}`)
         .set('Content-Type', 'application/json')
         .set('Authorization', `Bearer ${testSetup.authTokens[0].secret}`)
         .expect('Content-Type', /json/)
@@ -517,57 +518,64 @@ describe('Notes', () => {
   });
 
   describe(`PUT ${PUBLIC_API_PREFIX}/notes/{:noteAlias}/metadata/permissions/users/{:userName}`, () => {
-    it('user permissions can be updated', async function () {
-      await expectPublicAPIPermissions(
-        agent,
-        `Bearer ${testSetup.authTokens[0].secret}`,
-        noteAlias1,
-        username1,
-        new Set<NotePermissionsDto['sharedToUsers'][number]>(),
-        new Set([
-          {
-            groupName: SpecialGroup.EVERYONE,
-            canEdit: false,
-          },
-          {
-            canEdit: true,
-            groupName: SpecialGroup.LOGGED_IN,
-          },
-        ]),
-      );
-
-      await agent
-        .put(`${PUBLIC_API_PREFIX}/notes/${noteAlias1}/metadata/permissions/users/${username2}`)
-        .set('Authorization', `Bearer ${testSetup.authTokens[0].secret}`)
-        .send({
-          canEdit: true,
-        })
-        .expect('Content-Type', /json/)
-        .expect(200);
-
-      await expectPublicAPIPermissions(
-        agent,
-        `Bearer ${testSetup.authTokens[0].secret}`,
-        noteAlias1,
-        username1,
-        new Set([
-          {
-            username: username2,
-            canEdit: true,
-          },
-        ]),
-        new Set([
-          {
-            groupName: SpecialGroup.EVERYONE,
-            canEdit: false,
-          },
-          {
-            canEdit: true,
-            groupName: SpecialGroup.LOGGED_IN,
-          },
-        ]),
-      );
-    });
+    describe.each([username2, username2.toUpperCase()])(
+      'user permissions can be updated',
+      (username) => {
+        beforeEach(async () => {
+          await expectPublicAPIPermissions(
+            agent,
+            `Bearer ${testSetup.authTokens[0].secret}`,
+            noteAlias1,
+            username1,
+            new Set<NotePermissionsDto['sharedToUsers'][number]>(),
+            new Set([
+              {
+                groupName: SpecialGroup.EVERYONE,
+                canEdit: false,
+              },
+              {
+                canEdit: true,
+                groupName: SpecialGroup.LOGGED_IN,
+              },
+            ]),
+          );
+        });
+        afterEach(async () => {
+          await expectPublicAPIPermissions(
+            agent,
+            `Bearer ${testSetup.authTokens[0].secret}`,
+            noteAlias1,
+            username1,
+            new Set([
+              {
+                username: username2,
+                canEdit: true,
+              },
+            ]),
+            new Set([
+              {
+                groupName: SpecialGroup.EVERYONE,
+                canEdit: false,
+              },
+              {
+                canEdit: true,
+                groupName: SpecialGroup.LOGGED_IN,
+              },
+            ]),
+          );
+        });
+        it(`with correct username ${username}`, async function () {
+          await agent
+            .put(`${PUBLIC_API_PREFIX}/notes/${noteAlias1}/metadata/permissions/users/${username}`)
+            .set('Authorization', `Bearer ${testSetup.authTokens[0].secret}`)
+            .send({
+              canEdit: true,
+            })
+            .expect('Content-Type', /json/)
+            .expect(200);
+        });
+      },
+    );
     it('errors with a forbidden alias', async () => {
       await agent
         .put(`${PUBLIC_API_PREFIX}/notes/${forbiddenAlias}/metadata/permissions/users/${username2}`)
@@ -618,6 +626,36 @@ describe('Notes', () => {
 
       await agent
         .delete(`${PUBLIC_API_PREFIX}/notes/${noteAlias1}/metadata/permissions/users/${username2}`)
+        .set('Authorization', `Bearer ${testSetup.authTokens[0].secret}`)
+        .expect('Content-Type', /json/)
+        .expect(200);
+
+      const permissionsDtoAfter = await testSetup.permissionsService.getPermissionsDtoForNote(
+        testSetup.ownedNoteIds[0],
+      );
+      expect(permissionsDtoAfter.sharedToUsers).toEqual([]);
+    });
+    it('deletes user permissions with uppercase username', async () => {
+      await testSetup.permissionsService.setUserPermission(
+        testSetup.ownedNoteIds[0],
+        testSetup.userIds[1],
+        true,
+      );
+
+      const permissionsDtoBefore = await testSetup.permissionsService.getPermissionsDtoForNote(
+        testSetup.ownedNoteIds[0],
+      );
+      expect(permissionsDtoBefore.sharedToUsers).toEqual([
+        {
+          username: username2,
+          canEdit: true,
+        },
+      ]);
+
+      await agent
+        .delete(
+          `${PUBLIC_API_PREFIX}/notes/${noteAlias1}/metadata/permissions/users/${username2.toUpperCase()}`,
+        )
         .set('Authorization', `Bearer ${testSetup.authTokens[0].secret}`)
         .expect('Content-Type', /json/)
         .expect(200);

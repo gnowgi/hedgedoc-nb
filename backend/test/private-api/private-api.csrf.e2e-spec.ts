@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { PRIVATE_API_PREFIX } from '../../src/app.module';
 import { password1, TestSetup, TestSetupBuilder, username1 } from '../test-setup';
 import { setupAgent } from './utils/setup-agent';
@@ -67,6 +68,15 @@ describe('CSRF Protection', () => {
 
     it('allows GET requests without CSRF token', async () => {
       await agentUser1.get(`${PRIVATE_API_PREFIX}/me`).expect(200);
+    });
+
+    // The OIDC-backchannel logout route is not CSRF-protected, so we expect 404 (provider not found)
+    // instead of 403 (CSRF rejection). This proves CSRF protection was bypassed.
+    it('allows CSRF-exempt endpoints without CSRF token', async () => {
+      await agentUser1WithoutCsrf
+        .post(`${PRIVATE_API_PREFIX}/auth/oidc/test-provider/backchannel-logout`)
+        .send({ logout_token: 'test-token' })
+        .expect(404);
     });
   });
 });

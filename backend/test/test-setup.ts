@@ -96,6 +96,7 @@ import { KnexModule } from 'nest-knexjs';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { types as pgTypes } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
+import { extendKnexQueryBuilder } from '../src/database/extend-knex-query-builder';
 
 interface CreateTestSetupParameters {
   appConfigMock?: AppConfig;
@@ -149,6 +150,7 @@ export class TestSetup {
    * Cleans up Fastify, NestJS, and the database from a test run.
    */
   public async cleanup(): Promise<void> {
+    this.app.getHttpServer().closeAllConnections();
     await this.app.close();
     if (this.knexInstance) {
       await this.knexInstance.destroy();
@@ -180,6 +182,7 @@ export class TestSetupBuilder {
     // we need to use this low-level way of writing to get the message to the output without getting
     // a lot of extra output about using console.log
     process.stdout.write(`Using dbname ${dbName} (${dbType})\n`);
+    extendKnexQueryBuilder();
     if (dbType === 'sqlite') {
       return;
     }
@@ -234,6 +237,7 @@ export class TestSetupBuilder {
             host: process.env.HD_DATABASE_HOST || 'localhost',
             port: parseInt(process.env.HD_DATABASE_PORT || '3306'),
             dateStrings: true,
+            charset: 'utf8mb4',
           },
         };
       default:
@@ -328,6 +332,7 @@ export class TestSetupBuilder {
    * Builds the final TestSetup from the configured builder
    */
   public async build(): Promise<TestSetup> {
+    console.log(`Calling build with ${this.testId}...`);
     await TestSetupBuilder.createTestDatabase(this.testId);
 
     for (const setupFunction of this.setupPreCompile) {
@@ -518,13 +523,13 @@ export class TestSetupBuilder {
   }
 }
 
-export const username1 = 'testuser1';
+export const username1 = 'TestUser1';
 export const password1 = 'AStrongP@sswordForUser1';
 export const displayName1 = 'Test User 1';
-export const username2 = 'testuser2';
+export const username2 = 'TestUser2';
 export const password2 = 'AStrongP@sswordForUser2';
 export const displayName2 = 'Test User 2';
-export const username3 = 'testuser3';
+export const username3 = 'TestUser3';
 export const password3 = 'AStrongP@sswordForUser3';
 export const displayName3 = 'Test User 3';
 

@@ -473,7 +473,8 @@
         },
         "inconsistent": "This permission is overridden by another permission",
         "visibility": "Visibility",
-        "publiclyVisible": "Show on the public explore page"
+        "publiclyVisible": "Show on the public explore page",
+        "publiclyVisibleExplanation": "Activating this does not circumvent any permissions set.\nSo only users that are otherwise allowed to view this note, can find it on the public explore page."
       },
       "shareLink": {
         "title": "Share link",
@@ -639,12 +640,20 @@
     "noteCreationFailed": {
       "title": "Note could not be created",
       "description": "The note could not be created. Maybe you don't have permission to create notes."
+    },
+    "rateLimitExceeded": {
+      "title": "Rate limit exceeded",
+      "description": "You have made too many requests in short time. Please wait a moment and try again {{resetIn}}."
     }
   },
   "notifications": {
     "noteDeleted": {
       "title": "Note '{{noteTitle}}' deleted",
-      "text": "You were redirected to the history page, because the note you just edited was deleted."
+      "text": "You were redirected to the explore page, because the note you just edited was deleted."
+    },
+    "notePermissionsRevoked": {
+      "title": "Access permission for note was revoked",
+      "text": "You were redirected to the explore page, because the permissions for the note you just edited were revoked."
     }
   },
   "realtime": {

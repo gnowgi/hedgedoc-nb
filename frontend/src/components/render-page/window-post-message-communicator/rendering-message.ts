@@ -1,11 +1,11 @@
 /*
- * SPDX-FileCopyrightText: 2023 The HedgeDoc developers (see AUTHORS file)
+ * SPDX-FileCopyrightText: 2026 The HedgeDoc developers (see AUTHORS file)
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import type { DarkModePreference } from '../../../redux/dark-mode/types'
 import type { ScrollState } from '../../editor-page/synced-scroll/scroll-props'
-import type { SlideOptions } from '@hedgedoc/commons'
+import type { RevealOptions } from 'reveal.js'
 
 export enum CommunicationMessageType {
   SET_MARKDOWN_CONTENT = 'SET_MARKDOWN_CONTENT',
@@ -21,7 +21,8 @@ export enum CommunicationMessageType {
   SET_SLIDE_OPTIONS = 'SET_SLIDE_OPTIONS',
   IMAGE_UPLOAD = 'IMAGE_UPLOAD',
   EXTENSION_EVENT = 'EXTENSION_EVENT',
-  SET_PRINT_MODE = 'SET_PRINT_MODE'
+  SET_PRINT_MODE = 'SET_PRINT_MODE',
+  SCROLL_TO_ELEMENT = 'SCROLL_TO_ELEMENT'
 }
 
 export interface NoPayloadMessage<TYPE extends CommunicationMessageType> {
@@ -80,7 +81,7 @@ export interface SetScrollStateMessage {
 
 export interface SetSlideOptionsMessage {
   type: CommunicationMessageType.SET_SLIDE_OPTIONS
-  slideOptions: SlideOptions
+  slideOptions: RevealOptions
 }
 
 export interface OnHeightChangeMessage {
@@ -91,6 +92,11 @@ export interface OnHeightChangeMessage {
 export interface OnWordCountCalculatedMessage {
   type: CommunicationMessageType.ON_WORD_COUNT_CALCULATED
   words: number
+}
+
+export interface ScrollToElementMessage {
+  type: CommunicationMessageType.SCROLL_TO_ELEMENT
+  elementId: string
 }
 
 export type CommunicationMessages =
@@ -108,6 +114,7 @@ export type CommunicationMessages =
   | ImageUploadMessage
   | ExtensionEvent
   | SetPrintModeConfigurationMessage
+  | ScrollToElementMessage
 
 export type EditorToRendererMessageType =
   | CommunicationMessageType.SET_MARKDOWN_CONTENT
@@ -118,6 +125,7 @@ export type EditorToRendererMessageType =
   | CommunicationMessageType.SET_SLIDE_OPTIONS
   | CommunicationMessageType.DISABLE_RENDERER_SCROLL_SOURCE
   | CommunicationMessageType.SET_PRINT_MODE
+  | CommunicationMessageType.SCROLL_TO_ELEMENT
 
 export type RendererToEditorMessageType =
   | CommunicationMessageType.RENDERER_READY

@@ -5,9 +5,9 @@
  */
 import { mockI18n } from '../../../../test-utils/mock-i18n'
 import { FrontmatterLinter } from './frontmatter-linter'
-import { mockEditorView } from './single-line-regex-linter.spec'
 import type { Diagnostic } from '@codemirror/lint'
 import { t } from 'i18next'
+import { mockEditorView } from './mock-editor-view'
 
 const testFrontmatterLinter = (
   editorContent: string,
@@ -74,6 +74,12 @@ describe('FrontmatterLinter', () => {
         'tags:\n- 123\n- a'
       )
     })
+  })
+  it('does not warn for the new array format', () => {
+    const frontmatterLinter = new FrontmatterLinter()
+    const editorView = mockEditorView('---\ntags:\n- a\n---')
+
+    expect(frontmatterLinter.lint(editorView)).toStrictEqual([])
   })
   it('with invalid yaml', () => {
     testFrontmatterLinter('---\n1\n  2: 3\n---', {

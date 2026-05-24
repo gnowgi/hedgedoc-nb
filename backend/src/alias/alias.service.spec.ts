@@ -3,6 +3,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { describe, it, expect, beforeAll, beforeEach, afterEach, jest } from '@jest/globals';
+import type { SpyInstance } from 'jest-mock';
 import { FieldNameAlias, TableAlias } from '@hedgedoc/database';
 import { Provider } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -27,7 +29,6 @@ import { LoggerModule } from '../logger/logger.module';
 import { AliasService } from './alias.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NoteEventMap } from '../events';
-import SpyInstance = jest.SpyInstance;
 
 describe('AliasService', () => {
   const alias1 = 'testAlias1';
@@ -123,7 +124,7 @@ describe('AliasService', () => {
 
       expectBindings(tracker, 'update', [
         [null, noteId1],
-        [true, noteId1, alias2],
+        [true, alias2.toLowerCase(), noteId1],
       ]);
       expect(spyOnNotifyOthers).toHaveBeenCalledWith(noteId1, alias2);
     });
@@ -149,7 +150,7 @@ describe('AliasService', () => {
       await expect(service.makeAliasPrimary(noteId1, 'i_dont_exist')).rejects.toThrow(NotInDBError);
       expectBindings(tracker, 'update', [
         [null, noteId1],
-        [true, noteId1, 'i_dont_exist'],
+        [true, 'i_dont_exist', noteId1],
       ]);
       expect(spyOnNotifyOthers).not.toHaveBeenCalled();
     });
@@ -159,7 +160,7 @@ describe('AliasService', () => {
     it('fails if alias does not exist', async () => {
       mockSelect(tracker, [], TableAlias, FieldNameAlias.alias);
       await expect(service.removeAlias(alias1)).rejects.toThrow(NotInDBError);
-      expectBindings(tracker, 'select', [[alias1]]);
+      expectBindings(tracker, 'select', [[alias1.toLowerCase()]]);
       expect(spyOnNotifyOthers).not.toHaveBeenCalled();
     });
 
@@ -178,7 +179,7 @@ describe('AliasService', () => {
         0,
       );
       await expect(service.removeAlias(alias1)).rejects.toThrow(PrimaryAliasDeletionForbiddenError);
-      expectBindings(tracker, 'select', [[alias1]]);
+      expectBindings(tracker, 'select', [[alias1.toLowerCase()]]);
       expectBindings(tracker, 'delete', [[alias1, noteId1]]);
       expect(spyOnNotifyOthers).not.toHaveBeenCalled();
     });
@@ -197,7 +198,7 @@ describe('AliasService', () => {
         FieldNameAlias.isPrimary,
       ]);
       await service.removeAlias(alias2);
-      expectBindings(tracker, 'select', [[alias2]]);
+      expectBindings(tracker, 'select', [[alias2.toLowerCase()]]);
       expectBindings(tracker, 'delete', [[alias2, noteId1]]);
       expect(spyOnNotifyOthers).toHaveBeenCalledWith(noteId1);
     });
@@ -280,12 +281,19 @@ describe('AliasService', () => {
         },
       ]);
       await expect(service.ensureAliasIsAvailable(alias1)).rejects.toThrow(AlreadyInDBError);
-      expectBindings(tracker, 'select', [[alias1]]);
+      expectBindings(tracker, 'select', [[alias1.toLowerCase()]]);
     });
-    it('returns void if alias can be used', async () => {
+    it.each(['note?', 'alias!', 'pizza ', 'te.st', 'test;1'])(
+      "throws ForbiddenIdError for aliases with invalid alias '%s'",
+      async (alias) => {
+        await expect(service.ensureAliasIsAvailable(alias)).rejects.toThrow(ForbiddenIdError);
+      },
+    );
+
+    it.each([alias1, '🍕', 'pizza', 'Pizza', 'pizzä', 'pißßa'])("accepts '%s'", async (alias) => {
       mockSelect(tracker, [FieldNameAlias.alias], TableAlias, FieldNameAlias.alias, []);
-      await service.ensureAliasIsAvailable(alias1);
-      expectBindings(tracker, 'select', [[alias1]]);
+      await service.ensureAliasIsAvailable(alias);
+      expectBindings(tracker, 'select', [[alias.toLowerCase()]]);
     });
   });
 

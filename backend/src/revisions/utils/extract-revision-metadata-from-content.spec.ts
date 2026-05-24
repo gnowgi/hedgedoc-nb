@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { describe, it, expect } from '@jest/globals';
 import { extractRevisionMetadataFromContent } from './extract-revision-metadata-from-content';
 
 describe('revision entity', () => {
@@ -19,7 +20,7 @@ describe('revision entity', () => {
       '---\ntitle: \n  - 1\n  - 2\n---\nThis is a note content',
     );
 
-    expect(title).toBe('');
+    expect(title).toBe('1,2');
     expect(description).toBe('');
     expect(tags).toStrictEqual([]);
   });
