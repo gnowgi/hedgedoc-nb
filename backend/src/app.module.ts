@@ -24,12 +24,14 @@ import cspConfig from './config/csp.config';
 import customizationConfig from './config/customization.config';
 import databaseConfig, { getKnexConfig, PostgresDatabaseConfig } from './config/database.config';
 import externalConfig from './config/external-services.config';
+import llmConfig from './config/llm.config';
 import { Loglevel } from './config/loglevel.enum';
 import mediaConfig from './config/media.config';
 import noteConfig from './config/note.config';
 import securityConfig from './config/security.config';
 import { eventModuleConfig } from './events';
 import { ExploreModule } from './explore/explore.module';
+import { NodeBookModule } from './nodebook/nodebook.module';
 import { FrontendConfigModule } from './frontend-config/frontend-config.module';
 import { FrontendConfigService } from './frontend-config/frontend-config.service';
 import { GroupsModule } from './groups/groups.module';
@@ -102,6 +104,7 @@ const routes: Routes = [
         authConfig,
         customizationConfig,
         externalConfig,
+        llmConfig,
         securityConfig,
       ],
       isGlobal: true,
@@ -126,6 +129,7 @@ const routes: Routes = [
     MediaRedirectModule,
     MessageModule,
     ExploreModule,
+    NodeBookModule,
   ],
   controllers: [],
   providers: [
