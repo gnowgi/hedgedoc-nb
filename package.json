@@ -10,7 +10,10 @@
     "dev-reverse-proxy",
     "docs",
     "html-to-react",
-    "markdown-it-plugins"
+    "markdown-it-plugins",
+    "packages/nodebook-core",
+    "packages/nodebook-react",
+    "apps/nodebook-app"
   ],
   "scripts": {
     "build": "dotenv -c production -- turbo run build",

@@ -6,11 +6,9 @@
 import { CodeBlockMarkdownRendererExtension } from '../../../components/markdown-renderer/extensions/_base-classes/code-block-markdown-extension/code-block-markdown-renderer-extension'
 import { parseCodeBlockParameters } from '../../../components/markdown-renderer/extensions/_base-classes/code-block-markdown-extension/code-block-parameters'
 import { CodeBlockComponentReplacer } from '../../../components/markdown-renderer/replace-components/code-block-component-replacer'
-import { NodeBookGraph } from './nodebook-graph'
-import { NodeBookSchemaDisplay } from './nodebook-schema-display'
-import { parseSchemaBlock, mergeSchemaResults } from './nodebook-parser/schema-parser'
-import type { SchemaParseResult } from './nodebook-parser/schema-parser'
-import { setUserSchemas } from './nodebook-parser/schema-store'
+import { NodeBookGraph, NodeBookSchemaDisplay, NodeBookTextAnalyzer } from '@nodebook/react'
+import type { SchemaParseResult } from '@nodebook/core'
+import { parseSchemaBlock, mergeSchemaResults, setUserSchemas } from '@nodebook/core'
 import type MarkdownIt from 'markdown-it'
 
 const schemaExtractRuleName = 'nodebook-schema-extract'
@@ -22,7 +20,8 @@ export class NodeBookMarkdownExtension extends CodeBlockMarkdownRendererExtensio
   public buildReplacers(): CodeBlockComponentReplacer[] {
     return [
       new CodeBlockComponentReplacer(NodeBookGraph, 'nodeBook'),
-      new CodeBlockComponentReplacer(NodeBookSchemaDisplay, 'nodeBook-schema')
+      new CodeBlockComponentReplacer(NodeBookSchemaDisplay, 'nodeBook-schema'),
+      new CodeBlockComponentReplacer(NodeBookTextAnalyzer, 'nodeBook-analyze')
     ]
   }
 

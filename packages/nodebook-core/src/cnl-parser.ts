@@ -1,0 +1,1025 @@
+/*
+ * SPDX-FileCopyrightText: 2025 The HedgeDoc developers (see AUTHORS file)
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+import type { CnlOperation } from './types'
+
+const HEADING_REGEX = /^\s*(#+)\s*(?:\*([^*]+)\*\s+)?(?:\*\*(.+?)\*\*\s*)?(.+?)(?:\s*\[(.+?)\])?$/
+const SIMPLE_HEADING_REGEX = /^\s*(#+)\s*(.+?)$/
+const RELATION_REGEX = /^\s*<(.+?)>\s*([^;\n]*?)(?:;|$)/gm
+const DESCRIPTION_REGEX = /```description\n([\s\S]*?)\n```/
+const GRAPH_DESCRIPTION_REGEX = /```graph-description\n([\s\S]*?)\n```/
+const MINDMAP_HEADING_REGEX = /^\s*#\s+(.+?)\s+<([^>]+)>\s*$/
+const MINDMAP_ITEM_REGEX = /^(\s*)-\s+(.+)$/
+const CURRENCY_REGEX = /^\s*currency\s*:\s*([^;\n]+?)\s*;?\s*$/im
+const EXPRESSION_REGEX = /^\s*expression\s*:\s*(.+?)\s*;?\s*$/m
+const QUERY_REGEX = /^\s*\?-\s*(.+?)\s*\.?\s*$/
+
+// CNL-native query patterns (Wh-words: what, who, where, when, how)
+const WH = '(?:what|who|where|when|how)'
+const CNL_QUERY_TARGET_REGEX = new RegExp(`^\\s*<(.+?)>\\s*${WH}\\s*;`, 'i') // <rel> what;     (node-scoped: what is this node <rel> to?)
+const CNL_QUERY_SOURCE_REGEX = new RegExp(`^\\s*${WH}\\s+<(.+?)>\\s*([^;\\n]*?);`, 'i') // who <rel> Target; (graph-level: who <rel> Target?)
+const CNL_QUERY_RELATION_REGEX = new RegExp(`^\\s*<(${WH})>\\s*([^;\\n]*?)\\s*;`, 'i') // <how> Target;   (node-scoped: how does this node relate to Target?)
+const CNL_QUERY_ATTR_REGEX = new RegExp(`^\\s*${WH}\\s*:\\s*([^;\\n]+?)\\s*;`, 'i') // what: value;    (what attribute has this value?)
+const CNL_QUERY_VALUE_REGEX = new RegExp(`^\\s*(?:has\\s+)?([^?<:;\\n]+?)\\s*:\\s*${WH}\\s*;`, 'i') // attr: what;  (what is the value of this attr?)
+
+/** Escape a string for use as a Prolog atom (single-quoted). */
+function prologAtom(s: string): string {
+  const escaped = s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+  return `'${escaped}'`
+}
+
+/** Maps relation aliases to their canonical Petri net equivalents. */
+const RELATION_ALIAS_MAP: Record<string, string> = {
+  // Accounting
+  debit: 'has post_state',
+  credit: 'has prior_state',
+  // General
+  input: 'has prior_state',
+  output: 'has post_state',
+  in: 'has prior_state',
+  out: 'has post_state',
+  // Mathematics
+  lhs: 'has prior_state',
+  rhs: 'has post_state',
+  // Chemistry
+  reactant: 'has prior_state',
+  product: 'has post_state',
+  // Systems theory
+  'in-flow': 'has prior_state',
+  'out-flow': 'has post_state'
+}
+
+/** Maps role synonyms to their canonical form. */
+const ROLE_SYNONYM_MAP: Record<string, string> = {
+  class: 'class',
+  concept: 'class',
+  type: 'class',
+  universal: 'class',
+  'common noun': 'class',
+  individual: 'individual',
+  particular: 'individual',
+  token: 'individual',
+  member: 'individual',
+  'proper noun': 'individual'
+}
+
+function normalizeRole(role: string): string {
+  return ROLE_SYNONYM_MAP[role.toLowerCase()] ?? role
+}
+
+interface NodeBlock {
+  heading: string
+  content: string[]
+  morphs: Array<{ name: string; content: string[] }>
+}
+
+/**
+ * Browser-compatible FNV-1a hash (replaces Node.js crypto.createHash('sha1'))
+ */
+function fnv1aHash(str: string): string {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0').slice(0, 6)
+}
+
+/**
+ * Deterministic morph ID generation (replaces Date.now())
+ */
+let morphCounter = 0
+function generateMorphId(nodeId: string, morphName: string): string {
+  morphCounter++
+  return `${nodeId}_morph_${morphName.toLowerCase().replace(/\s+/g, '_')}_${morphCounter}`
+}
+
+/**
+ * Reset morph counter (call before each parse)
+ */
+function resetMorphCounter(): void {
+  morphCounter = 0
+}
+
+/** Words that are the same in singular and plural form. */
+const INVARIANT_WORDS = new Set([
+  'species',
+  'series',
+  'means',
+  'news',
+  'sheep',
+  'fish',
+  'deer',
+  'moose',
+  'aircraft',
+  'mathematics',
+  'physics',
+  'economics',
+  'politics',
+  'ethics',
+  'linguistics',
+  'thermodynamics',
+  'genetics'
+])
+
+/**
+ * Basic English singularization for node ID normalization.
+ * Converts common plural forms to singular so that 'humans' and 'human'
+ * resolve to the same node ID. Applied per-word.
+ */
+function singularize(word: string): string {
+  if (word.length <= 2) return word
+  if (INVARIANT_WORDS.has(word)) return word
+  // Don't singularize words ending in 'ss' (glass, mass, class, process)
+  if (word.endsWith('ss')) return word
+  // Don't singularize words ending in 'us' (status, genus, campus, bus)
+  if (word.endsWith('us')) return word
+  // Don't singularize words ending in 'is' (analysis, basis)
+  if (word.endsWith('is')) return word
+  // ies → y for longer words (cities → city, categories → category)
+  // Short words fall through to -s rule: pies → pie, dies → die
+  if (word.endsWith('ies') && word.length >= 6) return word.slice(0, -3) + 'y'
+  // ves → f (wolves → wolf, leaves → leaf)
+  if (word.endsWith('ves') && word.length >= 6) return word.slice(0, -3) + 'f'
+  // shes, ches, xes, zes, ses → remove 'es' (dishes → dish, boxes → box, processes → process)
+  if (/(?:sh|ch|x|z|s)es$/.test(word)) return word.slice(0, -2)
+  // Standard plural: remove trailing 's' (humans → human, mammals → mammal)
+  if (word.endsWith('s')) return word.slice(0, -1)
+  return word
+}
+
+/**
+ * Generate a clean node ID from a display name.
+ * Normalizes case, removes special chars, and singularizes each word
+ * so that 'human', 'Human', 'humans', 'Humans' all produce the same ID.
+ */
+function cleanName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .split(/\s+/)
+    .map(singularize)
+    .join('_')
+}
+
+interface ParsedBlock {
+  type: 'mindmap' | 'cnl'
+  lines: string[]
+}
+
+/**
+ * Pre-scan CNL text to separate mindmap blocks from regular CNL blocks.
+ * A mindmap block starts with a line matching MINDMAP_HEADING_REGEX and
+ * continues while subsequent non-empty lines match MINDMAP_ITEM_REGEX.
+ */
+function parseAllBlocks(cnlText: string): ParsedBlock[] {
+  const lines = cnlText.split('\n')
+  const blocks: ParsedBlock[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i]
+
+    if (MINDMAP_HEADING_REGEX.test(line)) {
+      const mindmapLines: string[] = [line]
+      i++
+      while (i < lines.length) {
+        const nextLine = lines[i]
+        if (nextLine.trim() === '') {
+          // skip blank lines within mindmap block
+          i++
+          continue
+        }
+        if (MINDMAP_ITEM_REGEX.test(nextLine)) {
+          mindmapLines.push(nextLine)
+          i++
+        } else {
+          break
+        }
+      }
+      blocks.push({ type: 'mindmap', lines: mindmapLines })
+    } else {
+      // Collect regular CNL lines until we hit a mindmap heading
+      const cnlLines: string[] = [line]
+      i++
+      while (i < lines.length && !MINDMAP_HEADING_REGEX.test(lines[i])) {
+        cnlLines.push(lines[i])
+        i++
+      }
+      blocks.push({ type: 'cnl', lines: cnlLines })
+    }
+  }
+
+  return blocks
+}
+
+/**
+ * Parse a mindmap block (# Root <relation> + indented list items) into operations.
+ */
+function parseMindmapBlock(lines: string[]): CnlOperation[] {
+  const ops: CnlOperation[] = []
+
+  // First line is the heading: # Topic <relation>
+  const headingMatch = lines[0].match(MINDMAP_HEADING_REGEX)
+  if (!headingMatch) return ops
+
+  const rootName = headingMatch[1].trim()
+  const relationLabel = headingMatch[2].trim()
+  const rootId = cleanName(rootName)
+
+  ops.push({
+    type: 'addNode',
+    payload: {
+      base_name: rootName,
+      displayName: rootName,
+      options: {
+        id: rootId,
+        role: 'individual',
+        parent_types: [],
+        adjective: null
+      }
+    },
+    id: rootId,
+    source: 'mindmap'
+  })
+
+  // Stack tracks parent context: [{id, indent}]
+  const stack: Array<{ id: string; indent: number }> = [{ id: rootId, indent: -1 }]
+
+  for (let i = 1; i < lines.length; i++) {
+    const itemMatch = lines[i].match(MINDMAP_ITEM_REGEX)
+    if (!itemMatch) continue
+
+    const indentStr = itemMatch[1]
+    const indent = indentStr.length
+    const itemName = itemMatch[2].trim()
+    const itemId = cleanName(itemName)
+
+    // Pop stack until top has indent strictly less than current
+    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+      stack.pop()
+    }
+
+    const parentId = stack[stack.length - 1].id
+    const relId = `rel_${parentId}_${cleanName(relationLabel)}_${itemId}`
+
+    ops.push({
+      type: 'addNode',
+      payload: {
+        base_name: itemName,
+        displayName: itemName,
+        role: 'class',
+        options: { adjective: null }
+      },
+      id: itemId,
+      source: 'mindmap'
+    })
+
+    ops.push({
+      type: 'addRelation',
+      payload: { source: parentId, target: itemId, name: relationLabel },
+      id: relId,
+      source: 'mindmap'
+    })
+
+    stack.push({ id: itemId, indent })
+  }
+
+  return ops
+}
+
+/**
+ * Build a structural tree from CNL text.
+ * Main nodes are # headings, morphs are ## headings under a node.
+ */
+function buildStructuralTree(cnlText: string): NodeBlock[] {
+  const tree: NodeBlock[] = []
+  let currentNodeBlock: NodeBlock | null = null
+  const lines = cnlText.split('\n')
+
+  for (const line of lines) {
+    if (!line.trim()) continue
+
+    const morphHeadingMatch = line.match(/^\s*(##)\s+(.+)$/)
+    const mainHeadingMatch = line.match(/^\s*(#)\s+(.+)$/)
+
+    if (morphHeadingMatch && !line.match(/^\s*###/) && currentNodeBlock) {
+      const morphName = morphHeadingMatch[2].trim()
+      currentNodeBlock.morphs.push({ name: morphName, content: [] })
+    } else if (mainHeadingMatch && !line.match(/^\s*##/)) {
+      currentNodeBlock = { heading: line.trim(), content: [], morphs: [] }
+      tree.push(currentNodeBlock)
+    } else if (currentNodeBlock) {
+      if (currentNodeBlock.morphs.length > 0) {
+        currentNodeBlock.morphs[currentNodeBlock.morphs.length - 1].content.push(line)
+      } else {
+        currentNodeBlock.content.push(line)
+      }
+    }
+  }
+  return tree
+}
+
+/**
+ * Process a node heading to extract id, type, adjective, base name.
+ */
+function processNodeHeading(heading: string): { id: string; type: string; payload: Record<string, unknown> } {
+  let adjective: string | null = null
+  let baseName: string | null = null
+  let displayName: string | null = null
+  let nodeType: string | null = null
+  let quantifier: string | null = null
+
+  let match = heading.match(HEADING_REGEX)
+  if (match) {
+    quantifier = match[2] ?? null
+    adjective = match[3] ?? null
+    baseName = match[4]
+    nodeType = match[5] ?? null
+    displayName = adjective && baseName ? `**${adjective}** ${baseName}` : baseName
+  } else {
+    match = heading.match(SIMPLE_HEADING_REGEX)
+    if (match) {
+      baseName = match[2].trim()
+      displayName = baseName
+      adjective = null
+    }
+  }
+
+  if (!baseName) {
+    baseName = heading.replace(/^#+\s*/, '').trim()
+    displayName = baseName
+  }
+
+  if (nodeType) {
+    nodeType = nodeType.trim()
+  } else {
+    const typeMatch = baseName.match(/\[(.+?)\]/)
+    if (typeMatch) {
+      nodeType = typeMatch[1].trim()
+      baseName = baseName.replace(/\[.+?\]/, '').trim()
+      displayName = displayName!.replace(/\[.+?\]/, '').trim()
+    } else {
+      nodeType = 'individual'
+    }
+  }
+
+  const cleanBaseName = baseName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .split(/\s+/)
+    .map(singularize)
+    .join('_')
+  const cleanAdjective = adjective
+    ? adjective
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .split(/\s+/)
+        .map(singularize)
+        .join('_')
+    : null
+  const id = cleanAdjective ? `${cleanAdjective}_${cleanBaseName}` : cleanBaseName
+
+  return {
+    id,
+    type: normalizeRole(nodeType),
+    payload: {
+      base_name: baseName.trim(),
+      displayName: displayName!.trim(),
+      options: {
+        id,
+        role: normalizeRole(nodeType),
+        parent_types: [],
+        adjective: adjective ? adjective.trim() : null,
+        quantifier: quantifier ? quantifier.trim() : null
+      }
+    }
+  }
+}
+
+/**
+ * Process the neighborhood (attributes, relations, descriptions) of a node.
+ */
+function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
+  const ops: CnlOperation[] = []
+  let content = lines.join('\n')
+
+  const descriptionMatch = content.match(DESCRIPTION_REGEX)
+  if (descriptionMatch) {
+    const description = descriptionMatch[1].trim()
+    ops.push({
+      type: 'updateNode',
+      payload: { id: nodeId, fields: { description } },
+      id: `${nodeId}_description`
+    })
+    content = content.replace(DESCRIPTION_REGEX, '').trim()
+  }
+
+  // Process CNL queries (node-scoped: <rel> what; , <how> Target; , what: value; , attr: what;)
+  const cnlQueryLines = new Set<string>()
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim()
+
+    // <rel> what; — "What is this node <rel> to?"
+    const targetMatch = trimmed.match(CNL_QUERY_TARGET_REGEX)
+    if (targetMatch) {
+      const rel = targetMatch[1].trim()
+      const goalString = `relation(${prologAtom(nodeId)}, X, ${prologAtom(rel)})`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // <how> Target; — "How does this node relate to Target?"
+    const relationMatch = trimmed.match(CNL_QUERY_RELATION_REGEX)
+    if (relationMatch) {
+      const targetName = relationMatch[2].trim()
+      const targetId = cleanName(targetName)
+      const goalString = `relation(${prologAtom(nodeId)}, ${prologAtom(targetId)}, X)`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // attr: what; — "What is the value of this attribute?"
+    const valueMatch = trimmed.match(CNL_QUERY_VALUE_REGEX)
+    if (valueMatch) {
+      const attrName = valueMatch[1].trim()
+      const goalString = `attribute(${prologAtom(nodeId)}, ${prologAtom(attrName)}, X)`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // what: value; — "WHAT has this value?" — inherently graph-level (unknown subject),
+    // so we only mark it as a query line (to prevent mis-parsing as attribute) but
+    // do NOT generate a node-scoped query. The graph-level scan handles it.
+    const attrMatch = trimmed.match(CNL_QUERY_ATTR_REGEX)
+    if (attrMatch) {
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // who <rel> Target; — graph-level query even inside a node block
+    const sourceMatch = trimmed.match(CNL_QUERY_SOURCE_REGEX)
+    if (sourceMatch) {
+      const rel = sourceMatch[1].trim()
+      const targetName = sourceMatch[2].trim()
+      const targetId = cleanName(targetName)
+      const goalString = `relation(X, ${prologAtom(targetId)}, ${prologAtom(rel)})`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+  }
+
+  // Process attributes — any line with ":" is an attribute (has prefix is optional)
+  const attributeLines = content.split('\n').filter((line) => {
+    const trimmed = line.trim()
+    if (cnlQueryLines.has(trimmed)) return false
+    if (!trimmed.includes(':')) return false
+    if (trimmed.startsWith('<')) return false
+    if (trimmed.startsWith('?-')) return false
+    if (/^\s*expression\s*:/i.test(trimmed)) return false
+    return true
+  })
+  for (const line of attributeLines) {
+    const basicMatch = line.match(/^\s*(?:has\s+)?([^:<{]+?)(?:\s*\{(\w+)\})?\s*:\s*([^;]+);?/)
+    if (!basicMatch) continue
+
+    const [, name, abbreviation, fullValue] = basicMatch
+    let value = fullValue.trim()
+    let unit: string | null = null
+    let adverb: string | null = null
+    let modality: string | null = null
+    let quantifier: string | null = null
+
+    const unitMatch = value.match(/\*([^*]+)\*/)
+    if (unitMatch) {
+      unit = unitMatch[1].trim()
+      value = value.replace(/\*[^*]+\*/, '').trim()
+    }
+
+    const quantifierMatch = value.match(/\*([^*]+)\*/)
+    if (quantifierMatch) {
+      quantifier = quantifierMatch[1].trim()
+      value = value.replace(/\*[^*]+\*/, '').trim()
+    }
+
+    const adverbMatch = value.match(/\+\+([^+]+)\+\+/)
+    if (adverbMatch) {
+      adverb = adverbMatch[1].trim()
+      value = value.replace(/\+\+[^+]+\+\+/, '').trim()
+    }
+
+    const modalityMatch = value.match(/\[([^\]]+)\]/)
+    if (modalityMatch) {
+      modality = modalityMatch[1].trim()
+      value = value.replace(/\[[^\]]+\]/, '').trim()
+    }
+
+    value = value.trim()
+
+    const valueHash = fnv1aHash(String(value))
+    const attrId = `attr_${nodeId}_${name.trim().toLowerCase().replace(/\s+/g, '_')}_${valueHash}`
+
+    const attributePayload: Record<string, unknown> = {
+      source: nodeId,
+      name: name.trim(),
+      value
+    }
+    if (abbreviation) attributePayload.abbreviation = abbreviation
+    if (unit) attributePayload.unit = unit
+    if (quantifier) attributePayload.quantifier = quantifier
+    if (adverb) attributePayload.adverb = adverb
+    if (modality) attributePayload.modality = modality
+
+    ops.push({ type: 'addAttribute', payload: attributePayload, id: attrId })
+  }
+
+  // Filter out CNL query lines from content before relation processing
+  if (cnlQueryLines.size > 0) {
+    content = content
+      .split('\n')
+      .filter((line) => !cnlQueryLines.has(line.trim()))
+      .join('\n')
+  }
+
+  // Process relations
+  const relationMatches = [...content.matchAll(RELATION_REGEX)]
+  for (const match of relationMatches) {
+    const [, relationName, targets] = match
+    const trimmedRelName = relationName.trim()
+    const isAccountingRelation = trimmedRelName === 'debit' || trimmedRelName === 'credit'
+    const mappedRelName = RELATION_ALIAS_MAP[trimmedRelName.toLowerCase()] ?? trimmedRelName
+    for (const rawTarget of targets
+      .split(';')
+      .map((t) => t.trim())
+      .filter(Boolean)) {
+      // Extract optional leading weight: "6 CO2" → weight=6, "1500.50 Cash" → weight=1500.5
+      let weight = 1
+      let target = rawTarget
+      const weightMatch = rawTarget.match(/^(\d+(?:\.\d{1,2})?)\s+(.+)$/)
+      if (weightMatch) {
+        weight = parseFloat(weightMatch[1])
+        target = weightMatch[2]
+      }
+
+      let targetAdjective: string | null = null
+      let targetBaseName = target
+      const targetDisplayName = target
+
+      const adjectiveMatch = target.match(/\*\*?([^*]+)\*\*?\s+(.+)/)
+      if (adjectiveMatch) {
+        targetAdjective = adjectiveMatch[1].trim()
+        targetBaseName = adjectiveMatch[2].trim()
+      }
+
+      const cleanTargetBaseName = targetBaseName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .split(/\s+/)
+        .map(singularize)
+        .join('_')
+      const cleanTargetAdjective = targetAdjective
+        ? targetAdjective
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .split(/\s+/)
+            .map(singularize)
+            .join('_')
+        : null
+      const targetId = cleanTargetAdjective ? `${cleanTargetAdjective}_${cleanTargetBaseName}` : cleanTargetBaseName
+      const relId = `rel_${nodeId}_${trimmedRelName.toLowerCase().replace(/\s+/g, '_')}_${targetId}`
+
+      ops.push({
+        type: 'addNode',
+        payload: {
+          base_name: targetBaseName,
+          displayName: targetDisplayName,
+          role: isAccountingRelation ? 'Account' : 'class',
+          options: { adjective: targetAdjective }
+        },
+        id: targetId
+      })
+
+      ops.push({
+        type: 'addRelation',
+        payload: { source: nodeId, target: targetId, name: mappedRelName, weight },
+        id: relId
+      })
+    }
+  }
+
+  return ops
+}
+
+/**
+ * Process the neighborhood of a morph (same as processNeighborhood but with morphId tagging).
+ */
+function processMorphNeighborhood(nodeId: string, morphId: string, lines: string[]): CnlOperation[] {
+  const ops: CnlOperation[] = []
+  let content = lines.join('\n')
+
+  const descriptionMatch = content.match(DESCRIPTION_REGEX)
+  if (descriptionMatch) {
+    const description = descriptionMatch[1].trim()
+    ops.push({
+      type: 'updateNode',
+      payload: { id: nodeId, fields: { description } },
+      id: `${nodeId}_description`
+    })
+    content = content.replace(DESCRIPTION_REGEX, '').trim()
+  }
+
+  // Process CNL queries (node-scoped, within morph)
+  const cnlQueryLines = new Set<string>()
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim()
+
+    const targetMatch = trimmed.match(CNL_QUERY_TARGET_REGEX)
+    if (targetMatch) {
+      const rel = targetMatch[1].trim()
+      const goalString = `relation(${prologAtom(nodeId)}, X, ${prologAtom(rel)})`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}_${morphId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    const relationMatch = trimmed.match(CNL_QUERY_RELATION_REGEX)
+    if (relationMatch) {
+      const targetName = relationMatch[2].trim()
+      const targetId = cleanName(targetName)
+      const goalString = `relation(${prologAtom(nodeId)}, ${prologAtom(targetId)}, X)`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}_${morphId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    const valueMatch = trimmed.match(CNL_QUERY_VALUE_REGEX)
+    if (valueMatch) {
+      const attrName = valueMatch[1].trim()
+      const goalString = `attribute(${prologAtom(nodeId)}, ${prologAtom(attrName)}, X)`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}_${morphId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // what: value; — graph-level only (see processNeighborhood comment)
+    const attrMatch = trimmed.match(CNL_QUERY_ATTR_REGEX)
+    if (attrMatch) {
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+
+    // who <rel> Target; — graph-level query even inside a morph block
+    const sourceMatch = trimmed.match(CNL_QUERY_SOURCE_REGEX)
+    if (sourceMatch) {
+      const rel = sourceMatch[1].trim()
+      const targetName = sourceMatch[2].trim()
+      const targetId = cleanName(targetName)
+      const goalString = `relation(X, ${prologAtom(targetId)}, ${prologAtom(rel)})`
+      const queryId = `query_${fnv1aHash(goalString)}_${nodeId}_${morphId}`
+      ops.push({ type: 'addQuery', payload: { id: queryId, goalString, displayString: trimmed }, id: queryId })
+      cnlQueryLines.add(trimmed)
+      continue
+    }
+  }
+
+  // Process attributes — any line with ":" is an attribute (has prefix is optional)
+  const attributeLines = content.split('\n').filter((line) => {
+    const trimmed = line.trim()
+    if (cnlQueryLines.has(trimmed)) return false
+    if (!trimmed.includes(':')) return false
+    if (trimmed.startsWith('<')) return false
+    if (trimmed.startsWith('?-')) return false
+    if (/^\s*expression\s*:/i.test(trimmed)) return false
+    return true
+  })
+  for (const line of attributeLines) {
+    const basicMatch = line.match(/^\s*(?:has\s+)?([^:<{]+?)(?:\s*\{(\w+)\})?\s*:\s*([^;]+);?/)
+    if (!basicMatch) continue
+
+    const [, name, abbreviation, fullValue] = basicMatch
+    let value = fullValue.trim()
+    let unit: string | null = null
+    let adverb: string | null = null
+    let modality: string | null = null
+    let quantifier: string | null = null
+
+    const unitMatch = value.match(/\*([^*]+)\*/)
+    if (unitMatch) {
+      unit = unitMatch[1].trim()
+      value = value.replace(/\*[^*]+\*/, '').trim()
+    }
+
+    const quantifierMatch = value.match(/\*([^*]+)\*/)
+    if (quantifierMatch) {
+      quantifier = quantifierMatch[1].trim()
+      value = value.replace(/\*[^*]+\*/, '').trim()
+    }
+
+    const adverbMatch = value.match(/\+\+([^+]+)\+\+/)
+    if (adverbMatch) {
+      adverb = adverbMatch[1].trim()
+      value = value.replace(/\+\+[^+]+\+\+/, '').trim()
+    }
+
+    const modalityMatch = value.match(/\[([^\]]+)\]/)
+    if (modalityMatch) {
+      modality = modalityMatch[1].trim()
+      value = value.replace(/\[[^\]]+\]/, '').trim()
+    }
+
+    value = value.trim()
+
+    const valueHash = fnv1aHash(String(value))
+    const attrId = `attr_${nodeId}_${name.trim().toLowerCase().replace(/\s+/g, '_')}_${valueHash}`
+
+    const attributePayload: Record<string, unknown> = {
+      source: nodeId,
+      name: name.trim(),
+      value,
+      morphId
+    }
+    if (abbreviation) attributePayload.abbreviation = abbreviation
+    if (unit) attributePayload.unit = unit
+    if (quantifier) attributePayload.quantifier = quantifier
+    if (adverb) attributePayload.adverb = adverb
+    if (modality) attributePayload.modality = modality
+
+    ops.push({ type: 'addAttribute', payload: attributePayload, id: attrId })
+  }
+
+  // Filter out CNL query lines from content before relation processing
+  if (cnlQueryLines.size > 0) {
+    content = content
+      .split('\n')
+      .filter((line) => !cnlQueryLines.has(line.trim()))
+      .join('\n')
+  }
+
+  // Process relations (with morphId tagging)
+  const relationMatches = [...content.matchAll(RELATION_REGEX)]
+  for (const match of relationMatches) {
+    const [, relationName, targets] = match
+    const trimmedRelName = relationName.trim()
+    const isAccountingRelation = trimmedRelName === 'debit' || trimmedRelName === 'credit'
+    const mappedRelName = RELATION_ALIAS_MAP[trimmedRelName.toLowerCase()] ?? trimmedRelName
+    for (const rawTarget of targets
+      .split(';')
+      .map((t) => t.trim())
+      .filter(Boolean)) {
+      // Extract optional leading weight: "6 CO2" → weight=6, "1500.50 Cash" → weight=1500.5
+      let weight = 1
+      let target = rawTarget
+      const weightMatch = rawTarget.match(/^(\d+(?:\.\d{1,2})?)\s+(.+)$/)
+      if (weightMatch) {
+        weight = parseFloat(weightMatch[1])
+        target = weightMatch[2]
+      }
+
+      let targetAdjective: string | null = null
+      let targetBaseName = target
+      const targetDisplayName = target
+
+      const adjectiveMatch = target.match(/\*\*?([^*]+)\*\*?\s+(.+)/)
+      if (adjectiveMatch) {
+        targetAdjective = adjectiveMatch[1].trim()
+        targetBaseName = adjectiveMatch[2].trim()
+      }
+
+      const cleanTargetBaseName = targetBaseName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .split(/\s+/)
+        .map(singularize)
+        .join('_')
+      const cleanTargetAdjective = targetAdjective
+        ? targetAdjective
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .split(/\s+/)
+            .map(singularize)
+            .join('_')
+        : null
+      const targetId = cleanTargetAdjective ? `${cleanTargetAdjective}_${cleanTargetBaseName}` : cleanTargetBaseName
+      const relId = `rel_${nodeId}_${trimmedRelName.toLowerCase().replace(/\s+/g, '_')}_${targetId}`
+
+      ops.push({
+        type: 'addNode',
+        payload: {
+          base_name: targetBaseName,
+          displayName: targetDisplayName,
+          role: isAccountingRelation ? 'Account' : 'class',
+          options: { adjective: targetAdjective }
+        },
+        id: targetId
+      })
+
+      ops.push({
+        type: 'addRelation',
+        payload: { source: nodeId, target: targetId, name: mappedRelName, weight, morphId },
+        id: relId
+      })
+    }
+  }
+
+  return ops
+}
+
+/**
+ * Parse CNL text into an array of operations.
+ */
+export function getOperationsFromCnl(cnlText: string): CnlOperation[] {
+  if (!cnlText) {
+    return []
+  }
+
+  resetMorphCounter()
+
+  const operations: CnlOperation[] = []
+  const blocks = parseAllBlocks(cnlText)
+
+  for (const block of blocks) {
+    if (block.type === 'mindmap') {
+      operations.push(...parseMindmapBlock(block.lines))
+    } else {
+      const blockText = block.lines.join('\n')
+      const structuralTree = buildStructuralTree(blockText)
+
+      for (const nodeBlock of structuralTree) {
+        const { id: nodeId, payload: nodePayload } = processNodeHeading(nodeBlock.heading)
+        operations.push({ type: 'addNode', payload: nodePayload, id: nodeId })
+
+        const neighborhoodOps = processNeighborhood(nodeId, nodeBlock.content)
+        operations.push(...neighborhoodOps)
+
+        for (const morph of nodeBlock.morphs || []) {
+          const morphId = generateMorphId(nodeId, morph.name)
+
+          operations.push({
+            type: 'addMorph',
+            payload: {
+              nodeId,
+              morph: {
+                morph_id: morphId,
+                node_id: nodeId,
+                name: morph.name,
+                relationNode_ids: [],
+                attributeNode_ids: []
+              }
+            },
+            id: `${nodeId}_morph_${morph.name}`
+          })
+
+          const morphOps = processMorphNeighborhood(nodeId, morphId, morph.content)
+          operations.push(...morphOps)
+        }
+      }
+    }
+  }
+
+  // graph description from full text (works across all blocks)
+  const graphDescriptionMatch = cnlText.match(GRAPH_DESCRIPTION_REGEX)
+  if (graphDescriptionMatch) {
+    const description = graphDescriptionMatch[1].trim()
+    operations.push({ type: 'updateGraphDescription', payload: { description }, id: 'graph_description' })
+  }
+
+  // currency setting (graph-level line: "currency: USD;")
+  const currencyMatch = cnlText.match(CURRENCY_REGEX)
+  if (currencyMatch) {
+    operations.push({ type: 'setCurrency', payload: { currency: currencyMatch[1].trim() }, id: 'graph_currency' })
+  }
+
+  // expression directive (graph-level: "expression: (a + b) * c;")
+  const expressionMatch = cnlText.match(EXPRESSION_REGEX)
+  if (expressionMatch) {
+    const expression = expressionMatch[1].trim()
+    const eqId = `eq_${fnv1aHash(expression)}`
+    operations.push({ type: 'addExpression', payload: { expression }, id: eqId })
+  }
+
+  // Parse ?- query lines (graph-level Prolog queries)
+  const allLines = cnlText.split('\n')
+  for (let lineIdx = 0; lineIdx < allLines.length; lineIdx++) {
+    const queryMatch = allLines[lineIdx].match(QUERY_REGEX)
+    if (queryMatch) {
+      const goalString = queryMatch[1].trim()
+      const queryId = `query_${fnv1aHash(goalString)}_${lineIdx}`
+      operations.push({
+        type: 'addQuery',
+        payload: { id: queryId, goalString, line: lineIdx + 1 },
+        id: queryId
+      })
+    }
+  }
+
+  // Parse graph-level CNL queries (who <rel> Target; , what: value; , attr: what;)
+  // These are lines NOT inside a # node heading block.
+  // Wh-word query lines are excluded from nodeBlockLineIndices so they are
+  // always processed by the graph-level scan (even when placed after a heading).
+  const nodeBlockLineIndices = new Set<number>()
+  const rawLines = cnlText.split('\n')
+  let inNodeBlock = false
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i]
+    const trimmed = line.trim()
+
+    // Wh-word query lines are never part of a node block — always graph-level
+    if (CNL_QUERY_SOURCE_REGEX.test(trimmed)) continue
+    if (CNL_QUERY_ATTR_REGEX.test(trimmed)) continue
+    if (CNL_QUERY_VALUE_REGEX.test(trimmed)) continue
+
+    if (/^\s*#\s+/.test(line) && !/^\s*##/.test(line)) {
+      inNodeBlock = true
+      nodeBlockLineIndices.add(i)
+    } else if (inNodeBlock) {
+      nodeBlockLineIndices.add(i)
+    }
+  }
+
+  // Deduplicate by goalString to avoid duplicates when a query line is
+  // processed both by processNeighborhood() and the graph-level scan.
+  const seenGoalStrings = new Set<string>()
+  for (const op of operations) {
+    if (op.type === 'addQuery') {
+      const payload = op.payload as { goalString: string }
+      seenGoalStrings.add(payload.goalString)
+    }
+  }
+
+  for (let lineIdx = 0; lineIdx < rawLines.length; lineIdx++) {
+    if (nodeBlockLineIndices.has(lineIdx)) continue
+    const trimmed = rawLines[lineIdx].trim()
+    if (!trimmed) continue
+
+    // who <rel> Target; — "Who <rel> Target?"
+    const sourceMatch = trimmed.match(CNL_QUERY_SOURCE_REGEX)
+    if (sourceMatch) {
+      const rel = sourceMatch[1].trim()
+      const targetName = sourceMatch[2].trim()
+      const targetId = cleanName(targetName)
+      const goalString = `relation(X, ${prologAtom(targetId)}, ${prologAtom(rel)})`
+      if (!seenGoalStrings.has(goalString)) {
+        const queryId = `query_${fnv1aHash(goalString)}_${lineIdx}`
+        operations.push({
+          type: 'addQuery',
+          payload: { id: queryId, goalString, displayString: trimmed, line: lineIdx + 1 },
+          id: queryId
+        })
+        seenGoalStrings.add(goalString)
+      }
+      continue
+    }
+
+    // attr: what; — "What has this attribute?" (graph-level)
+    const valueMatch = trimmed.match(CNL_QUERY_VALUE_REGEX)
+    if (valueMatch) {
+      const attrName = valueMatch[1].trim()
+      const goalString = `attribute(X, ${prologAtom(attrName)}, Y)`
+      if (!seenGoalStrings.has(goalString)) {
+        const queryId = `query_${fnv1aHash(goalString)}_${lineIdx}`
+        operations.push({
+          type: 'addQuery',
+          payload: { id: queryId, goalString, displayString: trimmed, line: lineIdx + 1 },
+          id: queryId
+        })
+        seenGoalStrings.add(goalString)
+      }
+      continue
+    }
+
+    // what: value; — "What node has attribute value?"
+    const attrMatch = trimmed.match(CNL_QUERY_ATTR_REGEX)
+    if (attrMatch) {
+      const value = attrMatch[1].trim()
+      const goalString = `attribute(X, Y, ${prologAtom(value)})`
+      if (!seenGoalStrings.has(goalString)) {
+        const queryId = `query_${fnv1aHash(goalString)}_${lineIdx}`
+        operations.push({
+          type: 'addQuery',
+          payload: { id: queryId, goalString, displayString: trimmed, line: lineIdx + 1 },
+          id: queryId
+        })
+        seenGoalStrings.add(goalString)
+      }
+      continue
+    }
+  }
+
+  return operations
+}

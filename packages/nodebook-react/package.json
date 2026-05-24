@@ -1,0 +1,36 @@
+{
+  "name": "@nodebook/react",
+  "version": "0.1.0",
+  "description": "nodeBook React components - graph visualization, schema display, CodeMirror language",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles/*": "./src/*.module.scss"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "@nodebook/core": "workspace:*",
+    "cytoscape": "^3.30.4",
+    "cytoscape-elk": "^2.2.0",
+    "cytoscape-svg": "^0.4.0",
+    "react-bootstrap-icons": "^1.11.6",
+    "react-use": "^17.6.0"
+  },
+  "peerDependencies": {
+    "@codemirror/autocomplete": "^6.0.0",
+    "@codemirror/language": "^6.0.0",
+    "@lezer/highlight": "^1.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/cytoscape": "^3.21.8",
+    "@types/react": "^18.0.0",
+    "typescript": "5.9.3"
+  }
+}

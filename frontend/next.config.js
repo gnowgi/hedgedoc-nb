@@ -58,6 +58,9 @@ const svgrConfig = {
 
 /** @type {import('next').NextConfig} */
 const rawNextConfig = {
+  // @nodebook/* are workspace packages that ship raw TS/TSX (main -> src/index.ts),
+  // so Next must transpile them rather than treat them as pre-built node_modules.
+  transpilePackages: ['@nodebook/core', '@nodebook/react'],
   webpack: (config) => {
     config.module.rules.push({
       test: /\.svg$/i,
