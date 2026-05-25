@@ -19,7 +19,9 @@
 }
 
 .navbar {
-  height: 48px;
+  // min-height (not height) so the bar grows to fit its buttons instead of
+  // clipping them when their scaled height exceeds 48px (e.g. Firefox at >=133% zoom).
+  min-height: 48px;
   background-color: #f0f2f4;
 }
 
