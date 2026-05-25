@@ -21,6 +21,7 @@ export interface TextSpan {
   suggestedRelation?: string;
   processParticipants?: string[];
   cnlLines?: string[];
+  relationKind?: 'verb' | 'preposition';
 }
 
 export interface AnalysisResult {
@@ -423,20 +424,18 @@ export class NodeBookAnalyzeService {
       }
     }
 
-    // Relations: dependency_relations (verbs = ROOT, relcl, etc.) + semantic_relations
+    // Relations: predicate verbs and relational prepositions from the dependency
+    // parse, plus typed semantic_relations. Each span is tagged with relationKind
+    // so the UI can distinguish predicate verbs from relational prepositions.
     if (catSet.has('relations')) {
-      // Extract verbs from dependency relations (ROOT verbs, relcl, xcomp, ccomp, advcl)
-      const verbRelations = new Set(['ROOT', 'relcl', 'xcomp', 'ccomp', 'advcl', 'conj']);
+      // Verb/predicate relations. 'conj' is intentionally excluded: it coordinates
+      // same-type items (e.g. "Carbon dioxide and water"), so its governor is often
+      // a noun, not a relation.
+      const verbRelations = new Set(['ROOT', 'relcl', 'xcomp', 'ccomp', 'advcl']);
       const verbs = new Set<string>();
       for (const dep of data.dependency_relations) {
         if (verbRelations.has(dep.relation) && dep.governor !== dep.dependent) {
           verbs.add(dep.governor);
-        }
-      }
-      // Also extract prepositions that indicate relationships
-      for (const dep of data.dependency_relations) {
-        if (dep.relation === 'prep') {
-          verbs.add(dep.dependent);
         }
       }
       for (const verb of verbs) {
@@ -447,10 +446,30 @@ export class NodeBookAnalyzeService {
             text: verb,
             category: 'relations',
             confidence: 0.7,
+            relationKind: 'verb',
           });
         });
       }
-      // Semantic relations from full pipeline
+      // Prepositions that signal relationships — kept distinct from predicate verbs.
+      const preps = new Set<string>();
+      for (const dep of data.dependency_relations) {
+        if (dep.relation === 'prep') {
+          preps.add(dep.dependent);
+        }
+      }
+      for (const prep of preps) {
+        this.findAllOccurrences(text, prep).forEach((pos) => {
+          spans.push({
+            start: pos,
+            end: pos + prep.length,
+            text: prep,
+            category: 'relations',
+            confidence: 0.6,
+            relationKind: 'preposition',
+          });
+        });
+      }
+      // Typed semantic relations from the full pipeline (predicate verbs).
       for (const rel of data.semantic_relations) {
         const relPhrase = rel.type;
         this.findAllOccurrences(text, relPhrase).forEach((pos) => {
@@ -461,6 +480,7 @@ export class NodeBookAnalyzeService {
             category: 'relations',
             confidence: 0.85,
             cnlHint: `<${rel.type}> ${rel.to};`,
+            relationKind: 'verb',
           });
         });
       }

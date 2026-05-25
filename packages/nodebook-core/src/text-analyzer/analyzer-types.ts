@@ -37,6 +37,8 @@ export interface TextSpan {
   processParticipants?: string[]
   /** Full CNL lines to insert (heading + relations) */
   cnlLines?: string[]
+  /** For relations: whether the span is a predicate verb or a relational preposition */
+  relationKind?: 'verb' | 'preposition'
 }
 
 export interface AnalysisDebugInfo {

@@ -248,6 +248,18 @@ export const NodeBookTextAnalyzer: React.FC<CodeProps> = ({ code }) => {
                             {badge.label}
                           </span>
                         )}
+                        {span.relationKind && (
+                          <span
+                            className={styles['classification-badge']}
+                            style={
+                              span.relationKind === 'preposition'
+                                ? { backgroundColor: '#fef3c7', color: '#92400e' }
+                                : { backgroundColor: '#fee2e2', color: '#991b1b' }
+                            }
+                          >
+                            {span.relationKind === 'preposition' ? 'preposition' : 'verb'}
+                          </span>
+                        )}
                         <span className={styles['report-cnl-block']}>
                           {span.cnlLines
                             ? span.cnlLines.map((line, j) => (
