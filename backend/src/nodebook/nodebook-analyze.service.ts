@@ -432,15 +432,31 @@ export class NodeBookAnalyzeService {
     // parse, plus typed semantic_relations. Each span is tagged with relationKind
     // so the UI can distinguish predicate verbs from relational prepositions.
     if (catSet.has('relations')) {
-      // Verb/predicate relations. 'conj' is intentionally excluded: it coordinates
-      // same-type items (e.g. "Carbon dioxide and water"), so its governor is often
-      // a noun, not a relation.
-      const verbRelations = new Set(['ROOT', 'relcl', 'xcomp', 'ccomp', 'advcl']);
+      // Verb/predicate relations from the dependency parse. A relation token is a
+      // verb, so we consider BOTH endpoints of these relations and then drop any
+      // token that is actually a noun (it appears in the noun lists) or a copula.
+      // This stops e.g. 'cat' — the noun a `relcl` modifies ("cat that hunts") —
+      // from being marked a relation, and filters out 'is'/'are' linking verbs.
+      const verbRelations = new Set(['ROOT', 'relcl', 'xcomp', 'ccomp', 'advcl', 'conj']);
+      const copulas = new Set(['be', 'is', 'are', 'am', 'was', 'were', 'been', 'being']);
+      const nounWords = new Set<string>();
+      for (const n of [...data.common_nouns, ...data.proper_nouns]) {
+        nounWords.add(n.toLowerCase());
+        for (const w of n.toLowerCase().split(/\s+/)) nounWords.add(w);
+      }
+      for (const ent of data.named_entities) {
+        nounWords.add(ent.text.toLowerCase());
+        for (const w of ent.text.toLowerCase().split(/\s+/)) nounWords.add(w);
+      }
+      const isVerbToken = (tok: string): boolean => {
+        const t = tok.toLowerCase();
+        return t.length > 0 && !nounWords.has(t) && !copulas.has(t);
+      };
       const verbs = new Set<string>();
       for (const dep of data.dependency_relations) {
-        if (verbRelations.has(dep.relation) && dep.governor !== dep.dependent) {
-          verbs.add(dep.governor);
-        }
+        if (!verbRelations.has(dep.relation)) continue;
+        if (isVerbToken(dep.governor)) verbs.add(dep.governor);
+        if (isVerbToken(dep.dependent)) verbs.add(dep.dependent);
       }
       for (const verb of verbs) {
         this.findAllOccurrences(text, verb).forEach((pos) => {
@@ -663,26 +679,9 @@ export class NodeBookAnalyzeService {
           });
         }
       }
-      // Also look at process participants for I/O roles
-      if (data.processes.length > 0) {
-        for (const proc of data.processes) {
-          for (const participant of proc.participants) {
-            this.findAllOccurrences(text, participant).forEach((pos) => {
-              // Only add if not already added as process
-              if (!spans.some((s) => s.start === pos && s.category === 'inputOutput')) {
-                spans.push({
-                  start: pos,
-                  end: pos + participant.length,
-                  text: participant,
-                  category: 'inputOutput',
-                  confidence: 0.6,
-                  cnlHint: `<has prior_state> ${this.capitalize(participant)};`,
-                });
-              }
-            });
-          }
-        }
-      }
+      // (Process participants are intentionally NOT mapped to input/output: they
+      // over-matched ordinary nouns like "gazelles"/"cubs". Input/Output now keys
+      // off explicit I/O vocabulary only.)
     }
 
     this.logger.log(`Mapped ${spans.length} spans from NLP service response`);

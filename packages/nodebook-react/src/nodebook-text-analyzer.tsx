@@ -160,6 +160,21 @@ export const NodeBookTextAnalyzer: React.FC<CodeProps> = ({ code }) => {
         source={analysisResult?.source}
       />
 
+      <div
+        role={'note'}
+        style={{
+          margin: '0.5rem 0',
+          padding: '0.4rem 0.6rem',
+          fontSize: '0.8rem',
+          lineHeight: 1.4,
+          border: '1px solid #f59e0b',
+          background: 'rgba(245, 158, 11, 0.12)',
+          borderRadius: '4px'
+        }}>
+        ⚠️ The analysis results are approximate — see the raw results as well (the{' '}
+        <strong>Show Debug</strong> panel) to help create your knowledge graphs.
+      </div>
+
       {/* Passage with inline category highlights (hover a span for its CNL hint) */}
       <HighlightedTextDisplay segments={segments} spans={spans} />
 
