@@ -271,7 +271,7 @@ export const NodeBookTextAnalyzer: React.FC<CodeProps> = ({ code }) => {
                                 <span className={styles['report-hint']}>{span.cnlHint}</span>
                               )}
                         </span>
-                        {hasCnl && (
+                        {hasCnl && category !== AnnotationCategory.Conditions && (
                           <button
                             className={`${styles['add-btn']} ${isAdded ? styles['add-btn-done'] : ''}`}
                             onClick={() => handleAddCnl(span)}

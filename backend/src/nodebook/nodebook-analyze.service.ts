@@ -331,11 +331,13 @@ export class NodeBookAnalyzeService {
         if (added.has(key)) continue;
         added.add(key);
         const nodeType = NER_TYPE_MAP[ent.label] ?? 'individual';
+        const isClass = nodeType === 'class';
         const displayName = this.capitalize(ent.text);
-        const cnlLines = [`# ${displayName} [${nodeType}]`];
-        if (nodeType !== 'class') {
-          cnlLines.push(`<instance_of> ...;`);
-        }
+        // Match the parent relation to the node kind: classes use <is_a>, individuals <instance_of>.
+        const cnlLines = [
+          `# ${displayName} [${nodeType}]`,
+          isClass ? `<is_a> Thing;` : `<instance_of> Thing;`,
+        ];
         this.findAllOccurrences(text, ent.text).forEach((pos) => {
           spans.push({
             start: pos,
@@ -343,9 +345,9 @@ export class NodeBookAnalyzeService {
             text: ent.text,
             category: 'nodes',
             confidence: 0.85,
-            nodeClassification: 'individual',
+            nodeClassification: isClass ? 'class' : 'individual',
             suggestedNodeType: nodeType,
-            suggestedRelation: '<instance_of>',
+            suggestedRelation: isClass ? '<is_a>' : '<instance_of>',
             cnlHint: `# ${displayName} [${nodeType}]`,
             cnlLines,
           });
@@ -358,7 +360,7 @@ export class NodeBookAnalyzeService {
         if (added.has(key)) continue;
         added.add(key);
         const displayName = this.capitalize(noun);
-        const cnlLines = [`# ${displayName} [individual]`, `<instance_of> ...;`];
+        const cnlLines = [`# ${displayName} [individual]`, `<instance_of> Thing;`];
         this.findAllOccurrences(text, noun).forEach((pos) => {
           spans.push({
             start: pos,
@@ -385,10 +387,12 @@ export class NodeBookAnalyzeService {
 
         if (isNominalizedProcess) {
           const participants = processParticipantsMap.get(key) ?? [];
-          const cnlLines = [`# ${displayName} [Transition]`];
-          for (const p of participants) {
-            cnlLines.push(`<has prior_state> ${this.capitalize(p)};`);
-          }
+          // Every transition needs at least one prior and one post state — prompt for both.
+          const cnlLines = [
+            `# ${displayName} [Transition]`,
+            `<has prior_state> prior Thing;`,
+            `<has post_state> post Thing;`,
+          ];
           this.findAllOccurrences(text, noun).forEach((pos) => {
             spans.push({
               start: pos,
@@ -405,7 +409,7 @@ export class NodeBookAnalyzeService {
             });
           });
         } else {
-          const cnlLines = [`# ${displayName} [class]`, `<is_a> ...;`];
+          const cnlLines = [`# ${displayName} [class]`, `<is_a> Thing;`];
           this.findAllOccurrences(text, noun).forEach((pos) => {
             spans.push({
               start: pos,
