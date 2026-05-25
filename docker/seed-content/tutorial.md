@@ -18,6 +18,13 @@ training. nodeBook lets *anyone* build, see, and reason over structured knowledg
 right inside a collaborative note. You write what you know; the graph shows what
 it *means*.
 
+**More than nodeBook.** Every page here is an ordinary **HedgeDoc** note, so all
+of HedgeDoc is always at your fingertips alongside nodeBook: the full **Markdown**
+you'd expect (headings, tables, task lists, code blocks, math, footnotes) plus a
+range of **extensions** — diagrams (Mermaid, PlantUML, flowcharts), charts,
+embeds, slideshows, and the Ledger, among others. nodeBook is simply one of those
+extensions. For the complete tour, see the **[Features page](/n/features)**.
+
 Here's a taste — a tiny graph from three lines of CNL:
 
 ```nodeBook
@@ -60,8 +67,10 @@ knowledge graph. Work through them in order:
 13. [Simulation](/n/tutorial-13-simulation) — run it: fire transitions, flow tokens. 🏁 *Run processes.*
 14. [Expressions](/n/tutorial-14-expressions) — computable Function transitions. 🏁 *Your graph calculates.*
 
-### Coming next
-- **Level 7 · Real world** — turn prose into a graph, then the big examples (a metabolic pathway, personal accounting).
+### [Level 7 · Real world](/n/tutorial-15-analyze)
+15. [Text → graph](/n/tutorial-15-analyze) — turn prose into CNL with the analyze feature.
+16. [A metabolic pathway](/n/tutorial-16-biology) — capstone: glycolysis / Krebs cycle.
+17. [Personal accounting](/n/tutorial-17-accounting) — capstone in a non-science domain. 🎉 *You've finished!*
 
 ---
 

@@ -112,7 +112,7 @@ const rawNextConfig = {
     return Promise.resolve([
       {
         source: '/',
-        destination: '/n/nodeBook',
+        destination: '/n/tutorial',
         permanent: false
       }
     ])

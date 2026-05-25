@@ -52,4 +52,4 @@ Add `# costPerLeg` `value: 5;` and a Function `boneCost` that computes
 
 ---
 
-← [Lesson 13](/n/tutorial-13-simulation) · [Tutorial home](/n/tutorial) · *Level 7 (real-world) coming soon*
+← [Lesson 13](/n/tutorial-13-simulation) · [Tutorial home](/n/tutorial) · [Lesson 15: Text → graph →](/n/tutorial-15-analyze)
