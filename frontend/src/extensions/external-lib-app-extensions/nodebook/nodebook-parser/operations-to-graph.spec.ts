@@ -3,9 +3,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { operationsToGraph } from './operations-to-graph'
-import { getOperationsFromCnl } from './cnl-parser'
-import type { CnlOperation } from './types'
+import { operationsToGraph, getOperationsFromCnl } from '@nodebook/core'
+import type { CnlOperation } from '@nodebook/core'
 
 /** Helper to create addNode operations. */
 function addNodeOp(

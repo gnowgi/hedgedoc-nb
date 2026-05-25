@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { mergeSchemaResults, parseSchemaBlock } from './schema-parser'
+import { mergeSchemaResults, parseSchemaBlock } from '@nodebook/core'
 
 describe('parseSchemaBlock', () => {
   describe('nodeType lines', () => {

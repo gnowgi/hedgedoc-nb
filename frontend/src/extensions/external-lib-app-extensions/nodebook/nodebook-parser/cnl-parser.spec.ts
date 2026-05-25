@@ -3,8 +3,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { getOperationsFromCnl } from './cnl-parser'
-import type { CnlOperation } from './types'
+import { getOperationsFromCnl } from '@nodebook/core'
+import type { CnlOperation } from '@nodebook/core'
 
 /** Extract all addQuery operations from a parse result. */
 function getQueries(ops: CnlOperation[]): Array<{ goalString: string; displayString?: string }> {

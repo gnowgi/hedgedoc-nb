@@ -3,9 +3,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { TransitiveClosureEngine } from './inference-engine'
-import type { CnlGraphData, CnlEdge, CnlNode } from './types'
-import type { MergedSchemas } from './schema-store'
+import { TransitiveClosureEngine } from '@nodebook/core'
+import type { CnlGraphData, CnlEdge, CnlNode, MergedSchemas } from '@nodebook/core'
 
 function makeNode(id: string, role = 'class'): CnlNode {
   return {

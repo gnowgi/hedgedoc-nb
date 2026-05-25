@@ -3,8 +3,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { MorphRegistry } from './morph-registry'
-import type { CnlAttribute, CnlEdge } from './types'
+import { MorphRegistry } from '@nodebook/core'
+import type { CnlAttribute, CnlEdge } from '@nodebook/core'
 
 function makeEdge(id: string, sourceId = 'n1', targetId = 'n2', name = 'rel'): CnlEdge {
   return { id, source_id: sourceId, target_id: targetId, name, weight: 1, morph_ids: [] }

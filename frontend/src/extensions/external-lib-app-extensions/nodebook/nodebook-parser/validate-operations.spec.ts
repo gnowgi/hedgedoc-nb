@@ -3,9 +3,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { validateOperations } from './validate-operations'
-import type { CnlOperation } from './types'
-import type { MergedSchemas } from './schema-store'
+import { validateOperations } from '@nodebook/core'
+import type { CnlOperation, MergedSchemas } from '@nodebook/core'
 
 function addNodeOp(id: string, role: string, displayName?: string): CnlOperation {
   return {
