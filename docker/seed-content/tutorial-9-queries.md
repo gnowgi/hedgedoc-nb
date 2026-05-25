@@ -61,4 +61,4 @@ Ask `who <instance_of> Dog;`, then add a Cat branch and ask `who <is_a> Mammal;`
 
 ---
 
-← [Lesson 8](/n/tutorial-8-inference) · [Tutorial home](/n/tutorial) · *Level 5 (advanced modelling) coming soon*
+← [Lesson 8](/n/tutorial-8-inference) · [Tutorial home](/n/tutorial) · [Lesson 10: Morphs →](/n/tutorial-10-morphs)

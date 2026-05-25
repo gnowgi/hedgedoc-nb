@@ -51,8 +51,11 @@ knowledge graph. Work through them in order:
 8. [Inference](/n/tutorial-8-inference) — nodeBook derives new facts from your taxonomy.
 9. [Queries](/n/tutorial-9-queries) — ask the graph questions. 🏁 *Your notes answer questions.*
 
+### [Level 5 · Advanced modeling](/n/tutorial-10-morphs)
+10. [Morphs](/n/tutorial-10-morphs) — one concept, many states. 🏁 *Model states & context.*
+11. [Schemas](/n/tutorial-11-schemas) — define your own vocabulary of types.
+
 ### Coming next
-- **Level 5 · Advanced modeling** — morphs (states/contexts) and schemas.
 - **Level 6 · Dynamics** — transitions, simulation, and expressions (Petri nets).
 - **Level 7 · Real world** — turn prose into a graph, then the big examples (a metabolic pathway, personal accounting).
 
