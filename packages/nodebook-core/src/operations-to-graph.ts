@@ -55,6 +55,8 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
       }
       const nodeId = op.id
 
+      // Skip nodes whose id normalized to empty (e.g. a placeholder target like '...')
+      if (!nodeId || nodeId.trim() === '') continue
       if (nodesMap.has(nodeId)) continue
 
       const options = payload.options ?? {}
@@ -118,6 +120,11 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
         weight?: number
         morphId?: string
       }
+
+      // Skip dangling edges with an empty source/target (e.g. from a placeholder
+      // relation like '<is_a> ...;') — they would create a node-less edge that
+      // crashes the graph renderer.
+      if (!payload.source?.trim() || !payload.target?.trim()) continue
 
       const edge: CnlEdge = {
         id: op.id,
