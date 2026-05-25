@@ -9,14 +9,16 @@ import {
   CATEGORY_LABELS,
   analyzeViaLlm,
   analyzeWithFallback,
-  checkLlmStatus
+  checkLlmStatus,
+  resolveSpans
 } from '@nodebook/core'
 import type { AnalysisResult, TextSpan, NodeClassification } from '@nodebook/core'
 import type { CodeProps } from './compat/types'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAsync } from 'react-use'
 
 import styles from './nodebook-text-analyzer.module.scss'
+import { HighlightedTextDisplay } from './text-analyzer-highlighted-text'
 import { TextAnalyzerToolbar } from './text-analyzer-toolbar'
 
 /**
@@ -99,6 +101,10 @@ export const NodeBookTextAnalyzer: React.FC<CodeProps> = ({ code }) => {
   }, [])
 
   const spans: TextSpan[] = analysisResult?.spans ?? []
+  const segments = useMemo(
+    () => resolveSpans(text, spans, activeCategories),
+    [text, spans, activeCategories]
+  )
   const [addedTerms, setAddedTerms] = useState<Set<string>>(new Set())
 
   // Group spans by category for the report
@@ -154,8 +160,8 @@ export const NodeBookTextAnalyzer: React.FC<CodeProps> = ({ code }) => {
         source={analysisResult?.source}
       />
 
-      {/* Plain text display (no highlights for now) */}
-      <div className={styles['text-display']}>{text}</div>
+      {/* Passage with inline category highlights (hover a span for its CNL hint) */}
+      <HighlightedTextDisplay segments={segments} spans={spans} />
 
       {/* Service status bar */}
       {analysisResult && (
