@@ -49,4 +49,4 @@ Add an `attributeType: diet` and a `nodeType: Plant`, then give a herbivore a
 
 ---
 
-← [Lesson 10](/n/tutorial-10-morphs) · [Tutorial home](/n/tutorial) · *Level 6 (dynamics) coming soon*
+← [Lesson 10](/n/tutorial-10-morphs) · [Tutorial home](/n/tutorial) · [Lesson 12: Transitions →](/n/tutorial-12-transitions)

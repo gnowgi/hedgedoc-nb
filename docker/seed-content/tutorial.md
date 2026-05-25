@@ -55,8 +55,12 @@ knowledge graph. Work through them in order:
 10. [Morphs](/n/tutorial-10-morphs) — one concept, many states. 🏁 *Model states & context.*
 11. [Schemas](/n/tutorial-11-schemas) — define your own vocabulary of types.
 
+### [Level 6 · Dynamics](/n/tutorial-12-transitions)
+12. [Transitions](/n/tutorial-12-transitions) — model a process (prior → post state).
+13. [Simulation](/n/tutorial-13-simulation) — run it: fire transitions, flow tokens. 🏁 *Run processes.*
+14. [Expressions](/n/tutorial-14-expressions) — computable Function transitions. 🏁 *Your graph calculates.*
+
 ### Coming next
-- **Level 6 · Dynamics** — transitions, simulation, and expressions (Petri nets).
 - **Level 7 · Real world** — turn prose into a graph, then the big examples (a metabolic pathway, personal accounting).
 
 ---
