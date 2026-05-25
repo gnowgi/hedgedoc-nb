@@ -49,4 +49,4 @@ making the graph **reason** and **answer questions**.
 
 ---
 
-← [Lesson 2](/n/tutorial-2-relation) · [Tutorial home](/n/tutorial) · *Level 2 coming soon*
+← [Lesson 2](/n/tutorial-2-relation) · [Tutorial home](/n/tutorial) · [Lesson 4: Adjectives →](/n/tutorial-4-adjectives)

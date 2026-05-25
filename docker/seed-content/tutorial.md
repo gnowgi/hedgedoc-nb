@@ -39,8 +39,11 @@ knowledge graph. Work through them in order:
 2. [A relationship](/n/tutorial-2-relation) — connect two ideas. 🏁 *You've built a knowledge graph!*
 3. [Properties](/n/tutorial-3-attributes) — give your concepts real data. 🏁 *You can now model real things.*
 
+### Level 2 · Describe more precisely
+4. [Adjectives](/n/tutorial-4-adjectives) — qualify a concept (`**wild** Dog`).
+5. [Mind-maps](/n/tutorial-5-mindmap) — sketch a whole hierarchy from an outline. 🏁 *Describe richly; sketch fast.*
+
 ### Coming next
-- **Level 2 · Describe more precisely** — adjectives & modifiers; multiple views (mindmap / concept-map / graph).
 - **Level 3 · Classify** — classes vs. individuals (`is_a`, `instance_of`); quantifiers & modalities. 🏁 *Build a taxonomy.*
 - **Level 4 · Make it reason** — inference and queries. 🏁 *Your notes answer questions.*
 - **Level 5 · Advanced modeling** — morphs (states/contexts) and schemas.
