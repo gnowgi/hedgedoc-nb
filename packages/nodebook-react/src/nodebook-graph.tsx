@@ -1179,11 +1179,13 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
           // read as distinct from the property name/value within one canvas label
           // (and still export to PNG/SVG). The sidebar keeps normal, accessible text.
           const propLines = nodeAttributes.map((a) => {
+            // name: [modality] value [unit] [adverb] — modality qualifies up front
+            // (e.g. "usually 4"), adverb trails the value (e.g. "110 km/h rapidly").
             let line = `${a.name}: `
             if (a.modality) line += `${mathStyle(a.modality, 'italic')} `
-            if (a.adverb) line += `${mathStyle(a.adverb, 'italic')} `
             line += a.value
             if (a.unit) line += ` ${mathStyle(a.unit, 'italic')}`
+            if (a.adverb) line += ` ${mathStyle(a.adverb, 'italic')}`
             return line
           })
           nodeLabel = `${displayName}\n${'─'.repeat(8)}\n${propLines.join('\n')}`
