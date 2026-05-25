@@ -47,4 +47,4 @@ any animal (e.g. `Dog → Puppy`).
 
 ---
 
-← [Lesson 4](/n/tutorial-4-adjectives) · [Tutorial home](/n/tutorial) · *Level 3 (classification) coming soon*
+← [Lesson 4](/n/tutorial-4-adjectives) · [Tutorial home](/n/tutorial) · [Lesson 6: Classes & individuals →](/n/tutorial-6-classify)

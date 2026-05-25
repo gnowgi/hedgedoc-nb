@@ -34,17 +34,20 @@ knowledge graph. Work through them in order:
 
 **First:** [Reading the canvas](/n/tutorial-canvas) — how to pan, zoom, and view the CNL behind any graph.
 
-### Level 1 · Your first knowledge graph
+### [Level 1 · Your first knowledge graph](/n/tutorial-1-node)
 1. [A concept](/n/tutorial-1-node) — turn an idea into a node.
 2. [A relationship](/n/tutorial-2-relation) — connect two ideas. 🏁 *You've built a knowledge graph!*
 3. [Properties](/n/tutorial-3-attributes) — give your concepts real data. 🏁 *You can now model real things.*
 
-### Level 2 · Describe more precisely
+### [Level 2 · Describe more precisely](/n/tutorial-4-adjectives)
 4. [Adjectives](/n/tutorial-4-adjectives) — qualify a concept (`**wild** Dog`).
 5. [Mind-maps](/n/tutorial-5-mindmap) — sketch a whole hierarchy from an outline. 🏁 *Describe richly; sketch fast.*
 
+### [Level 3 · Classify](/n/tutorial-6-classify)
+6. [Classes & individuals](/n/tutorial-6-classify) — `is_a` / `instance_of`. 🏁 *Build a taxonomy.*
+7. [Adding nuance](/n/tutorial-7-nuance) — quantifiers, adverbs & modalities.
+
 ### Coming next
-- **Level 3 · Classify** — classes vs. individuals (`is_a`, `instance_of`); quantifiers & modalities. 🏁 *Build a taxonomy.*
 - **Level 4 · Make it reason** — inference and queries. 🏁 *Your notes answer questions.*
 - **Level 5 · Advanced modeling** — morphs (states/contexts) and schemas.
 - **Level 6 · Dynamics** — transitions, simulation, and expressions (Petri nets).
