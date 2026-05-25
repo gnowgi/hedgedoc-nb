@@ -10,3 +10,9 @@ services:
       - "3080:3080"
     volumes:
       - ./Caddyfile.local:/etc/caddy/Caddyfile
+
+  # Publish the NLP service to the host for local debugging (in-network the
+  # backend still reaches it at nlp:8000). Host: curl localhost:8008/health
+  nlp:
+    ports:
+      - "8008:8000"

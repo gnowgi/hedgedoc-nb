@@ -7,9 +7,32 @@ services:
     build:
       context: ..
       dockerfile: backend/docker/Dockerfile
+    depends_on:
+      - nlp
     volumes:
       - ./.env:/usr/src/app/backend/.env
       - hedgedoc_uploads:/usr/src/app/backend/uploads
+
+  # nodeBook deterministic NLP microservice (spaCy). Built from the separate
+  # github.com/gnowgi/nodebook-nlp repo; set NODEBOOK_NLP_PATH to its checkout
+  # (defaults to a sibling clone of this repo). Reachable in-network at nlp:8000.
+  nlp:
+    build:
+      context: ${NODEBOOK_NLP_PATH:-../../nodebook-nlp}
+      dockerfile: Dockerfile
+      args:
+        SPACY_MODEL: "${SPACY_MODEL:-en_core_web_md}"
+    image: nodebook-nlp:latest
+    restart: unless-stopped
+    environment:
+      SPACY_MODEL: "${SPACY_MODEL:-en_core_web_md}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   frontend:
     restart: unless-stopped
