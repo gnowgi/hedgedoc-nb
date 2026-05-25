@@ -145,6 +145,44 @@ function quantifierSymbol(quantifier: string): string {
   return `[${quantifier}] `
 }
 
+/**
+ * Render text using the *sans-serif* variants of the Unicode Mathematical
+ * Alphanumeric Symbols, so emphasised text appears bold/italic inside a
+ * single-style cytoscape label, stays consistent with the sans-serif UI font,
+ * and survives PNG/SVG export (it's real characters, not CSS). The sans-serif
+ * blocks are contiguous (no letterlike holes), so no special-casing is needed.
+ * Only Latin letters (and digits, for bold) map; other characters — spaces,
+ * punctuation, units like "/" — pass through unchanged. Plain/italic have no
+ * dedicated digit glyphs, so digits stay upright (already sans in the body
+ * font). Display-only: the underlying CNL and the accessible sidebar keep
+ * normal text.
+ */
+function mathStyle(text: string, variant: 'bold' | 'italic' | 'bolditalic'): string {
+  return Array.from(text)
+    .map((ch) => {
+      const code = ch.codePointAt(0)!
+      const upper = code >= 0x41 && code <= 0x5a // A-Z
+      const lower = code >= 0x61 && code <= 0x7a // a-z
+      const digit = code >= 0x30 && code <= 0x39 // 0-9
+      if (variant === 'bold') {
+        // Sans-serif bold
+        if (upper) return String.fromCodePoint(0x1d5d4 + code - 0x41)
+        if (lower) return String.fromCodePoint(0x1d5ee + code - 0x61)
+        if (digit) return String.fromCodePoint(0x1d7ec + code - 0x30)
+      } else if (variant === 'italic') {
+        // Sans-serif italic
+        if (upper) return String.fromCodePoint(0x1d608 + code - 0x41)
+        if (lower) return String.fromCodePoint(0x1d622 + code - 0x61)
+      } else {
+        // Sans-serif bold italic
+        if (upper) return String.fromCodePoint(0x1d63c + code - 0x41)
+        if (lower) return String.fromCodePoint(0x1d656 + code - 0x61)
+      }
+      return ch
+    })
+    .join('')
+}
+
 /** DFS-based cycle detection on directed edges. */
 function graphHasCycle(edges: CnlEdge[]): boolean {
   const adj = new Map<string, string[]>()
@@ -1131,14 +1169,34 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
         if (node.quantifier) {
           displayName = `${quantifierSymbol(node.quantifier)}${displayName}`
         }
+        // Render the node's (morph-filtered) attributes as a property list inside the
+        // node box, divided from the name — so properties are visible and distinct
+        // from relations (which are edges), and update when the active morph changes.
+        const nodeAttributes = inMemoryGraph.attributes.filter((a) => a.source_id === node.id)
+        let nodeLabel = displayName
+        if (nodeAttributes.length > 0) {
+          // Units, adverbs and modalities are shown in Unicode math-italic so they
+          // read as distinct from the property name/value within one canvas label
+          // (and still export to PNG/SVG). The sidebar keeps normal, accessible text.
+          const propLines = nodeAttributes.map((a) => {
+            let line = `${a.name}: `
+            if (a.modality) line += `${mathStyle(a.modality, 'italic')} `
+            if (a.adverb) line += `${mathStyle(a.adverb, 'italic')} `
+            line += a.value
+            if (a.unit) line += ` ${mathStyle(a.unit, 'italic')}`
+            return line
+          })
+          nodeLabel = `${displayName}\n${'─'.repeat(8)}\n${propLines.join('\n')}`
+        }
         const containmentParent = showContainment ? containmentParentMap.get(node.id) : undefined
         cyNodes.push({
           data: {
             id: node.id,
-            label: displayName,
+            label: nodeLabel,
             type: 'polynode',
             hasMorphs: node.morphs.length > 1,
             hasQuantifier: !!node.quantifier,
+            hasAttributes: nodeAttributes.length > 0,
             nestingDepth: nestingDepthMap.get(node.id) ?? 0,
             ...(containmentParent && { parent: containmentParent })
           }
@@ -1261,6 +1319,15 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
           'border-style': 'dashed',
           'border-color': '#7c3aed',
           'border-width': 3
+        }
+      },
+      {
+        // Nodes carrying an attribute list: left-justify the lines so the
+        // property list reads as a list, and allow a wider box.
+        selector: 'node[?hasAttributes]',
+        style: {
+          'text-justification': 'left',
+          'text-max-width': '200px'
         }
       },
       {
