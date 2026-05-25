@@ -46,4 +46,4 @@ Mark `# *some* Bird [class]` as able to fly, and give `Cheetah` a `diet: meat
 
 ---
 
-← [Lesson 6](/n/tutorial-6-classify) · [Tutorial home](/n/tutorial) · *Level 4 (reasoning) coming soon*
+← [Lesson 6](/n/tutorial-6-classify) · [Tutorial home](/n/tutorial) · [Lesson 8: Inference →](/n/tutorial-8-inference)
