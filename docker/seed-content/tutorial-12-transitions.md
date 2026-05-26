@@ -41,6 +41,8 @@ Transitions can have several inputs and outputs:
 So: **nodes are things, transitions are the changes between them.** And because a
 transition has a real before/after, nodeBook can actually *run* it —
 
+> 🧪 **See it in chemistry:** [Chemical equations as transitions](/n/chemistry-equations) models balanced reactions (with stoichiometry as arc weights).
+
 ---
 
 ← [Lesson 11](/n/tutorial-11-schemas) · [Tutorial home](/n/tutorial) · [Lesson 13: Simulation →](/n/tutorial-13-simulation)

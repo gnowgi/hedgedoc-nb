@@ -48,6 +48,8 @@ exactly why properties live *inside* the node box: so you can watch them change.
 Add a third state to a `# Butterfly` — `## caterpillar` and `## adult` — and flip
 between them.
 
+> 🧪 **See it in chemistry:** [Oxidation states & reactions](/n/chemistry-oxidation) uses morphs for an element's oxidation states alongside the reactions that change them.
+
 ---
 
 ← [Lesson 9](/n/tutorial-9-queries) · [Tutorial home](/n/tutorial) · [Lesson 11: Schemas →](/n/tutorial-11-schemas)
