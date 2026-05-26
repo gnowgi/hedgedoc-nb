@@ -6,7 +6,7 @@
 import { DropdownHeader } from '../dropdown-header'
 import { TranslatedDropdownItem } from '../translated-dropdown-item'
 import React, { Fragment } from 'react'
-import { Book as IconBook, Stars as IconStars } from 'react-bootstrap-icons'
+import { Book as IconBook, Mortarboard as IconMortarboard, Stars as IconStars } from 'react-bootstrap-icons'
 
 /**
  * Renders the demo notes submenu for the help dropdown.
@@ -15,6 +15,7 @@ export const DemoNotesSubmenu: React.FC = () => {
   return (
     <Fragment>
       <DropdownHeader i18nKey={'appbar.help.demoNotes.header'} />
+      <TranslatedDropdownItem i18nKey={'appbar.help.demoNotes.tutorial'} icon={IconMortarboard} href={'/n/tutorial'} />
       <TranslatedDropdownItem i18nKey={'appbar.help.demoNotes.nodeBook'} icon={IconBook} href={'/n/nodeBook'} />
       <TranslatedDropdownItem i18nKey={'appbar.help.demoNotes.features'} icon={IconStars} href={'/n/features'} />
     </Fragment>
