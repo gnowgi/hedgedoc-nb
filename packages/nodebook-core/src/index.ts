@@ -45,6 +45,10 @@ export { validateOperations } from './validate-operations'
 export { TransitiveClosureEngine, PrologInferenceEngine } from './inference-engine'
 export type { InferenceEngine, AsyncInferenceEngine } from './inference-engine'
 
+// Attribute inheritance
+export { getInheritedAttributes } from './inheritance'
+export type { InheritedAttribute } from './inheritance'
+
 // Schemas
 export { nodeTypes, relationTypes, attributeTypes, transitionTypes, functionTypes } from './schemas'
 

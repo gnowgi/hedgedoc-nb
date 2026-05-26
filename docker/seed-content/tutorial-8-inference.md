@@ -17,12 +17,15 @@ with it anyway:
 
 # Mammal [class]
 <is_a> Animal;
+has_fur: yes;
+legs: 4;
 
 # Dog [class]
 <is_a> Mammal;
 
 # Fido [individual]
 <instance_of> Dog;
+name: Rex;
 ```
 
 Look closely at the graph: alongside the **solid** links you typed, nodeBook
@@ -38,6 +41,17 @@ This is the moment a knowledge graph stops being a *drawing* and becomes a
 
 > You can hide or show the derived links with the **inferred-edges** toggle on
 > the canvas (see [Reading the canvas](/n/tutorial-canvas)).
+
+### Properties are inherited too
+Inference isn't only about links — it flows **attributes** down the chain. We gave
+`Mammal` the properties `has_fur` and `legs`, and `Fido` only its own `name`. Yet
+look inside the `Dog` and `Fido` boxes: they also show `has_fur: yes` and
+`legs: 4` — in *italic* with a **(from Mammal)** tag, marking them as **inherited**
+rather than stated. (If a node sets its own value for a property, that own value
+wins.)
+
+That's classic ontology behaviour: state something once about a class, and every
+subclass and member gets it for free.
 
 ### Try it
 Add `# Cat [class]` `<is_a> Mammal;` and `# Whiskers [individual]`

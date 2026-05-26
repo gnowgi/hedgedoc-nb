@@ -18,7 +18,8 @@ import {
   TransitiveClosureEngine,
   PrologInferenceEngine,
   validateOperations,
-  getMergedSchemas
+  getMergedSchemas,
+  getInheritedAttributes
 } from '@nodebook/core'
 import type {
   CnlAttribute,
@@ -1173,14 +1174,14 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
         // node box, divided from the name — so properties are visible and distinct
         // from relations (which are edges), and update when the active morph changes.
         const nodeAttributes = inMemoryGraph.attributes.filter((a) => a.source_id === node.id)
+        const inheritedAttributes = getInheritedAttributes(node.id, graphData)
         let nodeLabel = displayName
-        if (nodeAttributes.length > 0) {
-          // Units, adverbs and modalities are shown in Unicode math-italic so they
-          // read as distinct from the property name/value within one canvas label
-          // (and still export to PNG/SVG). The sidebar keeps normal, accessible text.
-          const propLines = nodeAttributes.map((a) => {
-            // name: [modality] value [unit] [adverb] — modality qualifies up front
-            // (e.g. "usually 4"), adverb trails the value (e.g. "110 km/h rapidly").
+        if (nodeAttributes.length > 0 || inheritedAttributes.length > 0) {
+          // Own attributes: name: [modality] value [unit] [adverb] — modality up
+          // front (e.g. "usually 4"), adverb trailing (e.g. "110 km/h rapidly").
+          // Units/adverbs/modalities use Unicode math-italic so they read as
+          // distinct within one canvas label (and still export to PNG/SVG).
+          const ownLines = nodeAttributes.map((a) => {
             let line = `${a.name}: `
             if (a.modality) line += `${mathStyle(a.modality, 'italic')} `
             line += a.value
@@ -1188,7 +1189,16 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
             if (a.adverb) line += ` ${mathStyle(a.adverb, 'italic')}`
             return line
           })
-          nodeLabel = `${displayName}\n${'─'.repeat(8)}\n${propLines.join('\n')}`
+          // Inherited attributes (via is_a/instance_of/member_of): the whole line is
+          // shown in math-italic with a "(from Ancestor)" tag, so it reads as derived
+          // rather than stated. Own values override inherited ones of the same name.
+          const inheritedLines = inheritedAttributes.map((ia) =>
+            mathStyle(
+              `${ia.name}: ${ia.value}${ia.unit ? ` ${ia.unit}` : ''} (from ${ia.inheritedFrom})`,
+              'italic'
+            )
+          )
+          nodeLabel = `${displayName}\n${'─'.repeat(8)}\n${[...ownLines, ...inheritedLines].join('\n')}`
         }
         const containmentParent = showContainment ? containmentParentMap.get(node.id) : undefined
         cyNodes.push({
@@ -1198,7 +1208,7 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
             type: 'polynode',
             hasMorphs: node.morphs.length > 1,
             hasQuantifier: !!node.quantifier,
-            hasAttributes: nodeAttributes.length > 0,
+            hasAttributes: nodeAttributes.length > 0 || inheritedAttributes.length > 0,
             nestingDepth: nestingDepthMap.get(node.id) ?? 0,
             ...(containmentParent && { parent: containmentParent })
           }
