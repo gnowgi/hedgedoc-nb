@@ -1024,6 +1024,10 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
         'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
         'elk.separateConnectedComponents': 'true',
         'elk.layered.compaction.postCompaction.strategy': 'EDGE_LENGTH',
+        // Wrap broad sibling rows across multiple lines instead of one long
+        // strip --- only for concept-map/default mode; Petri nets keep their
+        // natural L-R flow.
+        ...(hasTransitions ? {} : { 'elk.aspectRatio': '1.6' }),
         ...(hasTransitions && { 'elk.partitioning.activate': 'true' })
       }
     }

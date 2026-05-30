@@ -5,7 +5,8 @@
  */
 import type { CnlOperation } from './types'
 
-const HEADING_REGEX = /^\s*(#+)\s*(?:\*([^*]+)\*\s+)?(?:\*\*(.+?)\*\*\s*)?(.+?)(?:\s*\[(.+?)\])?$/
+// Trailing bracket group: [..] (square) OR (..) (round). Group 5 = square content, group 6 = round content.
+const HEADING_REGEX = /^\s*(#+)\s*(?:\*([^*]+)\*\s+)?(?:\*\*(.+?)\*\*\s*)?(.+?)(?:\s*(?:\[(.+?)\]|\((.+?)\)))?$/
 const SIMPLE_HEADING_REGEX = /^\s*(#+)\s*(.+?)$/
 const RELATION_REGEX = /^\s*<(.+?)>\s*([^;\n]*?)(?:;|$)/gm
 const DESCRIPTION_REGEX = /```description\n([\s\S]*?)\n```/
@@ -67,6 +68,27 @@ const ROLE_SYNONYM_MAP: Record<string, string> = {
 
 function normalizeRole(role: string): string {
   return ROLE_SYNONYM_MAP[role.toLowerCase()] ?? role
+}
+
+// Reserved structural type names. When these appear inside [..] or (..) on a
+// heading, they set the node's role tag but do NOT generate an implicit
+// is_a / member_of edge. Anything else in the brackets is treated as a class
+// the node belongs to, and an edge is emitted. This keeps every legacy use
+// of [class], [individual], [Transition] backward-compatible.
+const RESERVED_STRUCTURAL_TYPES = new Set<string>([
+  ...Object.keys(ROLE_SYNONYM_MAP),
+  'transition'
+])
+
+// Same id-canonicalisation rule used everywhere in this file for node names.
+function cnlNameToId(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .split(/\s+/)
+    .map(singularize)
+    .join('_')
 }
 
 interface NodeBlock {
@@ -324,21 +346,41 @@ function buildStructuralTree(cnlText: string): NodeBlock[] {
 }
 
 /**
- * Process a node heading to extract id, type, adjective, base name.
+ * Process a node heading to extract id, type, adjective, base name, and any
+ * implicit class-membership edges encoded in the bracketed type.
+ *
+ *   # Dog [Animal]          → role=class, edge:  Dog <is_a> Animal
+ *   # Dog [Animal, Mammal]  → role=class, edges: Dog <is_a> Animal, <is_a> Mammal
+ *   # Newton (Person)       → role=individual, edge: Newton <member_of> Person
+ *   # Frog [class]          → role=class, no edge (reserved structural keyword)
+ *   # Synthesis [Transition]→ role=transition, no edge (reserved)
  */
-function processNodeHeading(heading: string): { id: string; type: string; payload: Record<string, unknown> } {
+function processNodeHeading(heading: string): {
+  id: string
+  type: string
+  payload: Record<string, unknown>
+  extraOps: CnlOperation[]
+} {
   let adjective: string | null = null
   let baseName: string | null = null
   let displayName: string | null = null
   let nodeType: string | null = null
   let quantifier: string | null = null
+  let bracketStyle: 'square' | 'round' | null = null
+  let bracketContent: string | null = null
 
   let match = heading.match(HEADING_REGEX)
   if (match) {
     quantifier = match[2] ?? null
     adjective = match[3] ?? null
     baseName = match[4]
-    nodeType = match[5] ?? null
+    if (match[5] !== undefined) {
+      bracketStyle = 'square'
+      bracketContent = match[5]
+    } else if (match[6] !== undefined) {
+      bracketStyle = 'round'
+      bracketContent = match[6]
+    }
     displayName = adjective && baseName ? `**${adjective}** ${baseName}` : baseName
   } else {
     match = heading.match(SIMPLE_HEADING_REGEX)
@@ -354,36 +396,68 @@ function processNodeHeading(heading: string): { id: string; type: string; payloa
     displayName = baseName
   }
 
-  if (nodeType) {
-    nodeType = nodeType.trim()
-  } else {
+  // Tolerant fallback: catch bracketed types that weren't at the trailing
+  // position (legacy behaviour --- HEADING_REGEX only matches a trailing group).
+  if (!bracketContent) {
     const typeMatch = baseName.match(/\[(.+?)\]/)
+    const parenMatch = !typeMatch ? baseName.match(/\((.+?)\)/) : null
     if (typeMatch) {
-      nodeType = typeMatch[1].trim()
+      bracketStyle = 'square'
+      bracketContent = typeMatch[1]
       baseName = baseName.replace(/\[.+?\]/, '').trim()
       displayName = displayName!.replace(/\[.+?\]/, '').trim()
-    } else {
-      nodeType = 'individual'
+    } else if (parenMatch) {
+      bracketStyle = 'round'
+      bracketContent = parenMatch[1]
+      baseName = baseName.replace(/\(.+?\)/, '').trim()
+      displayName = displayName!.replace(/\(.+?\)/, '').trim()
     }
   }
 
-  const cleanBaseName = baseName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .split(/\s+/)
-    .map(singularize)
-    .join('_')
-  const cleanAdjective = adjective
-    ? adjective
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .split(/\s+/)
-        .map(singularize)
-        .join('_')
-    : null
+  // Split bracket contents on commas. Reserved structural names only set the
+  // role; real class names become implicit edge targets.
+  const targetTypes: { displayName: string; id: string }[] = []
+  if (bracketContent) {
+    const tokens = bracketContent.split(',').map((t) => t.trim()).filter(Boolean)
+    for (const tok of tokens) {
+      if (RESERVED_STRUCTURAL_TYPES.has(tok.toLowerCase())) {
+        if (!nodeType) nodeType = tok
+      } else {
+        targetTypes.push({ displayName: tok, id: cnlNameToId(tok) })
+      }
+    }
+    if (!nodeType) {
+      // No reserved keyword: bracket style decides the default role.
+      nodeType = bracketStyle === 'round' ? 'individual' : 'class'
+    }
+  } else {
+    nodeType = 'individual'
+  }
+
+  const cleanBaseName = cnlNameToId(baseName)
+  const cleanAdjective = adjective ? cnlNameToId(adjective) : null
   const id = cleanAdjective ? `${cleanAdjective}_${cleanBaseName}` : cleanBaseName
+
+  // Implicit edges: [..] → is_a, (..) → member_of, one per non-reserved token.
+  const relationType = bracketStyle === 'round' ? 'member_of' : 'is_a'
+  const extraOps: CnlOperation[] = []
+  for (const target of targetTypes) {
+    extraOps.push({
+      type: 'addNode',
+      payload: {
+        base_name: target.displayName,
+        displayName: target.displayName,
+        role: 'class',
+        options: { adjective: null }
+      },
+      id: target.id
+    })
+    extraOps.push({
+      type: 'addRelation',
+      payload: { source: id, target: target.id, name: relationType, weight: 1 },
+      id: `rel_${id}_${relationType}_${target.id}`
+    })
+  }
 
   return {
     id,
@@ -394,11 +468,12 @@ function processNodeHeading(heading: string): { id: string; type: string; payloa
       options: {
         id,
         role: normalizeRole(nodeType),
-        parent_types: [],
+        parent_types: targetTypes.map((t) => t.id),
         adjective: adjective ? adjective.trim() : null,
         quantifier: quantifier ? quantifier.trim() : null
       }
-    }
+    },
+    extraOps
   }
 }
 
@@ -861,8 +936,10 @@ export function getOperationsFromCnl(cnlText: string): CnlOperation[] {
       const structuralTree = buildStructuralTree(blockText)
 
       for (const nodeBlock of structuralTree) {
-        const { id: nodeId, payload: nodePayload } = processNodeHeading(nodeBlock.heading)
+        const { id: nodeId, payload: nodePayload, extraOps: implicitTypeOps } = processNodeHeading(nodeBlock.heading)
         operations.push({ type: 'addNode', payload: nodePayload, id: nodeId })
+        // Implicit is_a / member_of edges from [..] and (..) on the heading
+        operations.push(...implicitTypeOps)
 
         const neighborhoodOps = processNeighborhood(nodeId, nodeBlock.content)
         operations.push(...neighborhoodOps)
