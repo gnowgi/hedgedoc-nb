@@ -17,6 +17,22 @@ import { PermissionLevel } from '@hedgedoc/commons'
 import { useIsLoggedIn } from '../../../hooks/common/use-is-logged-in'
 
 /**
+ * Default starter content for new notes: an empty YAML frontmatter block
+ * (title, description, tags) plus an empty H1 --- nudges authors toward
+ * filling the three metadata fields the Explore page surfaces, without
+ * being prescriptive about content. Delete to start from blank.
+ */
+const DEFAULT_NEW_NOTE_TEMPLATE = `---
+title: ""
+description: ""
+tags: []
+---
+
+#
+
+`
+
+/**
  * Links to the "new note" endpoint
  */
 export const NewNoteButton: React.FC = () => {
@@ -28,7 +44,7 @@ export const NewNoteButton: React.FC = () => {
   const isMobile = useIsMobile()
 
   const createNewNoteAndRedirect = useCallback((): void => {
-    createNote('')
+    createNote(DEFAULT_NEW_NOTE_TEMPLATE)
       .then((note) => {
         router?.push(`/n/${note.metadata.primaryAlias}`)
       })
