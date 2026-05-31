@@ -22,7 +22,7 @@ Jump to: [Quick Start](#quick-start) | [Account Types](#the-five-account-types) 
 A minimal transaction needs three things: an account with a starting balance, a `[Transaction]` node, and `<debit>` / `<credit>` relations.
 
 ```nodeBook
-currency: USD;
+currency: INR;
 
 # Cash [Asset]
 balance: 1000;
@@ -36,7 +36,7 @@ description: Purchased pens and paper;
 <credit> 50 Cash;
 ```
 
-**What happens:** Cash drops from $1000 to $950. Office Supplies goes from $0 to $50. Debits equal credits — the transaction balances.
+**What happens:** Cash drops from ₹1000 to ₹950. Office Supplies goes from ₹0 to ₹50. Debits equal credits — the transaction balances.
 
 ---
 
@@ -65,7 +65,7 @@ nodeBook checks this automatically and displays it below the graph.
 Assets are resources the business owns. They increase with debits and decrease with credits.
 
 ```nodeBook
-currency: USD;
+currency: INR;
 
 # Cash [Asset]
 balance: 5000;
@@ -90,7 +90,7 @@ description: Billed client for consulting work;
 # Service Income [Revenue]
 ```
 
-**Result:** Cash = $3,800 | Equipment = $1,200 | Accounts Receivable = $3,000
+**Result:** Cash = ₹3,800 | Equipment = ₹1,200 | Accounts Receivable = ₹3,000
 
 ---
 
@@ -99,7 +99,7 @@ description: Billed client for consulting work;
 Liabilities are obligations the business owes. They increase with credits and decrease with debits.
 
 ```nodeBook
-currency: USD;
+currency: INR;
 
 # Cash [Asset]
 balance: 2000;
@@ -124,7 +124,7 @@ description: Purchased inventory on 30-day terms;
 # Inventory [Asset]
 ```
 
-**Result:** Cash = $12,000 | Bank Loan = $10,000 | Accounts Payable = $1,500 | Inventory = $1,500
+**Result:** Cash = ₹12,000 | Bank Loan = ₹10,000 | Accounts Payable = ₹1,500 | Inventory = ₹1,500
 
 ---
 
@@ -133,7 +133,7 @@ description: Purchased inventory on 30-day terms;
 Equity represents the owner's stake in the business. It increases with credits and decreases with debits (withdrawals).
 
 ```nodeBook
-currency: USD;
+currency: INR;
 
 # Cash [Asset]
 balance: 0;
@@ -156,7 +156,7 @@ description: Owner withdraws for personal use;
 <credit> 2000 Cash;
 ```
 
-**Result:** Cash = $23,000 | Owner Capital = $25,000 | Owner Drawings = $2,000
+**Result:** Cash = ₹23,000 | Owner Capital = ₹25,000 | Owner Drawings = ₹2,000
 
 ---
 
@@ -165,7 +165,7 @@ description: Owner withdraws for personal use;
 Revenue is income earned by the business. It increases with credits.
 
 ```nodeBook
-currency: USD;
+currency: INR;
 
 # Cash [Asset]
 balance: 500;
@@ -191,7 +191,7 @@ description: Completed consulting project, invoiced client;
 <credit> 5000 Consulting Fees;
 ```
 
-**Result:** Cash = $1,300 | Accounts Receivable = $5,000 | Sales Revenue = $800 | Consulting Fees = $5,000
+**Result:** Cash = ₹1,300 | Accounts Receivable = ₹5,000 | Sales Revenue = ₹800 | Consulting Fees = ₹5,000
 
 ---
 
@@ -200,7 +200,7 @@ description: Completed consulting project, invoiced client;
 Expenses are costs of running the business. They increase with debits.
 
 ```nodeBook
-currency: USD;
+currency: INR;
 
 # Cash [Asset]
 balance: 10000;
@@ -223,7 +223,7 @@ description: Bi-weekly payroll;
 <credit> 4500 Cash;
 ```
 
-**Result:** Cash = $3,500 | Rent Expense = $2,000 | Salary Expense = $4,500
+**Result:** Cash = ₹3,500 | Rent Expense = ₹2,000 | Salary Expense = ₹4,500
 
 ---
 
@@ -232,7 +232,7 @@ description: Bi-weekly payroll;
 A complete month of transactions across all five account types. Watch the accounting equation balance at the bottom.
 
 ```nodeBook
-currency: USD;
+currency: INR;
 
 # Cash [Asset]
 balance: 10000;
@@ -335,22 +335,22 @@ description: Client pays outstanding invoice;
 
 | Account | Balance |
 |---------|---------|
-| Cash | $18,950 |
-| Accounts Receivable | $0 |
-| Equipment | $4,000 |
-| Inventory | $3,800 |
-| Bank Loan | $15,000 |
-| Accounts Payable | $800 |
-| Owner Capital | $10,000 |
-| Sales Revenue | $1,800 |
-| Service Income | $6,000 |
-| Rent Expense | $2,500 |
-| Utilities Expense | $350 |
-| Salary Expense | $5,000 |
+| Cash | ₹18,950 |
+| Accounts Receivable | ₹0 |
+| Equipment | ₹4,000 |
+| Inventory | ₹3,800 |
+| Bank Loan | ₹15,000 |
+| Accounts Payable | ₹800 |
+| Owner Capital | ₹10,000 |
+| Sales Revenue | ₹1,800 |
+| Service Income | ₹6,000 |
+| Rent Expense | ₹2,500 |
+| Utilities Expense | ₹350 |
+| Salary Expense | ₹5,000 |
 
-**Accounting equation:** Assets ($26,750) = Liabilities ($15,800) + Equity ($10,000) + Revenue ($7,800) − Expenses ($7,850)
+**Accounting equation:** Assets (₹26,750) = Liabilities (₹15,800) + Equity (₹10,000) + Revenue (₹7,800) − Expenses (₹7,850)
 
-> $26,750 = $15,800 + $10,000 + $7,800 − $7,850 = $25,750 ... plus the $1,000 net income retained!
+> ₹26,750 = ₹15,800 + ₹10,000 + ₹7,800 − ₹7,850 = ₹25,750 ... plus the ₹1,000 net income retained!
 
 ---
 
@@ -365,7 +365,7 @@ balance: 1000;
 
 Available types: `Asset`, `Liability`, `Equity`, `Revenue`, `Expense`, or generic `Account`.
 
-Accounts without a `balance:` attribute start at **$0.00**.
+Accounts without a `balance:` attribute start at **₹0.00**.
 
 ### Recording transactions
 
@@ -393,7 +393,7 @@ currency: INR;    # Shows ₹
 currency: JPY;    # Shows ¥
 ```
 
-Supported codes: USD, EUR, GBP, INR, JPY, CNY, PHP, KRW, THB, BRL, ZAR, MXN, CAD, AUD, CHF, SEK, RUB, TRY, SAR, AED, NGN.
+Supported codes: INR, USD, EUR, GBP, JPY, CNY, PHP, KRW, THB, BRL, ZAR, MXN, CAD, AUD, CHF, SEK, RUB, TRY, SAR, AED, NGN.
 
 ---
 

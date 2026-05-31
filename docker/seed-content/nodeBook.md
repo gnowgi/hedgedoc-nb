@@ -574,7 +574,7 @@ It is essential for all known forms of life.
 ### Accounting
 
 ```
-currency: INR;                  — set currency (USD, EUR, GBP, INR, JPY, etc.)
+currency: INR;                  — set currency (INR, USD, EUR, GBP, JPY, etc.)
 
 # Cash [Asset]                  — account node
 balance: 50000;                 — initial balance

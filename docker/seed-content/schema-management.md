@@ -117,7 +117,7 @@ attributeType: publisher, string, The publisher of a document, domain: Document
 attributeType: isbn, string, International Standard Book Number, domain: Document
 attributeType: issn, string, International Standard Serial Number, domain: Document
 attributeType: price, float, The price or cost of an item, unit: currency, domain: Object
-attributeType: currency, string, The currency used for a monetary value, values: USD|EUR|GBP|JPY|CNY|INR
+attributeType: currency, string, The currency used for a monetary value, values: INR|USD|EUR|GBP|JPY|CNY
 attributeType: rating, float, A numerical rating or score
 attributeType: score, float, A numerical score or grade
 attributeType: count, number, A count or quantity of items
