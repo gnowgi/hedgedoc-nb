@@ -53,6 +53,11 @@ wins.)
 That's classic ontology behaviour: state something once about a class, and every
 subclass and member gets it for free.
 
+> **Negation opts out.** A negated fact (the `!` from [Lesson 7](/n/tutorial-7-nuance))
+> is deliberately left *out* of all this reasoning — it never seeds an inferred
+> link and is never inherited. So `Penguin !<is_a> Flyer;` won't drag in a flyer's
+> properties, and a parent's `!can_fly` is never pushed down to its subclasses.
+
 ### Try it
 Add `# Cat [class]` `<is_a> Mammal;` and `# Whiskers [individual]`
 `<instance_of> Cat;`. Without writing it, the graph will infer that Whiskers is

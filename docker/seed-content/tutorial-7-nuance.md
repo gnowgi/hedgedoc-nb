@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 7 · Adding nuance"
-description: "nodeBook Tutorial, Level 3 — quantifiers, adverbs and modalities"
+description: "nodeBook Tutorial, Level 3 — quantifiers, adverbs, modalities and negation"
 tags:
   - nodebook
   - tutorial
@@ -36,13 +36,35 @@ In the node box you'll see the adverb and modality rendered in *italic*, set
 apart from the plain property name and value — so `speed: 110 km/h rapidly` and
 `legs: usually 4` read at a glance.
 
+### Negation — flip any statement
+Sometimes the important fact is what *isn't* true: a snake has **no** external
+ear; a pig does **not** have scales. Saying nothing leaves it unknown — but you
+can state the negative **explicitly**. Put a `!` in front of any relation or
+attribute line and it asserts that the statement does **not** hold:
+
+```nodeBook
+# Snake [class]
+<is_a> Reptile;
+!<has> external ear;
+!color: green;
+```
+
+A negated relation is drawn as a **dashed red edge with a barred arrowhead**, and
+a negated attribute appears **struck through** with a small `not` tag — so a
+negative reads as clearly different from a positive. The `has` prefix and the
+other modifiers still work (`!has length: 2 *m*;`).
+
+A negative fact is genuine knowledge, not a blank: *"a snake does not have an
+external ear"* says more than simply omitting ears.
+
 > 🏁 **Milestone — your statements now carry nuance:** quantity (∀/∃), manner
-> (adverbs), and certainty (modalities). The graph records not just *what* is
-> true, but *how* and *how much*.
+> (adverbs), certainty (modalities), and **polarity** (negation). The graph
+> records not just *what* is true, but *how*, *how much*, and *what is not*.
 
 ### Try it
-Mark `# *some* Bird [class]` as able to fly, and give `Cheetah` a `diet: meat
-[strictly];`.
+Mark `# *some* Bird [class]` as able to fly, give `Cheetah` a `diet: meat
+[strictly];`, and state that a `# Penguin [Bird]` does not fly with
+`!<can> fly;`.
 
 ---
 
