@@ -526,6 +526,68 @@ describe('getOperationsFromCnl — Attributes', () => {
   })
 })
 
+describe('getOperationsFromCnl — Negated attributes', () => {
+  it('marks a !attr line as negated', () => {
+    const ops = getOperationsFromCnl('# Frog [Animal]\n!color: green;')
+    const attrs = opsOfType(ops, 'addAttribute')
+    expect(attrs).toHaveLength(1)
+    expect(attrPayload(attrs[0]).name).toBe('color')
+    expect(attrPayload(attrs[0]).value).toBe('green')
+    expect(attrPayload(attrs[0]).negated).toBe(true)
+  })
+
+  it('works with the "has" prefix: !has color: green;', () => {
+    const ops = getOperationsFromCnl('# Frog [Animal]\n!has color: green;')
+    const attrs = opsOfType(ops, 'addAttribute')
+    expect(attrPayload(attrs[0]).name).toBe('color')
+    expect(attrPayload(attrs[0]).negated).toBe(true)
+  })
+
+  it('tolerates whitespace between ! and the name: ! color: green;', () => {
+    const ops = getOperationsFromCnl('# Frog [Animal]\n! color: green;')
+    const attrs = opsOfType(ops, 'addAttribute')
+    expect(attrPayload(attrs[0]).name).toBe('color')
+    expect(attrPayload(attrs[0]).negated).toBe(true)
+  })
+
+  it('affirmative attributes carry no negated flag', () => {
+    const ops = getOperationsFromCnl('# Frog [Animal]\ncolor: green;')
+    const attrs = opsOfType(ops, 'addAttribute')
+    expect(attrPayload(attrs[0]).negated).toBeUndefined()
+  })
+
+  it('preserves unit/modality on a negated attribute', () => {
+    const ops = getOperationsFromCnl('# Snake [Animal]\n!length: 2 *m* [certain];')
+    const attrs = opsOfType(ops, 'addAttribute')
+    expect(attrPayload(attrs[0]).negated).toBe(true)
+    expect(attrPayload(attrs[0]).unit).toBe('m')
+    expect(attrPayload(attrs[0]).modality).toBe('certain')
+    expect(attrPayload(attrs[0]).value).toBe('2')
+  })
+
+  it('affirmative and negated attributes of the same name get distinct ids', () => {
+    const ops = getOperationsFromCnl('# Chameleon [Animal]\ncolor: green;\n!color: green;')
+    const attrs = opsOfType(ops, 'addAttribute')
+    expect(attrs).toHaveLength(2)
+    expect(attrs[0].id).not.toBe(attrs[1].id)
+  })
+
+  it('a negated relation is not misparsed as an attribute', () => {
+    // !<has> ratio: 2;  has both ! and : but is a (malformed) relation, never an attribute
+    const ops = getOperationsFromCnl('# Snake [Animal]\n!<has> legs;')
+    expect(opsOfType(ops, 'addAttribute')).toHaveLength(0)
+  })
+
+  it('negated attribute works inside a morph block', () => {
+    const ops = getOperationsFromCnl('# Tree [Plant]\n## winter\n    !has leaves: many;')
+    const attrs = opsOfType(ops, 'addAttribute')
+    const negated = attrs.find((a) => attrPayload(a).negated === true)
+    expect(negated).toBeDefined()
+    expect(attrPayload(negated!).name).toBe('leaves')
+    expect(attrPayload(negated!).morphId).toBeDefined()
+  })
+})
+
 describe('getOperationsFromCnl — Relations', () => {
   it('basic relation: <is_a> Animal;', () => {
     const ops = getOperationsFromCnl('# Dog [class]\n<is_a> Animal;')
@@ -589,6 +651,53 @@ describe('getOperationsFromCnl — Relations', () => {
     const ops = getOperationsFromCnl('# Dog [class]\n<is_a> Animal;')
     const rels = opsOfType(ops, 'addRelation')
     expect(relPayload(rels[0]).weight).toBe(1)
+  })
+})
+
+describe('getOperationsFromCnl — Negated relations', () => {
+  it('marks a !<rel> line as negated', () => {
+    const ops = getOperationsFromCnl('# Snake [Animal]\n!<has> external ear;')
+    const has = opsOfType(ops, 'addRelation').find((r) => relPayload(r).name === 'has')
+    expect(has).toBeDefined()
+    expect(relPayload(has!).source).toBe('snake')
+    expect(relPayload(has!).target).toBe('external_ear')
+    expect(relPayload(has!).negated).toBe(true)
+  })
+
+  it('tolerates whitespace between ! and the relation: ! <has> scales;', () => {
+    const ops = getOperationsFromCnl('# Pig [Animal]\n! <has> scales;')
+    const has = opsOfType(ops, 'addRelation').find((r) => relPayload(r).name === 'has')
+    expect(has).toBeDefined()
+    expect(relPayload(has!).negated).toBe(true)
+  })
+
+  it('affirmative relations are not negated', () => {
+    const ops = getOperationsFromCnl('# Dog [class]\n<has> tail;')
+    const has = opsOfType(ops, 'addRelation').find((r) => relPayload(r).name === 'has')
+    expect(relPayload(has!).negated).toBe(false)
+  })
+
+  it('still creates the target node for a negated relation', () => {
+    const ops = getOperationsFromCnl('# Snake [Animal]\n!<has> external ear;')
+    const target = opsOfType(ops, 'addNode').find((n) => n.id === 'external_ear')
+    expect(target).toBeDefined()
+  })
+
+  it('affirmative and negated edges to the same target get distinct ids', () => {
+    const ops = getOperationsFromCnl('# Platypus [Animal]\n<has> teeth;\n!<has> teeth;')
+    const teeth = opsOfType(ops, 'addRelation').filter((r) => relPayload(r).target === 'teeth')
+    expect(teeth).toHaveLength(2)
+    expect(teeth[0].id).not.toBe(teeth[1].id)
+    expect(teeth.map((r) => relPayload(r).negated).sort()).toEqual([false, true])
+  })
+
+  it('negation works inside a morph block', () => {
+    const ops = getOperationsFromCnl('# Snake [Animal]\n## adult\n    !<has> legs;')
+    const rels = opsOfType(ops, 'addRelation')
+    const negated = rels.find((r) => relPayload(r).negated === true)
+    expect(negated).toBeDefined()
+    expect(relPayload(negated!).name).toBe('has')
+    expect(relPayload(negated!).morphId).toBeDefined()
   })
 })
 

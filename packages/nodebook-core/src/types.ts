@@ -32,6 +32,13 @@ export interface CnlEdge {
   name: string
   weight: number
   morph_ids: string[]
+  /**
+   * True when the relation is negated (asserted to NOT hold), written with a
+   * leading `!` marker in CNL, e.g. `!<has> external ear;`. Negated edges are a
+   * distinct, explicit fact ("X does not relate to Y") — they are rendered
+   * differently and are excluded from positive inference.
+   */
+  negated?: boolean
 }
 
 export interface CnlAttribute {
@@ -43,6 +50,12 @@ export interface CnlAttribute {
   adverb: string | null
   modality: string | null
   quantifier: string | null
+  /**
+   * True when the attribute is negated (asserted to NOT hold), written with a
+   * leading `!` marker in CNL, e.g. `!color: green;` ("does not have color green").
+   * Mirrors {@link CnlEdge.negated} and is rendered with a struck-through label.
+   */
+  negated?: boolean
   morph_ids: string[]
 }
 

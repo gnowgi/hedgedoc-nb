@@ -644,6 +644,27 @@
   }
 }
 
+.attr-tag-negated {
+  background: #fee2e2;
+  color: #b91c1c;
+
+  :global(body[data-bs-theme='dark']) & {
+    background: #7f1d1d;
+    color: #fca5a5;
+  }
+}
+
+// Struck-through list item marking a negated attribute/relation ("does not hold").
+.negated-item {
+  text-decoration: line-through;
+  text-decoration-color: #dc2626;
+  opacity: 0.75;
+
+  :global(body[data-bs-theme='dark']) & {
+    text-decoration-color: #f87171;
+  }
+}
+
 .computed-badge {
   display: inline-block;
   padding: 0.125rem 0.5rem;

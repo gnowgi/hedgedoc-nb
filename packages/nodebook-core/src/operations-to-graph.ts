@@ -118,6 +118,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
         target: string
         name: string
         weight?: number
+        negated?: boolean
         morphId?: string
       }
 
@@ -132,6 +133,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
         target_id: payload.target,
         name: payload.name,
         weight: payload.weight ?? 1,
+        negated: payload.negated ?? false,
         morph_ids: []
       }
 
@@ -163,6 +165,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
         adverb?: string
         modality?: string
         quantifier?: string
+        negated?: boolean
       }
 
       if (payload.abbreviation) {
@@ -178,6 +181,7 @@ export function operationsToGraph(operations: CnlOperation[]): CnlGraphData {
         adverb: payload.adverb ?? null,
         modality: payload.modality ?? null,
         quantifier: payload.quantifier ?? null,
+        negated: payload.negated ?? false,
         morph_ids: []
       }
 

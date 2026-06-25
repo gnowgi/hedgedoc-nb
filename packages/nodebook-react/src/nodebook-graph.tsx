@@ -51,7 +51,8 @@ import {
   Diagram3 as IconInference,
   Search as IconQuery,
   Code as IconCode,
-  Boxes as IconBoxes
+  Boxes as IconBoxes,
+  Funnel as IconExplicitOnly
 } from 'react-bootstrap-icons'
 
 const log = new Logger('NodeBookGraph')
@@ -184,6 +185,17 @@ function mathStyle(text: string, variant: 'bold' | 'italic' | 'bolditalic'): str
     .join('')
 }
 
+/**
+ * Overlay each character with a combining long stroke (U+0336) so the text reads
+ * as struck-through within a single cytoscape label and survives PNG/SVG export
+ * (real characters, not CSS). Used to mark negated attributes ("does not have …").
+ */
+function strikeThrough(text: string): string {
+  return Array.from(text)
+    .map((ch) => ch + '̶')
+    .join('')
+}
+
 /** DFS-based cycle detection on directed edges. */
 function graphHasCycle(edges: CnlEdge[]): boolean {
   const adj = new Map<string, string[]>()
@@ -251,6 +263,10 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
   const [showQueryPanel, setShowQueryPanel] = useState(true)
   const [showSource, setShowSource] = useState(false)
   const [showContainment, setShowContainment] = useState(false)
+  // When true, the graph shows ONLY explicitly stated relations and attributes —
+  // all derived facts (inferred/inverse/transitive/membership edges and inherited
+  // attributes) are suspended. Requested so users can see exactly what they wrote.
+  const [explicitOnly, setExplicitOnly] = useState(false)
 
   const printImage = useMemo(() => {
     if (!printMode || !cyRef.current) return null
@@ -414,7 +430,12 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
       const memberOfClass = new Map<string, string[]>()
       const allEdges = [
         ...graphData.edges.map((e) => ({ source: e.source_id, target: e.target_id, name: e.name })),
-        ...inferenceResult.inferredEdges.map((e) => ({ source: e.source_id, target: e.target_id, name: e.name }))
+        // Explicit-only mode suspends derived edges, so containment nests on explicit is_a only.
+        ...(explicitOnly ? [] : inferenceResult.inferredEdges).map((e) => ({
+          source: e.source_id,
+          target: e.target_id,
+          name: e.name
+        }))
       ]
 
       for (const edge of allEdges) {
@@ -469,7 +490,7 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     }
 
     return { containmentParentMap: parentMap, nestingDepthMap: depthMap }
-  }, [showContainment, graphMode, graphData.edges, inferenceResult.inferredEdges])
+  }, [showContainment, graphMode, graphData.edges, inferenceResult.inferredEdges, explicitOnly])
 
   // Detect accounting mode (Transaction nodes present)
   const isAccountingMode = useMemo(() => graphData.nodes.some((n) => n.role === 'Transaction'), [graphData])
@@ -911,9 +932,9 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
       nodes: graphData.nodes.map((n) => ({ ...n })),
       edges: filteredEdges,
       attributes: filteredAttributes,
-      inferredEdges: showInferredEdges ? inferenceResult.inferredEdges : []
+      inferredEdges: showInferredEdges && !explicitOnly ? inferenceResult.inferredEdges : []
     })
-  }, [graphData, inferenceResult, showInferredEdges])
+  }, [graphData, inferenceResult, showInferredEdges, explicitOnly])
 
   // Dynamic library loading — ELK replaces dagre
   const {
@@ -1178,7 +1199,8 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
         // node box, divided from the name — so properties are visible and distinct
         // from relations (which are edges), and update when the active morph changes.
         const nodeAttributes = inMemoryGraph.attributes.filter((a) => a.source_id === node.id)
-        const inheritedAttributes = getInheritedAttributes(node.id, graphData)
+        // Explicit-only mode suspends inherited (derived) attributes.
+        const inheritedAttributes = explicitOnly ? [] : getInheritedAttributes(node.id, graphData)
         let nodeLabel = displayName
         if (nodeAttributes.length > 0 || inheritedAttributes.length > 0) {
           // Own attributes: name: [modality] value [unit] [adverb] — modality up
@@ -1191,7 +1213,8 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
             line += a.value
             if (a.unit) line += ` ${mathStyle(a.unit, 'italic')}`
             if (a.adverb) line += ` ${mathStyle(a.adverb, 'italic')}`
-            return line
+            // Negated attribute ("does not have …"): strike the line and prefix ¬.
+            return a.negated ? `¬ ${strikeThrough(line)}` : line
           })
           // Inherited attributes (via is_a/instance_of/member_of): the whole line is
           // shown in math-italic with a "(from Ancestor)" tag, so it reads as derived
@@ -1263,13 +1286,16 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
           }
         })
       } else {
+        const baseLabel = edge.weight > 1 ? `${edge.name} ${circledNumber(edge.weight)}` : edge.name
         cyEdges.push({
           data: {
             id: edge.id,
             source: edge.source_id,
             target: edge.target_id,
-            label: edge.weight > 1 ? `${edge.name} ${circledNumber(edge.weight)}` : edge.name
-          }
+            // Prefix negated relations with ¬ ("does not") so the polarity reads in the label too.
+            label: edge.negated ? `¬ ${baseLabel}` : baseLabel
+          },
+          classes: edge.negated ? 'negated' : undefined
         })
       }
     }
@@ -1367,6 +1393,19 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
           color: dark ? '#e2e8f0' : '#000000',
           'text-rotation': 'autorotate',
           'text-margin-y': -8
+        }
+      },
+      // Negated edge style — dashed red with a barred (tee) arrowhead, signalling
+      // an explicit non-relation ("X does NOT relate to Y", written `!<rel> Y;`).
+      {
+        selector: 'edge.negated',
+        style: {
+          'line-style': 'dashed',
+          'line-color': dark ? '#f87171' : '#dc2626',
+          'line-dash-pattern': [6, 3] as unknown as undefined,
+          'target-arrow-color': dark ? '#f87171' : '#dc2626',
+          'target-arrow-shape': 'tee',
+          color: dark ? '#fca5a5' : '#b91c1c'
         }
       },
       // Inferred edge style — dashed purple, arced to avoid overlapping nodes
@@ -1745,7 +1784,8 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     currencySymbol,
     showContainment,
     containmentParentMap,
-    nestingDepthMap
+    nestingDepthMap,
+    explicitOnly
   ])
 
   // Update Cytoscape node data when marking or placeValues change (without full re-render)
@@ -1815,10 +1855,10 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
         nodes: updatedNodes,
         edges: filteredEdges,
         attributes: filteredAttributes,
-        inferredEdges: showInferredEdges ? inferenceResult.inferredEdges : []
+        inferredEdges: showInferredEdges && !explicitOnly ? inferenceResult.inferredEdges : []
       })
     },
-    [inMemoryGraph, graphData, inferenceResult, showInferredEdges]
+    [inMemoryGraph, graphData, inferenceResult, showInferredEdges, explicitOnly]
   )
 
   // Export handlers
@@ -2057,7 +2097,19 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
           <button onClick={handleValidate} title='Validate against schemas'>
             <IconValidate size={14} />
           </button>
-          {!isPetriNet && inferenceResult.inferredEdges.length > 0 && (
+          {!isPetriNet && (
+            <button
+              onClick={() => setExplicitOnly((prev) => !prev)}
+              className={explicitOnly ? styles['toggle-active'] : undefined}
+              title={
+                explicitOnly
+                  ? 'Show derived facts too (inferred relations & inherited attributes)'
+                  : 'Show only explicitly stated relations & attributes (suspend inferred/inverse relations & inherited attributes)'
+              }>
+              <IconExplicitOnly size={14} />
+            </button>
+          )}
+          {!isPetriNet && !explicitOnly && inferenceResult.inferredEdges.length > 0 && (
             <button
               onClick={() => setShowInferredEdges((prev) => !prev)}
               className={showInferredEdges ? styles['toggle-active'] : undefined}
@@ -2357,8 +2409,13 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
                       <ul>
                         {section.attributes.map((attr) => (
                           <li key={attr.id}>
-                            <strong>{attr.name}:</strong> {attr.value}
-                            {attr.unit ? ` ${attr.unit}` : ''}
+                            <span className={attr.negated ? styles['negated-item'] : undefined}>
+                              <strong>{attr.name}:</strong> {attr.value}
+                              {attr.unit ? ` ${attr.unit}` : ''}
+                            </span>
+                            {attr.negated && (
+                              <span className={`${styles['attr-tag']} ${styles['attr-tag-negated']}`}>not</span>
+                            )}
                             {attr.quantifier && (
                               <span className={`${styles['attr-tag']} ${styles['attr-tag-quantifier']}`}>
                                 {attr.quantifier}
@@ -2382,8 +2439,13 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
                       <ul>
                         {section.relations.map((rel) => (
                           <li key={rel.id}>
-                            <strong>{rel.name}</strong>
-                            {rel.weight > 1 ? ` ${circledNumber(rel.weight)}` : ''} &rarr; {rel.target_id}
+                            <span className={rel.negated ? styles['negated-item'] : undefined}>
+                              <strong>{rel.name}</strong>
+                              {rel.weight > 1 ? ` ${circledNumber(rel.weight)}` : ''} &rarr; {rel.target_id}
+                            </span>
+                            {rel.negated && (
+                              <span className={`${styles['attr-tag']} ${styles['attr-tag-negated']}`}>not</span>
+                            )}
                           </li>
                         ))}
                       </ul>

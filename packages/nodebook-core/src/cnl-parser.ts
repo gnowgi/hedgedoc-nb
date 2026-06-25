@@ -8,7 +8,9 @@ import type { CnlOperation } from './types'
 // Trailing bracket group: [..] (square) OR (..) (round). Group 5 = square content, group 6 = round content.
 const HEADING_REGEX = /^\s*(#+)\s*(?:\*([^*]+)\*\s+)?(?:\*\*(.+?)\*\*\s*)?(.+?)(?:\s*(?:\[(.+?)\]|\((.+?)\)))?$/
 const SIMPLE_HEADING_REGEX = /^\s*(#+)\s*(.+?)$/
-const RELATION_REGEX = /^\s*<(.+?)>\s*([^;\n]*?)(?:;|$)/gm
+// Optional leading `!` marks a negated relation: `!<has> external ear;` asserts
+// the relation does NOT hold. Group 1 = negation marker, 2 = relation name, 3 = targets.
+const RELATION_REGEX = /^\s*(!\s*)?<(.+?)>\s*([^;\n]*?)(?:;|$)/gm
 const DESCRIPTION_REGEX = /```description\n([\s\S]*?)\n```/
 const GRAPH_DESCRIPTION_REGEX = /```graph-description\n([\s\S]*?)\n```/
 const MINDMAP_HEADING_REGEX = /^\s*#\s+(.+?)\s+<([^>]+)>\s*$/
@@ -563,12 +565,16 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
     if (cnlQueryLines.has(trimmed)) return false
     if (!trimmed.includes(':')) return false
     if (trimmed.startsWith('<')) return false
+    if (/^!\s*</.test(trimmed)) return false // negated relation, not an attribute
     if (trimmed.startsWith('?-')) return false
     if (/^\s*expression\s*:/i.test(trimmed)) return false
     return true
   })
   for (const line of attributeLines) {
-    const basicMatch = line.match(/^\s*(?:has\s+)?([^:<{]+?)(?:\s*\{(\w+)\})?\s*:\s*([^;]+);?/)
+    // Optional leading `!` negates the attribute: `!color: green;` ("does not have color green").
+    const negated = /^\s*!/.test(line)
+    const attrLine = negated ? line.replace(/^\s*!\s*/, '') : line
+    const basicMatch = attrLine.match(/^\s*(?:has\s+)?([^:<{]+?)(?:\s*\{(\w+)\})?\s*:\s*([^;]+);?/)
     if (!basicMatch) continue
 
     const [, name, abbreviation, fullValue] = basicMatch
@@ -605,7 +611,7 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
     value = value.trim()
 
     const valueHash = fnv1aHash(String(value))
-    const attrId = `attr_${nodeId}_${name.trim().toLowerCase().replace(/\s+/g, '_')}_${valueHash}`
+    const attrId = `attr_${nodeId}_${negated ? 'not_' : ''}${name.trim().toLowerCase().replace(/\s+/g, '_')}_${valueHash}`
 
     const attributePayload: Record<string, unknown> = {
       source: nodeId,
@@ -617,6 +623,7 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
     if (quantifier) attributePayload.quantifier = quantifier
     if (adverb) attributePayload.adverb = adverb
     if (modality) attributePayload.modality = modality
+    if (negated) attributePayload.negated = true
 
     ops.push({ type: 'addAttribute', payload: attributePayload, id: attrId })
   }
@@ -632,7 +639,8 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
   // Process relations
   const relationMatches = [...content.matchAll(RELATION_REGEX)]
   for (const match of relationMatches) {
-    const [, relationName, targets] = match
+    const [, negationMarker, relationName, targets] = match
+    const negated = Boolean(negationMarker)
     const trimmedRelName = relationName.trim()
     const isAccountingRelation = trimmedRelName === 'debit' || trimmedRelName === 'credit'
     const mappedRelName = RELATION_ALIAS_MAP[trimmedRelName.toLowerCase()] ?? trimmedRelName
@@ -674,7 +682,8 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
             .join('_')
         : null
       const targetId = cleanTargetAdjective ? `${cleanTargetAdjective}_${cleanTargetBaseName}` : cleanTargetBaseName
-      const relId = `rel_${nodeId}_${trimmedRelName.toLowerCase().replace(/\s+/g, '_')}_${targetId}`
+      // Polarity is part of the edge identity so `<has> X` and `!<has> X` don't collide.
+      const relId = `rel_${nodeId}_${negated ? 'not_' : ''}${trimmedRelName.toLowerCase().replace(/\s+/g, '_')}_${targetId}`
 
       ops.push({
         type: 'addNode',
@@ -689,7 +698,7 @@ function processNeighborhood(nodeId: string, lines: string[]): CnlOperation[] {
 
       ops.push({
         type: 'addRelation',
-        payload: { source: nodeId, target: targetId, name: mappedRelName, weight },
+        payload: { source: nodeId, target: targetId, name: mappedRelName, weight, negated },
         id: relId
       })
     }
@@ -779,12 +788,16 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
     if (cnlQueryLines.has(trimmed)) return false
     if (!trimmed.includes(':')) return false
     if (trimmed.startsWith('<')) return false
+    if (/^!\s*</.test(trimmed)) return false // negated relation, not an attribute
     if (trimmed.startsWith('?-')) return false
     if (/^\s*expression\s*:/i.test(trimmed)) return false
     return true
   })
   for (const line of attributeLines) {
-    const basicMatch = line.match(/^\s*(?:has\s+)?([^:<{]+?)(?:\s*\{(\w+)\})?\s*:\s*([^;]+);?/)
+    // Optional leading `!` negates the attribute: `!color: green;` ("does not have color green").
+    const negated = /^\s*!/.test(line)
+    const attrLine = negated ? line.replace(/^\s*!\s*/, '') : line
+    const basicMatch = attrLine.match(/^\s*(?:has\s+)?([^:<{]+?)(?:\s*\{(\w+)\})?\s*:\s*([^;]+);?/)
     if (!basicMatch) continue
 
     const [, name, abbreviation, fullValue] = basicMatch
@@ -821,7 +834,7 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
     value = value.trim()
 
     const valueHash = fnv1aHash(String(value))
-    const attrId = `attr_${nodeId}_${name.trim().toLowerCase().replace(/\s+/g, '_')}_${valueHash}`
+    const attrId = `attr_${nodeId}_${negated ? 'not_' : ''}${name.trim().toLowerCase().replace(/\s+/g, '_')}_${valueHash}`
 
     const attributePayload: Record<string, unknown> = {
       source: nodeId,
@@ -834,6 +847,7 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
     if (quantifier) attributePayload.quantifier = quantifier
     if (adverb) attributePayload.adverb = adverb
     if (modality) attributePayload.modality = modality
+    if (negated) attributePayload.negated = true
 
     ops.push({ type: 'addAttribute', payload: attributePayload, id: attrId })
   }
@@ -849,7 +863,8 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
   // Process relations (with morphId tagging)
   const relationMatches = [...content.matchAll(RELATION_REGEX)]
   for (const match of relationMatches) {
-    const [, relationName, targets] = match
+    const [, negationMarker, relationName, targets] = match
+    const negated = Boolean(negationMarker)
     const trimmedRelName = relationName.trim()
     const isAccountingRelation = trimmedRelName === 'debit' || trimmedRelName === 'credit'
     const mappedRelName = RELATION_ALIAS_MAP[trimmedRelName.toLowerCase()] ?? trimmedRelName
@@ -891,7 +906,8 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
             .join('_')
         : null
       const targetId = cleanTargetAdjective ? `${cleanTargetAdjective}_${cleanTargetBaseName}` : cleanTargetBaseName
-      const relId = `rel_${nodeId}_${trimmedRelName.toLowerCase().replace(/\s+/g, '_')}_${targetId}`
+      // Polarity is part of the edge identity so `<has> X` and `!<has> X` don't collide.
+      const relId = `rel_${nodeId}_${negated ? 'not_' : ''}${trimmedRelName.toLowerCase().replace(/\s+/g, '_')}_${targetId}`
 
       ops.push({
         type: 'addNode',
@@ -906,7 +922,7 @@ function processMorphNeighborhood(nodeId: string, morphId: string, lines: string
 
       ops.push({
         type: 'addRelation',
-        payload: { source: nodeId, target: targetId, name: mappedRelName, weight, morphId },
+        payload: { source: nodeId, target: targetId, name: mappedRelName, weight, negated, morphId },
         id: relId
       })
     }

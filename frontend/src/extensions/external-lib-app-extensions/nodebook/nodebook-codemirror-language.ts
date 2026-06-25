@@ -94,8 +94,8 @@ function token(stream: StringStream, state: CnlState): string | null {
     return 'emphasis'
   }
 
-  // Relation: <relation name>
-  if (stream.match(/^<[^>]+>/)) {
+  // Relation: <relation name>, optionally negated with a leading ! (e.g. !<has> ear;)
+  if (stream.match(/^!\s*<[^>]+>/) || stream.match(/^<[^>]+>/)) {
     return 'keyword'
   }
 

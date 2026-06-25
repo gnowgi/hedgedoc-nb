@@ -90,6 +90,33 @@ describe('TransitiveClosureEngine', () => {
     })
   })
 
+  describe('negated relations', () => {
+    it('does not use a negated edge to seed transitive closure', () => {
+      // a is_a b (negated), b is_a c → must NOT infer a is_a c
+      const graph = makeGraph(
+        [makeNode('a'), makeNode('b'), makeNode('c')],
+        [{ ...makeEdge('e1', 'a', 'b', 'is_a'), negated: true }, makeEdge('e2', 'b', 'c', 'is_a')]
+      )
+      const result = engine.infer(graph, makeSchemas())
+      expect(result.inferredEdges).toHaveLength(0)
+    })
+
+    it('still infers across positive edges when an unrelated negated edge exists', () => {
+      const graph = makeGraph(
+        [makeNode('a'), makeNode('b'), makeNode('c'), makeNode('d')],
+        [
+          makeEdge('e1', 'a', 'b', 'is_a'),
+          makeEdge('e2', 'b', 'c', 'is_a'),
+          { ...makeEdge('e3', 'a', 'd', 'is_a'), negated: true }
+        ]
+      )
+      const result = engine.infer(graph, makeSchemas())
+      // a→c inferred; nothing involving the negated a→d
+      expect(result.inferredEdges).toHaveLength(1)
+      expect(result.inferredEdges[0].target_id).toBe('c')
+    })
+  })
+
   describe('longer chain', () => {
     it('infers all transitive edges for A→B→C→D', () => {
       const graph = makeGraph(
