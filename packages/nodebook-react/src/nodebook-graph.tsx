@@ -51,7 +51,8 @@ import {
   Diagram3 as IconInference,
   Search as IconQuery,
   Code as IconCode,
-  Boxes as IconBoxes
+  Boxes as IconBoxes,
+  Funnel as IconExplicitOnly
 } from 'react-bootstrap-icons'
 
 const log = new Logger('NodeBookGraph')
@@ -251,6 +252,10 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
   const [showQueryPanel, setShowQueryPanel] = useState(true)
   const [showSource, setShowSource] = useState(false)
   const [showContainment, setShowContainment] = useState(false)
+  // When true, the graph shows ONLY explicitly stated relations and attributes —
+  // all derived facts (inferred/inverse/transitive/membership edges and inherited
+  // attributes) are suspended. Requested so users can see exactly what they wrote.
+  const [explicitOnly, setExplicitOnly] = useState(false)
 
   const printImage = useMemo(() => {
     if (!printMode || !cyRef.current) return null
@@ -414,7 +419,12 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
       const memberOfClass = new Map<string, string[]>()
       const allEdges = [
         ...graphData.edges.map((e) => ({ source: e.source_id, target: e.target_id, name: e.name })),
-        ...inferenceResult.inferredEdges.map((e) => ({ source: e.source_id, target: e.target_id, name: e.name }))
+        // Explicit-only mode suspends derived edges, so containment nests on explicit is_a only.
+        ...(explicitOnly ? [] : inferenceResult.inferredEdges).map((e) => ({
+          source: e.source_id,
+          target: e.target_id,
+          name: e.name
+        }))
       ]
 
       for (const edge of allEdges) {
@@ -469,7 +479,7 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     }
 
     return { containmentParentMap: parentMap, nestingDepthMap: depthMap }
-  }, [showContainment, graphMode, graphData.edges, inferenceResult.inferredEdges])
+  }, [showContainment, graphMode, graphData.edges, inferenceResult.inferredEdges, explicitOnly])
 
   // Detect accounting mode (Transaction nodes present)
   const isAccountingMode = useMemo(() => graphData.nodes.some((n) => n.role === 'Transaction'), [graphData])
@@ -911,9 +921,9 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
       nodes: graphData.nodes.map((n) => ({ ...n })),
       edges: filteredEdges,
       attributes: filteredAttributes,
-      inferredEdges: showInferredEdges ? inferenceResult.inferredEdges : []
+      inferredEdges: showInferredEdges && !explicitOnly ? inferenceResult.inferredEdges : []
     })
-  }, [graphData, inferenceResult, showInferredEdges])
+  }, [graphData, inferenceResult, showInferredEdges, explicitOnly])
 
   // Dynamic library loading — ELK replaces dagre
   const {
@@ -1178,7 +1188,8 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
         // node box, divided from the name — so properties are visible and distinct
         // from relations (which are edges), and update when the active morph changes.
         const nodeAttributes = inMemoryGraph.attributes.filter((a) => a.source_id === node.id)
-        const inheritedAttributes = getInheritedAttributes(node.id, graphData)
+        // Explicit-only mode suspends inherited (derived) attributes.
+        const inheritedAttributes = explicitOnly ? [] : getInheritedAttributes(node.id, graphData)
         let nodeLabel = displayName
         if (nodeAttributes.length > 0 || inheritedAttributes.length > 0) {
           // Own attributes: name: [modality] value [unit] [adverb] — modality up
@@ -1745,7 +1756,8 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     currencySymbol,
     showContainment,
     containmentParentMap,
-    nestingDepthMap
+    nestingDepthMap,
+    explicitOnly
   ])
 
   // Update Cytoscape node data when marking or placeValues change (without full re-render)
@@ -1815,10 +1827,10 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
         nodes: updatedNodes,
         edges: filteredEdges,
         attributes: filteredAttributes,
-        inferredEdges: showInferredEdges ? inferenceResult.inferredEdges : []
+        inferredEdges: showInferredEdges && !explicitOnly ? inferenceResult.inferredEdges : []
       })
     },
-    [inMemoryGraph, graphData, inferenceResult, showInferredEdges]
+    [inMemoryGraph, graphData, inferenceResult, showInferredEdges, explicitOnly]
   )
 
   // Export handlers
@@ -2057,7 +2069,19 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
           <button onClick={handleValidate} title='Validate against schemas'>
             <IconValidate size={14} />
           </button>
-          {!isPetriNet && inferenceResult.inferredEdges.length > 0 && (
+          {!isPetriNet && (
+            <button
+              onClick={() => setExplicitOnly((prev) => !prev)}
+              className={explicitOnly ? styles['toggle-active'] : undefined}
+              title={
+                explicitOnly
+                  ? 'Show derived facts too (inferred relations & inherited attributes)'
+                  : 'Show only explicitly stated relations & attributes (suspend inferred/inverse relations & inherited attributes)'
+              }>
+              <IconExplicitOnly size={14} />
+            </button>
+          )}
+          {!isPetriNet && !explicitOnly && inferenceResult.inferredEdges.length > 0 && (
             <button
               onClick={() => setShowInferredEdges((prev) => !prev)}
               className={showInferredEdges ? styles['toggle-active'] : undefined}
