@@ -940,6 +940,11 @@
         "title": "Polymorphic Nodes",
         "description": "Add `## Morph Name` sub-headings under a `#` node to define polymorphic states. Each morph can have its own attributes and relations. Click a node in the graph to switch between its morphs using the state selector.",
         "example": "```nodeBook\n# Water [Molecule]\nmolecular formula: \"H2O\";\nstate: \"liquid\";\n\n## Ice\nstate: \"solid\";\ntemperature: 0 *Celsius*;\n\n## Steam\nstate: \"gas\";\ntemperature: 100 *Celsius*;\n```"
+      },
+      "negation": {
+        "title": "Negation",
+        "description": "Prefix a relation or an attribute line with `!` to assert it does NOT hold — an explicit negative fact, distinct from simply leaving it out. Use `!<relation> Target;` to negate a relation and `!name: value;` to negate an attribute (the optional `has` prefix and modifiers like units still work). Negated relations render as a dashed red barred edge; negated attributes appear struck through with a `not` tag. Negated facts are excluded from inference and inheritance.",
+        "example": "```nodeBook\n# Snake [Animal]\n!<has> external ear;\n!color: green;\n\n# Pig [Animal]\n!<has> scales;\n\n# Penguin [Bird]\n!<can> fly;\nhabitat: \"Antarctica\";\n```"
       }
     },
     "nodeBook-schema": {

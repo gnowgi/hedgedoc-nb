@@ -41,6 +41,7 @@ export class NodeBookAppExtension extends AppExtension {
           { i18nKey: 'accounting' },
           { i18nKey: 'mindMap' },
           { i18nKey: 'morphs' },
+          { i18nKey: 'negation' },
           { i18nKey: 'queries' }
         ]
       },
