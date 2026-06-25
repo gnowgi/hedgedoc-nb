@@ -52,7 +52,9 @@ import {
   Search as IconQuery,
   Code as IconCode,
   Boxes as IconBoxes,
-  Funnel as IconExplicitOnly
+  Funnel as IconExplicitOnly,
+  ArrowsFullscreen as IconFullscreen,
+  FullscreenExit as IconFullscreenExit
 } from 'react-bootstrap-icons'
 
 const log = new Logger('NodeBookGraph')
@@ -247,7 +249,13 @@ export interface NodeBookGraphProps extends CodeProps {
 
 export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = false }) => {
   const containerRef = useRef<HTMLDivElement>(null)
+  // The whole nodeBook frame (toolbar + canvas) — this is what goes full screen,
+  // so the controls stay reachable while presenting.
+  const frameRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<cytoscape.Core | null>(null)
+  // Remembers the pan/zoom lock state from before entering full screen, so we can
+  // restore it on exit (full screen force-unlocks interaction).
+  const interactionBeforeFullscreenRef = useRef(false)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [inMemoryGraph, setInMemoryGraph] = useState<InMemoryGraph | null>(null)
   const [validationWarnings, setValidationWarnings] = useState<CnlParseError[]>([])
@@ -256,6 +264,7 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
   const [placeValues, setPlaceValues] = useState<Map<string, number>>(new Map())
   const [tokenMultiplier, setTokenMultiplier] = useState<number>(1)
   const [graphInteractionEnabled, setGraphInteractionEnabled] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const [showInferredEdges, setShowInferredEdges] = useState(true)
   const [highlightedProofPath, setHighlightedProofPath] = useState<string[] | null>(null)
   const [queryResults, setQueryResults] = useState<QueryResult[]>([])
@@ -1899,6 +1908,51 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     })
   }, [])
 
+  // Full screen: blow the canvas up to fill the display so large graphs are
+  // readable — handy for presenting/screensharing. Targets the frame (toolbar +
+  // canvas) so the controls remain available.
+  const toggleFullscreen = useCallback(() => {
+    if (typeof document === 'undefined') return
+    if (!document.fullscreenElement) {
+      frameRef.current?.requestFullscreen?.().catch(() => undefined)
+    } else {
+      document.exitFullscreen?.().catch(() => undefined)
+    }
+  }, [])
+
+  // Keep React state in sync with the browser's full-screen state (covers the
+  // Esc key and the OS leaving full screen), resize Cytoscape to the new
+  // dimensions, and unlock pan/zoom while presenting.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const onFullscreenChange = () => {
+      const active = document.fullscreenElement === frameRef.current
+      setIsFullscreen(active)
+      const cy = cyRef.current
+      if (!cy) return
+      if (active) {
+        // Remember the lock state, then unlock so the presenter can pan & zoom.
+        interactionBeforeFullscreenRef.current = cy.userZoomingEnabled()
+        setGraphInteractionEnabled(true)
+        cy.userZoomingEnabled(true)
+        cy.userPanningEnabled(true)
+      } else {
+        // Restore the pre-fullscreen lock state.
+        const restore = interactionBeforeFullscreenRef.current
+        setGraphInteractionEnabled(restore)
+        cy.userZoomingEnabled(restore)
+        cy.userPanningEnabled(restore)
+      }
+      // Let the layout settle, then resize the canvas and refit the graph.
+      requestAnimationFrame(() => {
+        cy.resize()
+        cy.fit(undefined, 30)
+      })
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
+
   const handleExportSvg = useCallback(() => {
     if (!cyRef.current) return
     try {
@@ -1998,7 +2052,10 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
       loading={isLibLoading || !cytoscapeModules}
       componentName={'nodeBook'}
       error={libLoadingError}>
-      <div className={styles['nodebook-container']} {...cypressId('nodebook-frame')}>
+      <div
+        ref={frameRef}
+        className={`${styles['nodebook-container']}${isFullscreen ? ` ${styles['fullscreen']}` : ''}`}
+        {...cypressId('nodebook-frame')}>
         {hasValidated && validationWarnings.length === 0 && (
           <div className={`${styles['validation-pass-banner']} d-print-none`}>
             Validation passed - no schema warnings
@@ -2085,6 +2142,12 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
           </button>
           <button onClick={handleFitGraph} title='Fit graph to view'>
             <IconFit size={14} />
+          </button>
+          <button
+            onClick={toggleFullscreen}
+            className={isFullscreen ? styles['toggle-active'] : undefined}
+            title={isFullscreen ? 'Exit full screen' : 'Full screen (pan & zoom unlocked)'}>
+            {isFullscreen ? <IconFullscreenExit size={14} /> : <IconFullscreen size={14} />}
           </button>
           <button
             onClick={toggleGraphInteraction}
