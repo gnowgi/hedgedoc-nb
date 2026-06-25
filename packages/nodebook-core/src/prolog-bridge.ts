@@ -56,14 +56,19 @@ export function generatePrologProgram(graphData: CnlGraphData, schemas: MergedSc
   }
 
   // Explicit relation facts: explicit_relation(Source, Target, RelName)
+  // Negated relations are explicit non-facts; they must not be asserted as
+  // positive Prolog facts (which would drive transitive/symmetric inference).
   for (const edge of graphData.edges) {
+    if (edge.negated) continue
     lines.push(
       `explicit_relation(${prologAtom(edge.source_id)}, ${prologAtom(edge.target_id)}, ${prologAtom(edge.name)}).`
     )
   }
 
   // Attribute facts: attribute(NodeId, AttrName, Value)
+  // Negated attributes are explicit non-facts; don't assert them as positive facts.
   for (const attr of graphData.attributes) {
+    if (attr.negated) continue
     lines.push(`attribute(${prologAtom(attr.source_id)}, ${prologAtom(attr.name)}, ${prologAtom(attr.value)}).`)
     if (attr.unit) {
       lines.push(`attribute_unit(${prologAtom(attr.source_id)}, ${prologAtom(attr.name)}, ${prologAtom(attr.unit)}).`)
@@ -258,9 +263,11 @@ export async function queryInferredRelations(
   await queryAsync(session, 'relation(X, Y, R).')
   const { raw } = await collectAnswers(session, limit)
 
-  // Build set of explicit edges for filtering
+  // Build set of explicit edges for filtering (negated edges aren't positive
+  // facts, so they shouldn't suppress a positive inferred edge of the same triple)
   const explicitKeys = new Set<string>()
   for (const edge of graphData.edges) {
+    if (edge.negated) continue
     explicitKeys.add(`${edge.source_id}|${edge.target_id}|${edge.name}`)
   }
 

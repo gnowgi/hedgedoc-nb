@@ -184,6 +184,17 @@ function mathStyle(text: string, variant: 'bold' | 'italic' | 'bolditalic'): str
     .join('')
 }
 
+/**
+ * Overlay each character with a combining long stroke (U+0336) so the text reads
+ * as struck-through within a single cytoscape label and survives PNG/SVG export
+ * (real characters, not CSS). Used to mark negated attributes ("does not have …").
+ */
+function strikeThrough(text: string): string {
+  return Array.from(text)
+    .map((ch) => ch + '̶')
+    .join('')
+}
+
 /** DFS-based cycle detection on directed edges. */
 function graphHasCycle(edges: CnlEdge[]): boolean {
   const adj = new Map<string, string[]>()
@@ -1191,7 +1202,8 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
             line += a.value
             if (a.unit) line += ` ${mathStyle(a.unit, 'italic')}`
             if (a.adverb) line += ` ${mathStyle(a.adverb, 'italic')}`
-            return line
+            // Negated attribute ("does not have …"): strike the line and prefix ¬.
+            return a.negated ? `¬ ${strikeThrough(line)}` : line
           })
           // Inherited attributes (via is_a/instance_of/member_of): the whole line is
           // shown in math-italic with a "(from Ancestor)" tag, so it reads as derived
@@ -1263,13 +1275,16 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
           }
         })
       } else {
+        const baseLabel = edge.weight > 1 ? `${edge.name} ${circledNumber(edge.weight)}` : edge.name
         cyEdges.push({
           data: {
             id: edge.id,
             source: edge.source_id,
             target: edge.target_id,
-            label: edge.weight > 1 ? `${edge.name} ${circledNumber(edge.weight)}` : edge.name
-          }
+            // Prefix negated relations with ¬ ("does not") so the polarity reads in the label too.
+            label: edge.negated ? `¬ ${baseLabel}` : baseLabel
+          },
+          classes: edge.negated ? 'negated' : undefined
         })
       }
     }
@@ -1367,6 +1382,19 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
           color: dark ? '#e2e8f0' : '#000000',
           'text-rotation': 'autorotate',
           'text-margin-y': -8
+        }
+      },
+      // Negated edge style — dashed red with a barred (tee) arrowhead, signalling
+      // an explicit non-relation ("X does NOT relate to Y", written `!<rel> Y;`).
+      {
+        selector: 'edge.negated',
+        style: {
+          'line-style': 'dashed',
+          'line-color': dark ? '#f87171' : '#dc2626',
+          'line-dash-pattern': [6, 3] as unknown as undefined,
+          'target-arrow-color': dark ? '#f87171' : '#dc2626',
+          'target-arrow-shape': 'tee',
+          color: dark ? '#fca5a5' : '#b91c1c'
         }
       },
       // Inferred edge style — dashed purple, arced to avoid overlapping nodes
@@ -2357,8 +2385,13 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
                       <ul>
                         {section.attributes.map((attr) => (
                           <li key={attr.id}>
-                            <strong>{attr.name}:</strong> {attr.value}
-                            {attr.unit ? ` ${attr.unit}` : ''}
+                            <span className={attr.negated ? styles['negated-item'] : undefined}>
+                              <strong>{attr.name}:</strong> {attr.value}
+                              {attr.unit ? ` ${attr.unit}` : ''}
+                            </span>
+                            {attr.negated && (
+                              <span className={`${styles['attr-tag']} ${styles['attr-tag-negated']}`}>not</span>
+                            )}
                             {attr.quantifier && (
                               <span className={`${styles['attr-tag']} ${styles['attr-tag-quantifier']}`}>
                                 {attr.quantifier}
@@ -2382,8 +2415,13 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
                       <ul>
                         {section.relations.map((rel) => (
                           <li key={rel.id}>
-                            <strong>{rel.name}</strong>
-                            {rel.weight > 1 ? ` ${circledNumber(rel.weight)}` : ''} &rarr; {rel.target_id}
+                            <span className={rel.negated ? styles['negated-item'] : undefined}>
+                              <strong>{rel.name}</strong>
+                              {rel.weight > 1 ? ` ${circledNumber(rel.weight)}` : ''} &rarr; {rel.target_id}
+                            </span>
+                            {rel.negated && (
+                              <span className={`${styles['attr-tag']} ${styles['attr-tag-negated']}`}>not</span>
+                            )}
                           </li>
                         ))}
                       </ul>

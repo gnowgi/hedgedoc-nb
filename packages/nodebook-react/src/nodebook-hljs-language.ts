@@ -100,10 +100,10 @@ export default function cnlLanguage(hljs: HLJSApi): Language {
         end: /$/,
         relevance: 5
       },
-      // Relation: <relation name> Target;
+      // Relation: <relation name> Target;  (optionally negated with a leading !)
       {
         className: 'keyword',
-        begin: /<[^>]+>/,
+        begin: /!?\s*<[^>]+>/,
         relevance: 5
       },
       // Attribute line: key: value;

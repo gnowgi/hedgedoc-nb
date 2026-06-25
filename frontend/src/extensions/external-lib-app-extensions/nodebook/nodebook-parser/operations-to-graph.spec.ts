@@ -212,6 +212,23 @@ describe('operationsToGraph — Pass 3: Relations', () => {
     const graph = operationsToGraph([...ops, relOp])
     expect(graph.edges[0].weight).toBe(1)
   })
+
+  it('defaults negated to false when not specified', () => {
+    const ops = [addNodeOp('a', 'A'), addNodeOp('b', 'B'), addRelationOp('r1', 'a', 'b', 'has')]
+    const graph = operationsToGraph(ops)
+    expect(graph.edges[0].negated).toBe(false)
+  })
+
+  it('carries negated:true onto the edge', () => {
+    const ops = [addNodeOp('a', 'A'), addNodeOp('b', 'B')]
+    const relOp: CnlOperation = {
+      type: 'addRelation',
+      payload: { source: 'a', target: 'b', name: 'has', negated: true },
+      id: 'r1'
+    }
+    const graph = operationsToGraph([...ops, relOp])
+    expect(graph.edges[0].negated).toBe(true)
+  })
 })
 
 describe('operationsToGraph — Pass 3: Attributes', () => {
@@ -251,6 +268,18 @@ describe('operationsToGraph — Pass 3: Attributes', () => {
     expect(attr.adverb).toBeNull()
     expect(attr.modality).toBeNull()
     expect(attr.quantifier).toBeNull()
+  })
+
+  it('defaults negated to false when not specified', () => {
+    const ops = [addNodeOp('a', 'A'), addAttributeOp('a1', 'a', 'color', 'red')]
+    const graph = operationsToGraph(ops)
+    expect(graph.attributes[0].negated).toBe(false)
+  })
+
+  it('carries negated:true onto the attribute', () => {
+    const ops = [addNodeOp('a', 'A'), addAttributeOp('a1', 'a', 'color', 'red', { negated: true })]
+    const graph = operationsToGraph(ops)
+    expect(graph.attributes[0].negated).toBe(true)
   })
 })
 

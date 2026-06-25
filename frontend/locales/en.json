@@ -918,8 +918,8 @@
       "title": "nodeBook",
       "conceptMap": {
         "title": "Concept Map",
-        "description": "Create knowledge graphs by declaring nodes with `# Name [Type]` headings, adding attributes with `name: value;` (the `has` prefix is optional), and connecting nodes with `<relation> Target;` edges. Use `<relation> N Target;` for weighted edges — the number displays as a circled digit on the arc.",
-        "example": "```nodeBook\n# Earth [Planet]\ndiameter: 12742 *km*;\nstate: \"solid\";\n<orbits> Sun;\n<has satellite> Moon;\n\n# Sun [Star]\nspectral type: \"G2V\";\n\n# Moon [Satellite]\ndiameter: 3474 *km*;\n```"
+        "description": "Create knowledge graphs by declaring nodes with `# Name [Type]` headings, adding attributes with `name: value;` (the `has` prefix is optional), and connecting nodes with `<relation> Target;` edges. Use `<relation> N Target;` for weighted edges — the number displays as a circled digit on the arc. Prefix a relation or an attribute with `!` to assert it does NOT hold (e.g. `!<has> external ear;` or `!color: green;`) — negated relations are drawn as a dashed red barred edge, and negated attributes appear struck through.",
+        "example": "```nodeBook\n# Earth [Planet]\ndiameter: 12742 *km*;\nstate: \"solid\";\n!color: green;\n<orbits> Sun;\n<has satellite> Moon;\n!<has satellite> Ring;\n\n# Sun [Star]\nspectral type: \"G2V\";\n\n# Moon [Satellite]\ndiameter: 3474 *km*;\n```"
       },
       "petriNet": {
         "title": "Petri Net",

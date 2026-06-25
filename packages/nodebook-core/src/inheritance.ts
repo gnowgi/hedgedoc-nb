@@ -26,10 +26,11 @@ export function getInheritedAttributes(nodeId: string, graphData: CnlGraphData):
   const nodeName = new Map(graphData.nodes.map((n) => [n.id, n.name]))
 
   // Names already resolved (case-insensitive). Seed with the node's own attributes
-  // so own values win over anything inherited.
+  // so own values win over anything inherited. Negated own attributes ("not green")
+  // are excluded — they don't assert a value, so they must not block inheriting one.
   const resolved = new Set<string>()
   for (const a of graphData.attributes) {
-    if (a.source_id === nodeId) resolved.add(a.name.toLowerCase())
+    if (a.source_id === nodeId && !a.negated) resolved.add(a.name.toLowerCase())
   }
 
   const inherited: InheritedAttribute[] = []
@@ -40,13 +41,15 @@ export function getInheritedAttributes(nodeId: string, graphData: CnlGraphData):
     const next: string[] = []
     for (const current of frontier) {
       for (const edge of graphData.edges) {
-        if (edge.source_id !== current || !INHERITANCE_RELATIONS.has(edge.name)) continue
+        // Negated inheritance edges ("Snake is NOT a Reptile") don't establish a parent.
+        if (edge.source_id !== current || edge.negated || !INHERITANCE_RELATIONS.has(edge.name)) continue
         const parent = edge.target_id
         if (visited.has(parent)) continue
         visited.add(parent)
         next.push(parent)
         for (const attr of graphData.attributes) {
-          if (attr.source_id !== parent) continue
+          // A parent's negated attribute is a non-fact; never inherit it as a positive value.
+          if (attr.source_id !== parent || attr.negated) continue
           const key = attr.name.toLowerCase()
           if (resolved.has(key)) continue
           resolved.add(key)

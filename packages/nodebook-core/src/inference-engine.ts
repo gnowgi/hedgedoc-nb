@@ -34,8 +34,13 @@ export class TransitiveClosureEngine implements InferenceEngine {
     const inferredEdges: InferredEdge[] = []
     const existingEdgeKeys = new Set<string>()
 
+    // Negated relations ("X does NOT relate to Y") are explicit non-facts — they
+    // must not seed transitive closure or membership inheritance, nor suppress a
+    // positive inferred edge of the same triple. Work over positive edges only.
+    const positiveEdges = graphData.edges.filter((edge) => !edge.negated)
+
     // Index explicit edges by key "source|target|relation"
-    for (const edge of graphData.edges) {
+    for (const edge of positiveEdges) {
       existingEdgeKeys.add(`${edge.source_id}|${edge.target_id}|${edge.name}`)
     }
 
@@ -56,7 +61,7 @@ export class TransitiveClosureEngine implements InferenceEngine {
 
     // Build adjacency index per canonical relation name: relation → source → [{target, edgeId}]
     const adjByRelation = new Map<string, Map<string, Array<{ target: string; edgeId: string }>>>()
-    for (const edge of graphData.edges) {
+    for (const edge of positiveEdges) {
       const canonical = aliasToCanonical.get(edge.name) ?? edge.name
       if (!transitiveRelations.has(canonical)) continue
 
@@ -74,7 +79,7 @@ export class TransitiveClosureEngine implements InferenceEngine {
     }
 
     // Also index edges by alias → canonical (merge into canonical adjacency)
-    for (const edge of graphData.edges) {
+    for (const edge of positiveEdges) {
       const canonical = aliasToCanonical.get(edge.name)
       if (!canonical) continue
       // Already handled above since we check canonical
@@ -141,7 +146,7 @@ export class TransitiveClosureEngine implements InferenceEngine {
     const isAAdj = adjByRelation.get('is_a')
     if (isAAdj) {
       for (const memberRel of ['member_of', 'instance_of']) {
-        const memberEdges = graphData.edges.filter(
+        const memberEdges = positiveEdges.filter(
           (e) => e.name === memberRel || aliasToCanonical.get(e.name) === memberRel
         )
 
