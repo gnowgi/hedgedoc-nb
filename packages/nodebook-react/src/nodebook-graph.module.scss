@@ -26,6 +26,23 @@
   }
 }
 
+// Full-screen mode: the frame fills the display and the canvas grows to take all
+// the vertical space left over by the (absolutely-positioned) toolbar and any
+// banners/detail panel — so large graphs become readable when presenting.
+.fullscreen {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+
+  .graph-canvas {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+}
+
 .export-buttons {
   position: absolute;
   top: 0.5rem;
