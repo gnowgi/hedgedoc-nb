@@ -52,7 +52,7 @@ knowledge graph. Work through them in order:
 
 ### [Level 3 · Classify](/n/tutorial-6-classify)
 6. [Classes & individuals](/n/tutorial-6-classify) — `is_a` / `instance_of`. 🏁 *Build a taxonomy.*
-7. [Adding nuance](/n/tutorial-7-nuance) — quantifiers, adverbs & modalities.
+7. [Adding nuance](/n/tutorial-7-nuance) — quantifiers, adverbs, modalities & negation (`!`).
 
 ### [Level 4 · Make it reason](/n/tutorial-8-inference)
 8. [Inference](/n/tutorial-8-inference) — nodeBook derives new facts from your taxonomy.
