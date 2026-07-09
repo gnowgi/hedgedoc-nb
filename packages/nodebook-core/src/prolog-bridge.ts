@@ -50,6 +50,14 @@ function prologAtom(s: string): string {
 export function generatePrologProgram(graphData: CnlGraphData, schemas: MergedSchemas): string {
   const lines: string[] = []
 
+  // Declare schema-metadata predicates dynamic so that referencing them when no
+  // relation carries the property (e.g. a graph with transitive but no symmetric
+  // relations) fails cleanly instead of raising an existence_error.
+  lines.push(':- dynamic(transitive/1).')
+  lines.push(':- dynamic(symmetric/1).')
+  lines.push(':- dynamic(inverse/2).')
+  lines.push('')
+
   // Node facts: node(Id, Name, Role)
   for (const node of graphData.nodes) {
     lines.push(`node(${prologAtom(node.id)}, ${prologAtom(node.name)}, ${prologAtom(node.role)}).`)
@@ -95,17 +103,28 @@ export function generatePrologProgram(graphData: CnlGraphData, schemas: MergedSc
 
   // Derived rules for relation/3
   lines.push('')
+  lines.push('% List membership helper (avoids loading the tau-prolog lists module)')
+  lines.push('member_(E, [E|_]).')
+  lines.push('member_(E, [_|T]) :- member_(E, T).')
+  lines.push('')
   lines.push('% Base case: explicit relations are relations')
   lines.push('relation(X, Y, R) :- explicit_relation(X, Y, R).')
   lines.push('')
-  lines.push('% Transitive closure')
-  lines.push('relation(X, Z, R) :- transitive(R), explicit_relation(X, Y, R), relation(Y, Z, R), X \\= Z, X \\= Y.')
-  lines.push('')
-  lines.push('% Symmetric relations')
+  lines.push('% Symmetric relations (non-recursive)')
   lines.push('relation(X, Y, R) :- symmetric(R), explicit_relation(Y, X, R).')
   lines.push('')
-  lines.push('% Inverse relations')
+  lines.push('% Inverse relations (non-recursive)')
   lines.push('relation(X, Y, Inv) :- inverse(R, Inv), explicit_relation(Y, X, R).')
+  lines.push('')
+  lines.push('% One hop for transitive closure: an explicit edge or its symmetric image')
+  lines.push('tstep(X, Y, R) :- explicit_relation(X, Y, R).')
+  lines.push('tstep(X, Y, R) :- symmetric(R), explicit_relation(Y, X, R).')
+  lines.push('')
+  lines.push('% Cycle-safe transitive closure: a visited-path accumulator forbids')
+  lines.push('% revisiting a node, so cyclic relations (e.g. A>B>C>A) terminate.')
+  lines.push('relation(X, Z, R) :- transitive(R), tstep(X, Y, R), treach(Y, Z, R, [X, Y]), X \\= Z.')
+  lines.push('treach(Y, Y, _, _).')
+  lines.push('treach(Y, Z, R, V) :- tstep(Y, W, R), \\+ member_(W, V), treach(W, Z, R, [W|V]).')
   lines.push('')
   lines.push('% Membership inheritance: member_of(X,A) + is_a(A,B) => member_of(X,B)')
   lines.push(`relation(X, B, 'member_of') :- explicit_relation(X, A, 'member_of'), relation(A, B, 'is_a'), X \\= B.`)
