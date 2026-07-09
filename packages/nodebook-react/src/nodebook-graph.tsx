@@ -347,6 +347,41 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     return 'concept-map'
   }, [graphData, operations])
 
+  // Active morph selection per node (ephemeral UI state, keyed by node id). Kept
+  // separate from graphData so switching a morph does not rewrite the document,
+  // and reset to each node's default nbh whenever the parsed graph changes.
+  const [activeMorphs, setActiveMorphs] = useState<Record<string, string>>({})
+  useEffect(() => {
+    const init: Record<string, string> = {}
+    for (const n of graphData.nodes) if (n.nbh) init[n.id] = n.nbh
+    setActiveMorphs(init)
+  }, [graphData])
+
+  // The graph restricted to each node's ACTIVE morph: only that morph's edges and
+  // attributes. Inference and rendering both run over this, so a node's inactive
+  // morphs contribute neither explicit nor inferred (transitive / inverse / symmetric)
+  // edges — e.g. Whale "as fish" must not show the is_a/has_subtype edge to Mammal.
+  const morphFilteredGraph = useMemo<CnlGraphData>(() => {
+    const edges: CnlEdge[] = []
+    const attributes: CnlAttribute[] = []
+    const nodes = graphData.nodes.map((n) => {
+      const nbh = activeMorphs[n.id] ?? n.nbh
+      const activeMorph = n.morphs.find((m) => m.morph_id === nbh)
+      if (activeMorph) {
+        for (const relId of activeMorph.relationNode_ids) {
+          const e = graphData.edges.find((x) => x.id === relId)
+          if (e) edges.push(e)
+        }
+        for (const attrId of activeMorph.attributeNode_ids) {
+          const a = graphData.attributes.find((x) => x.id === attrId)
+          if (a) attributes.push(a)
+        }
+      }
+      return { ...n, nbh }
+    })
+    return { ...graphData, nodes, edges, attributes }
+  }, [graphData, activeMorphs])
+
   // Run inference asynchronously: try PrologInferenceEngine, fallback to TransitiveClosureEngine
   const [inferenceResult, setInferenceResult] = useState<InferenceResult>({ inferredEdges: [], errors: [] })
   useEffect(() => {
@@ -357,7 +392,7 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     }
     let cancelled = false
     const merged = getMergedSchemas()
-    const queries = graphData.queries ?? []
+    const queries = morphFilteredGraph.queries ?? []
 
     if (queries.length > 0) {
       setIsQueryRunning(true)
@@ -366,7 +401,7 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     void (async () => {
       try {
         const engine = new PrologInferenceEngine()
-        const result = await engine.inferAsync(graphData, merged, queries)
+        const result = await engine.inferAsync(morphFilteredGraph, merged, queries)
         if (cancelled) return
         setInferenceResult(result)
         setQueryResults(result.queryResults)
@@ -374,7 +409,7 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
         // Fallback to TransitiveClosureEngine if Prolog fails
         if (cancelled) return
         const fallback = new TransitiveClosureEngine()
-        setInferenceResult(fallback.infer(graphData, merged))
+        setInferenceResult(fallback.infer(morphFilteredGraph, merged))
         setQueryResults([])
       } finally {
         if (!cancelled) setIsQueryRunning(false)
@@ -383,7 +418,7 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     return () => {
       cancelled = true
     }
-  }, [graphData, graphMode])
+  }, [morphFilteredGraph, graphMode])
 
   // Detect cycles in concept-map graphs (for stress layout)
   const hasCycle = useMemo(() => {
@@ -918,32 +953,15 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     return registry
   }, [graphData])
 
-  // Initialize in-memory graph with morph-filtered data
+  // Initialize in-memory graph from the morph-filtered graph + inferred edges.
   useEffect(() => {
-    const filteredEdges: CnlEdge[] = []
-    const filteredAttributes: CnlAttribute[] = []
-
-    for (const node of graphData.nodes) {
-      const activeMorph = node.morphs.find((m) => m.morph_id === node.nbh)
-      if (activeMorph) {
-        for (const relId of activeMorph.relationNode_ids) {
-          const edge = graphData.edges.find((e) => e.id === relId)
-          if (edge) filteredEdges.push(edge)
-        }
-        for (const attrId of activeMorph.attributeNode_ids) {
-          const attr = graphData.attributes.find((a) => a.id === attrId)
-          if (attr) filteredAttributes.push(attr)
-        }
-      }
-    }
-
     setInMemoryGraph({
-      nodes: graphData.nodes.map((n) => ({ ...n })),
-      edges: filteredEdges,
-      attributes: filteredAttributes,
+      nodes: morphFilteredGraph.nodes.map((n) => ({ ...n })),
+      edges: morphFilteredGraph.edges,
+      attributes: morphFilteredGraph.attributes,
       inferredEdges: showInferredEdges && !explicitOnly ? inferenceResult.inferredEdges : []
     })
-  }, [graphData, inferenceResult, showInferredEdges, explicitOnly])
+  }, [morphFilteredGraph, inferenceResult, showInferredEdges, explicitOnly])
 
   // Dynamic library loading — ELK replaces dagre
   const {
@@ -1193,6 +1211,17 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
       }
     } else {
       // Concept map / mindmap mode — original behavior
+      // Inheritance must respect the active morph: walk only the morph-filtered
+      // edges/attributes (inMemoryGraph), not the full graphData. Otherwise a node
+      // with alternative morphs (e.g. Whale "as fish" vs "as mammal") would inherit
+      // from the ancestors of ALL its morphs at once — showing, say, both
+      // breathes:water (from Fish) and gives:milk (from Mammal) regardless of which
+      // morph is active. graphData.nodes is kept for ancestor display names.
+      const morphScopedGraph: CnlGraphData = {
+        ...graphData,
+        edges: inMemoryGraph.edges,
+        attributes: inMemoryGraph.attributes
+      }
       for (const node of inMemoryGraph.nodes) {
         let displayName = node.name
         if (node.morphs && node.nbh) {
@@ -1209,7 +1238,7 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
         // from relations (which are edges), and update when the active morph changes.
         const nodeAttributes = inMemoryGraph.attributes.filter((a) => a.source_id === node.id)
         // Explicit-only mode suspends inherited (derived) attributes.
-        const inheritedAttributes = explicitOnly ? [] : getInheritedAttributes(node.id, graphData)
+        const inheritedAttributes = explicitOnly ? [] : getInheritedAttributes(node.id, morphScopedGraph)
         let nodeLabel = displayName
         if (nodeAttributes.length > 0 || inheritedAttributes.length > 0) {
           // Own attributes: name: [modality] value [unit] [adverb] — modality up
@@ -1831,44 +1860,12 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     }
   }, [marking, placeValues, graphMode, graphData, isTransitionEnabled, isAccountingMode, currencySymbol])
 
-  // Handle morph change (concept map mode)
-  const handleMorphChange = useCallback(
-    (nodeId: string, morphId: string) => {
-      if (!inMemoryGraph) return
-
-      const updatedNodes = inMemoryGraph.nodes.map((node) => {
-        if (node.id === nodeId) {
-          return { ...node, nbh: morphId }
-        }
-        return node
-      })
-
-      const filteredEdges: CnlEdge[] = []
-      const filteredAttributes: CnlAttribute[] = []
-
-      for (const node of updatedNodes) {
-        const activeMorph = node.morphs.find((m) => m.morph_id === node.nbh)
-        if (activeMorph) {
-          for (const relId of activeMorph.relationNode_ids) {
-            const edge = graphData.edges.find((e) => e.id === relId)
-            if (edge) filteredEdges.push(edge)
-          }
-          for (const attrId of activeMorph.attributeNode_ids) {
-            const attr = graphData.attributes.find((a) => a.id === attrId)
-            if (attr) filteredAttributes.push(attr)
-          }
-        }
-      }
-
-      setInMemoryGraph({
-        nodes: updatedNodes,
-        edges: filteredEdges,
-        attributes: filteredAttributes,
-        inferredEdges: showInferredEdges && !explicitOnly ? inferenceResult.inferredEdges : []
-      })
-    },
-    [inMemoryGraph, graphData, inferenceResult, showInferredEdges, explicitOnly]
-  )
+  // Handle morph change (concept map mode). Record the selection; the
+  // morphFilteredGraph memo re-filters edges/attributes, inference re-runs over
+  // the active morphs, and inMemoryGraph is rebuilt from both.
+  const handleMorphChange = useCallback((nodeId: string, morphId: string) => {
+    setActiveMorphs((prev) => ({ ...prev, [nodeId]: morphId }))
+  }, [])
 
   // Export handlers
   const handleExportPng = useCallback(() => {
