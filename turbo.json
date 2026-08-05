@@ -34,6 +34,20 @@
         "dist/**"
       ]
     },
+    "@nodebook/core#build": {
+      "dependsOn": [],
+      "outputs": [
+        "dist/**"
+      ]
+    },
+    "@nodebook/react#build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
+    },
     "@hedgedoc/frontend#build": {
       "dependsOn": [
         "^build"
