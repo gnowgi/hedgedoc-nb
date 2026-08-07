@@ -273,6 +273,18 @@ export interface UiHandle {
   destroy(): void
 }
 
+// Overlay panels live inside the same container Cytoscape listens on. Without
+// this, a real mousedown on a panel bubbles to the container, Cytoscape treats
+// it as a background tap (closing the inspector mid-gesture, which also
+// cancels the button's pending click), and wheel-scrolling a panel zooms the
+// graph. Stopping propagation at the panel keeps its own buttons working while
+// hiding the interaction from Cytoscape.
+function isolateFromGraph(el: HTMLElement): void {
+  for (const type of ['pointerdown', 'mousedown', 'mouseup', 'touchstart', 'wheel']) {
+    el.addEventListener(type, (event) => event.stopPropagation())
+  }
+}
+
 /** Wire the toolbar and click-to-inspect panel onto a rendered graph. */
 export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOptions): UiHandle {
   const doc = container.ownerDocument
@@ -288,6 +300,7 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
       onRelayout: options.onRelayout,
       onExportPng: options.onExportPng
     })
+    isolateFromGraph(toolbarEl)
     container.appendChild(toolbarEl)
   }
 
@@ -309,6 +322,7 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
       onMorphSelect: options.onMorphSelect,
       onClose: closeInspector
     })
+    isolateFromGraph(inspectorEl)
     container.appendChild(inspectorEl)
   }
 
