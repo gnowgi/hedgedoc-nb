@@ -144,6 +144,7 @@ export function renderNodeBook(
 
   if (container) {
     container.classList.add('nodebook-graph-container')
+    container.dataset.nbTheme = theme
     if (container.clientHeight === 0 && !container.style.height) {
       container.style.height = '420px'
     }
