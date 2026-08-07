@@ -133,3 +133,32 @@ describe('containment view', () => {
     expect(elements.find((e) => e.data.id === 'rex')!.data.parent).toBe('dog')
   })
 })
+
+describe('process mode edges', () => {
+  const BURN = ['# Burn [Transition]', '<has prior_state> 2 Fuel;', '<has prior_state> Oxygen;', '<has post_state> 2 Smoke;'].join('\n')
+
+  it('reverses input arcs and uses circled weight labels only', () => {
+    const elements = buildCytoscapeElements(graphFromCnl(BURN), { processMode: true })
+    const edges = elements.filter((e) => e.group === 'edges')
+
+    const fuelArc = edges.find((e) => e.data.kind === 'process-input' && e.data.source === 'fuel')!
+    expect(fuelArc.data.target).toBe('burn')
+    expect(fuelArc.data.label).toBe('②')
+
+    const oxygenArc = edges.find((e) => e.data.kind === 'process-input' && e.data.source === 'oxygen')!
+    expect(oxygenArc.data.label).toBe('')
+
+    const smokeArc = edges.find((e) => e.data.kind === 'process-output')!
+    expect(smokeArc.data.source).toBe('burn')
+    expect(smokeArc.data.target).toBe('smoke')
+    expect(smokeArc.data.label).toBe('②')
+
+    expect(edges.some((e) => String(e.data.label).includes('prior_state'))).toBe(false)
+  })
+
+  it('keeps the verbose arrows when processMode is off', () => {
+    const elements = buildCytoscapeElements(graphFromCnl(BURN), { processMode: false })
+    const labels = elements.filter((e) => e.group === 'edges').map((e) => e.data.label)
+    expect(labels).toContain('has prior_state ×2')
+  })
+})

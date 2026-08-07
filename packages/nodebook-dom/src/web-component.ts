@@ -75,8 +75,10 @@ export class NodeBookGraphElement extends ElementBase {
     }
     this.teardown()
     const theme = (this.getAttribute('theme') as NodeBookTheme | null) ?? 'light'
-    const layout = (this.getAttribute('layout') as NodeBookLayout | null) ?? 'breadthfirst'
-    this.handle = renderNodeBook(this.mount, this.sourceCode(), { theme, layout })
+    // Only pass an explicit layout when the attribute is set — otherwise the
+    // renderer picks its own default (e.g. the layered process layout).
+    const layout = this.getAttribute('layout') as NodeBookLayout | null
+    this.handle = renderNodeBook(this.mount, this.sourceCode(), { theme, ...(layout ? { layout } : {}) })
   }
 
   private teardown(): void {

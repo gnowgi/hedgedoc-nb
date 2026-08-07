@@ -8,7 +8,7 @@ import type { Core } from 'cytoscape'
 import { filterGraphForMorphs } from './elements'
 import type { NodeBookTheme } from './styles'
 
-export type NodeBookLayoutName = 'breadthfirst' | 'cose' | 'grid' | 'circle' | 'concentric'
+export type NodeBookLayoutName = 'process' | 'breadthfirst' | 'cose' | 'grid' | 'circle' | 'concentric'
 
 const STYLE_ELEMENT_ID = 'nodebook-dom-ui-styles'
 

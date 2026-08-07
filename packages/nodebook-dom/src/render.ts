@@ -23,6 +23,7 @@ import { backgroundColor, buildStylesheet } from './styles'
 import type { NodeBookTheme } from './styles'
 import {
   buildProcessModel,
+  computeProcessPositions,
   fireTransition as fireProcessTransition,
   isTransitionEnabled,
   placeLabel
@@ -31,7 +32,7 @@ import type { ProcessModel } from './simulation'
 import { attachUi } from './ui'
 import type { ToolbarAction, UiHandle } from './ui'
 
-export type NodeBookLayout = 'breadthfirst' | 'cose' | 'grid' | 'circle' | 'concentric'
+export type NodeBookLayout = 'process' | 'breadthfirst' | 'cose' | 'grid' | 'circle' | 'concentric'
 
 const ALL_LAYOUTS: readonly NodeBookLayout[] = ['breadthfirst', 'cose', 'grid', 'circle', 'concentric']
 
@@ -164,8 +165,28 @@ export function renderNodeBook(
 
   let containment = options.containment ?? false
 
+  // Token-game process simulation (prior/post-state arcs on transition-role
+  // nodes). Built before the elements: process graphs render in Petri-net
+  // convention (bar transitions, flow-directed arcs, layered layout).
+  let processModel: ProcessModel | null = null
+  let marking = new Map<string, number>()
+  const rebuildProcessModel = (): void => {
+    processModel = buildProcessModel(filterGraphForMorphs(graph, activeMorphs))
+    marking = processModel ? new Map(processModel.initialMarking) : new Map()
+  }
+  rebuildProcessModel()
+  if (!options.layout && processModel) {
+    currentLayout = 'process'
+  }
+
   const buildExplicit = () =>
-    buildCytoscapeElements(graph, { activeMorphs, showAttributes, containment, inferredEdges })
+    buildCytoscapeElements(graph, {
+      activeMorphs,
+      showAttributes,
+      containment,
+      inferredEdges,
+      processMode: processModel !== null
+    })
 
   const elements = buildExplicit()
   const cy = cytoscape({
@@ -175,6 +196,27 @@ export function renderNodeBook(
     // Layout runs explicitly below so inferred edges can be added after it.
     layout: { name: 'preset' }
   })
+
+  // The 'process' layout is a layered left-to-right preset following token
+  // flow (inputs → transition bars → outputs); other names map to Cytoscape
+  // built-ins. Falls back to breadthfirst when no process exists.
+  const resolveLayout = (): LayoutOptions => {
+    if (currentLayout !== 'process') return layoutOptions(currentLayout)
+    if (!processModel) return layoutOptions('breadthfirst')
+    const conceptIds = cy.$('node[kind = "concept"]').map((n) => n.id())
+    const attributeOwners = new Map<string, string>()
+    for (const attrNode of cy.$('node[kind = "attribute"]')) {
+      const owner = attrNode.connectedEdges().connectedNodes('[kind = "concept"]').first()
+      if (owner.nonempty()) attributeOwners.set(attrNode.id(), owner.id())
+    }
+    const positions = computeProcessPositions(processModel, conceptIds, attributeOwners)
+    return {
+      name: 'preset',
+      positions: (node: { id(): string }) => positions.get(node.id()) ?? { x: 0, y: 0 },
+      padding: 24,
+      fit: true
+    } as unknown as LayoutOptions
+  }
 
   // Inferred edges are added AFTER the layout finishes: node positions should
   // come from explicit structure only, with derived facts arcing over it.
@@ -192,18 +234,9 @@ export function renderNodeBook(
       return
     }
     cy.one('layoutstop', addInferred)
-    cy.layout(layoutOptions(currentLayout)).run()
+    cy.layout(resolveLayout()).run()
   }
   layoutThenInferred()
-
-  // Token-game process simulation (prior/post-state arcs on transition-role
-  // nodes). Rebuilt alongside the elements so morph switches stay consistent.
-  let processModel: ProcessModel | null = null
-  let marking = new Map<string, number>()
-  const rebuildProcessModel = (): void => {
-    processModel = buildProcessModel(filterGraphForMorphs(graph, activeMorphs))
-    marking = processModel ? new Map(processModel.initialMarking) : new Map()
-  }
 
   const applySimulationState = (): void => {
     if (!processModel) return
@@ -248,7 +281,6 @@ export function renderNodeBook(
     layoutThenInferred()
   }
 
-  rebuildProcessModel()
   applySimulationState()
 
   // Tapping an enabled transition fires it (the inspector skips these nodes).
@@ -290,7 +322,7 @@ export function renderNodeBook(
       currentLayout = layout
     }
     if (!headless) {
-      cy.layout(layoutOptions(currentLayout)).run()
+      cy.layout(resolveLayout()).run()
     }
   }
 
@@ -302,7 +334,7 @@ export function renderNodeBook(
       toolbar: wantToolbar,
       inspector: wantInspector,
       theme,
-      layouts: ALL_LAYOUTS,
+      layouts: processModel ? ['process', ...ALL_LAYOUTS] : ALL_LAYOUTS,
       currentLayout: () => currentLayout,
       graph,
       activeMorphs,

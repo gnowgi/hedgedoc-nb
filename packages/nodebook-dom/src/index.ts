@@ -19,6 +19,8 @@ export type { InspectorContext, ToolbarAction, ToolbarContext } from './ui'
 
 export {
   buildProcessModel,
+  circledNumber,
+  computeProcessPositions,
   fireTransition as fireProcessTransition,
   isTransitionEnabled,
   isTransitionRole,

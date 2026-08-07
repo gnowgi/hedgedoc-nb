@@ -5,7 +5,7 @@
  */
 import { getOperationsFromCnl, operationsToGraph } from '@nodebook/core'
 import type { CnlGraphData } from '@nodebook/core'
-import { buildProcessModel, fireTransition, isTransitionEnabled, placeLabel } from './simulation'
+import { buildProcessModel, circledNumber, computeProcessPositions, fireTransition, isTransitionEnabled, placeLabel } from './simulation'
 
 const BURN = [
   '# Burn [Transition]',
@@ -70,5 +70,47 @@ describe('placeLabel', () => {
     expect(placeLabel('Fuel', 0)).toBe('Fuel')
     expect(placeLabel('Fuel', 2)).toBe('Fuel\n●●')
     expect(placeLabel('Fuel', 7)).toBe('Fuel\n7')
+  })
+})
+
+describe('computeProcessPositions', () => {
+  it('layers inputs, transitions, and outputs left to right', () => {
+    const model = buildProcessModel(graphFromCnl(BURN))!
+    const positions = computeProcessPositions(model, ['burn', 'fuel', 'oxygen', 'smoke'], new Map())
+    expect(positions.get('fuel')!.x).toBe(0)
+    expect(positions.get('oxygen')!.x).toBe(0)
+    expect(positions.get('burn')!.x).toBeGreaterThan(positions.get('fuel')!.x)
+    expect(positions.get('smoke')!.x).toBeGreaterThan(positions.get('burn')!.x)
+  })
+
+  it('terminates and assigns layers on cyclic processes', () => {
+    const cnl = [
+      '# Step1 [Transition]',
+      '<has prior_state> A;',
+      '<has post_state> B;',
+      '',
+      '# Step2 [Transition]',
+      '<has prior_state> B;',
+      '<has post_state> A;'
+    ].join('\n')
+    const model = buildProcessModel(graphFromCnl(cnl))!
+    const positions = computeProcessPositions(model, ['step1', 'step2', 'a', 'b'], new Map())
+    expect(positions.size).toBe(4)
+  })
+
+  it('places attribute leaves below their owner', () => {
+    const model = buildProcessModel(graphFromCnl(BURN))!
+    const positions = computeProcessPositions(model, ['burn', 'fuel', 'oxygen', 'smoke'], new Map([['attr1', 'fuel']]))
+    expect(positions.get('attr1')!.x).toBe(positions.get('fuel')!.x)
+    expect(positions.get('attr1')!.y).toBeGreaterThan(positions.get('fuel')!.y)
+  })
+})
+
+describe('circledNumber', () => {
+  it('renders circled digits and falls back beyond 20', () => {
+    expect(circledNumber(2)).toBe('②')
+    expect(circledNumber(20)).toBe('⑳')
+    expect(circledNumber(21)).toBe('(21)')
+    expect(circledNumber(1.5)).toBe('(1.5)')
   })
 })
