@@ -28,7 +28,7 @@ Frontend dev server: port **3001**. Backend: NestJS with Fastify.
 
 ## Architecture
 
-### HedgeDoc Monorepo (13 Yarn workspaces)
+### HedgeDoc Monorepo (15 Yarn workspaces)
 
 | Workspace | Stack | Purpose |
 |-----------|-------|---------|
@@ -45,6 +45,8 @@ Frontend dev server: port **3001**. Backend: NestJS with Fastify.
 | `packages/nodebook-dom` | TypeScript, Cytoscape.js | Framework-agnostic renderer + `<nodebook-graph>` web component (npm: `@nodebook/dom`) |
 | `packages/nodebook-markdown-it` | TypeScript | markdown-it fence plugin emitting hydratable placeholders (npm: `@nodebook/markdown-it`) |
 | `apps/nodebook-app` | Vite, Tauri, PWA | Standalone nodeBook editor built on the packages |
+| `apps/logseq-nodebook` | esbuild | Logseq plugin rendering ```nodeBook fences (marketplace: gnowgi/logseq-nodebook) |
+| `apps/obsidian-nodebook` | esbuild | Obsidian plugin rendering ```nodeBook fences |
 
 Linting uses **oxlint/oxfmt** (Rust-based), not eslint/prettier. Task orchestration via **Turbo**.
 

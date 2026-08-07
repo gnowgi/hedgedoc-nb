@@ -8473,6 +8473,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/codemirror@npm:5.60.8":
+  version: 5.60.8
+  resolution: "@types/codemirror@npm:5.60.8"
+  dependencies:
+    "@types/tern": "npm:*"
+  checksum: 10c0/cf72f1650f78902afadcdf4a1042f7f7cb7d1cc8d6c7135ac3d5e07e5314671c77d7f331001fd0a2dc9bf976b5ac0ce8f0c8922f4cafeb680ac20e68afa02c13
+  languageName: node
+  linkType: hard
+
 "@types/cookie-signature@npm:1.1.2":
   version: 1.1.2
   resolution: "@types/cookie-signature@npm:1.1.2"
@@ -9237,6 +9246,15 @@ __metadata:
   dependencies:
     "@types/superagent": "npm:*"
   checksum: 10c0/e1b4a4d788c19cd92a3f2e6d0979fb0f679c49aefae2011895a4d9c35aa960d43463aca8783a0b3382bbf0b4eb7ceaf8752d7dc80b8f5a9644fa14e1b1bdbc90
+  languageName: node
+  linkType: hard
+
+"@types/tern@npm:*":
+  version: 0.23.9
+  resolution: "@types/tern@npm:0.23.9"
+  dependencies:
+    "@types/estree": "npm:*"
+  checksum: 10c0/1d30ccfbb84362fe7a7edeea3ba5268f5a7a0965d504147c6b701092f0ea3f0833799ee753e2059a535ca06590f91dd2416e4bd94a6e8ad51eea127a0607c617
   languageName: node
   linkType: hard
 
@@ -18473,6 +18491,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"moment@npm:2.29.4":
+  version: 2.29.4
+  resolution: "moment@npm:2.29.4"
+  checksum: 10c0/844c6f3ce42862ac9467c8ca4f5e48a00750078682cc5bda1bc0e50cc7ca88e2115a0f932d65a06e4a90e26cb78892be9b3ca3dd6546ca2c4d994cebb787fc2b
+  languageName: node
+  linkType: hard
+
 "mrmime@npm:^2.0.0":
   version: 2.0.0
   resolution: "mrmime@npm:2.0.0"
@@ -18938,6 +18963,32 @@ __metadata:
     has-symbols: "npm:^1.1.0"
     object-keys: "npm:^1.1.1"
   checksum: 10c0/3b2732bd860567ea2579d1567525168de925a8d852638612846bd8082b3a1602b7b89b67b09913cbb5b9bd6e95923b2ae73580baa9d99cb4e990564e8cbf5ddc
+  languageName: node
+  linkType: hard
+
+"obsidian-nodebook@workspace:apps/obsidian-nodebook":
+  version: 0.0.0-use.local
+  resolution: "obsidian-nodebook@workspace:apps/obsidian-nodebook"
+  dependencies:
+    "@codemirror/state": "npm:6.4.1"
+    "@codemirror/view": "npm:6.34.3"
+    "@nodebook/dom": "workspace:*"
+    esbuild: "npm:^0.25.12"
+    obsidian: "npm:^1.13.1"
+    typescript: "npm:5.9.3"
+  languageName: unknown
+  linkType: soft
+
+"obsidian@npm:^1.13.1":
+  version: 1.13.1
+  resolution: "obsidian@npm:1.13.1"
+  dependencies:
+    "@types/codemirror": "npm:5.60.8"
+    moment: "npm:2.29.4"
+  peerDependencies:
+    "@codemirror/state": 6.5.0
+    "@codemirror/view": 6.38.6
+  checksum: 10c0/cc7bf4de68c36edfd7e3a348b45c8919d01bc6fb04b1f03fae74092156bf78add092f0f94c3885599fefbb3a83740630360044a1d899bd299c2016d345311521
   languageName: node
   linkType: hard
 

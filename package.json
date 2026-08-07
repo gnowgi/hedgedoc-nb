@@ -16,7 +16,8 @@
     "packages/nodebook-dom",
     "packages/nodebook-markdown-it",
     "apps/nodebook-app",
-    "apps/logseq-nodebook"
+    "apps/logseq-nodebook",
+    "apps/obsidian-nodebook"
   ],
   "scripts": {
     "build": "dotenv -c production -- turbo run build",
