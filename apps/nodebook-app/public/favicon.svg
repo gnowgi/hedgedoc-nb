@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#1a1a2e"/>
+  <circle cx="20" cy="20" r="6" fill="#e94560" stroke="#fff" stroke-width="1.5"/>
+  <circle cx="44" cy="20" r="6" fill="#0f3460" stroke="#fff" stroke-width="1.5"/>
+  <circle cx="32" cy="44" r="6" fill="#16213e" stroke="#fff" stroke-width="1.5"/>
+  <line x1="25" y1="23" x2="39" y2="23" stroke="#e94560" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="23" y1="25" x2="29" y2="39" stroke="#e94560" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="41" y1="25" x2="35" y2="39" stroke="#0f3460" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="32" y="54" text-anchor="middle" font-family="system-ui" font-size="7" font-weight="bold" fill="#fff">nB</text>
+</svg>
