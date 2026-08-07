@@ -13,7 +13,13 @@ export type NodeBookLayoutName = 'process' | 'breadthfirst' | 'cose' | 'grid' | 
 const STYLE_ELEMENT_ID = 'nodebook-dom-ui-styles'
 
 const UI_CSS = `
-.nodebook-graph-container { position: relative; }
+.nodebook-graph-container {
+  position: relative;
+  border: 1px solid var(--nb-border);
+  border-radius: 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
 .nb-ui-toolbar {
   position: absolute; top: 8px; right: 8px; z-index: 10;
   display: flex; gap: 4px; align-items: center;
