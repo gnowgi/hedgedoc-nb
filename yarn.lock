@@ -5860,6 +5860,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@logseq/libs@npm:^0.0.17":
+  version: 0.0.17
+  resolution: "@logseq/libs@npm:0.0.17"
+  dependencies:
+    csstype: "npm:3.1.0"
+    debug: "npm:4.3.4"
+    deepmerge: "npm:4.3.1"
+    dompurify: "npm:2.3.8"
+    eventemitter3: "npm:4.0.7"
+    fast-deep-equal: "npm:3.1.3"
+    lodash-es: "npm:4.17.21"
+    path: "npm:0.12.7"
+    snake-case: "npm:3.0.4"
+  checksum: 10c0/339fa998740726e8cd5a6ad4eccdf12d0ae234f40ebf96a9ef0fd215501cfe62ae31fe8e38fff73f91e2885fec7123d0e1a74a3114a2abdc85a32a74914a8e4f
+  languageName: node
+  linkType: hard
+
 "@lukeed/csprng@npm:^1.0.0":
   version: 1.1.0
   resolution: "@lukeed/csprng@npm:1.1.0"
@@ -6543,7 +6560,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nodebook/dom@workspace:packages/nodebook-dom":
+"@nodebook/dom@workspace:*, @nodebook/dom@workspace:packages/nodebook-dom":
   version: 0.0.0-use.local
   resolution: "@nodebook/dom@workspace:packages/nodebook-dom"
   dependencies:
@@ -11840,6 +11857,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"csstype@npm:3.1.0":
+  version: 3.1.0
+  resolution: "csstype@npm:3.1.0"
+  checksum: 10c0/4edcf1eb8b8e83e8b1dc557d9f61e720012e6d2453f4c05fa4221dacf604c4d7552383f0cead9adea4b3f23e3da3aa25cc4fb05823b51fb1cbad43e1d8bb45ff
+  languageName: node
+  linkType: hard
+
 "csstype@npm:3.2.3, csstype@npm:^3.2.2":
   version: 3.2.3
   resolution: "csstype@npm:3.2.3"
@@ -12829,6 +12853,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dompurify@npm:2.3.8":
+  version: 2.3.8
+  resolution: "dompurify@npm:2.3.8"
+  checksum: 10c0/973969bb347218f377627817b12ed69f988574619dbbe43ccd81bc25cb67c7106fd78e245d8933fce370c04bf6f9d11666b2bc6bdd34982f1e5c59a2c26c830e
+  languageName: node
+  linkType: hard
+
 "dompurify@npm:3.3.2":
   version: 3.3.2
   resolution: "dompurify@npm:3.3.2"
@@ -13337,7 +13368,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild@npm:^0.25.0":
+"esbuild@npm:^0.25.0, esbuild@npm:^0.25.12":
   version: 0.25.12
   resolution: "esbuild@npm:0.25.12"
   dependencies:
@@ -13887,6 +13918,13 @@ __metadata:
   version: 6.4.9
   resolution: "eventemitter2@patch:eventemitter2@npm%3A6.4.9#./.yarn/patches/eventemitter2-npm-6.4.9-ba37798a18.patch::version=6.4.9&hash=7bad23&locator=hedgedoc%40workspace%3A."
   checksum: 10c0/80792db0a8cc0db12c17866280e13e71d99c0b42244fee28d86be35657cfeda13cb0403a0f50d1c13be35ae5f64f1fd471045239e9faaedd48a73febb63d4781
+  languageName: node
+  linkType: hard
+
+"eventemitter3@npm:4.0.7":
+  version: 4.0.7
+  resolution: "eventemitter3@npm:4.0.7"
+  checksum: 10c0/5f6d97cbcbac47be798e6355e3a7639a84ee1f7d9b199a07017f1d2f1e2fe236004d14fa5dfaeba661f94ea57805385e326236a6debbc7145c8877fbc0297c6b
   languageName: node
   linkType: hard
 
@@ -15484,6 +15522,13 @@ __metadata:
   version: 2.0.4
   resolution: "inherits@npm:2.0.4"
   checksum: 10c0/4e531f648b29039fb7426fb94075e6545faa1eb9fe83c29f0b6d9e7263aceb4289d2d4557db0d428188eeb449cc7c5e77b0a0b2c4e248ff2a65933a0dee49ef2
+  languageName: node
+  linkType: hard
+
+"inherits@npm:2.0.3":
+  version: 2.0.3
+  resolution: "inherits@npm:2.0.3"
+  checksum: 10c0/6e56402373149ea076a434072671f9982f5fad030c7662be0332122fe6c0fa490acb3cc1010d90b6eff8d640b1167d77674add52dfd1bb85d545cf29e80e73e7
   languageName: node
   linkType: hard
 
@@ -17267,17 +17312,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lodash-es@npm:4.17.21, lodash-es@npm:^4.17.21":
+  version: 4.17.21
+  resolution: "lodash-es@npm:4.17.21"
+  checksum: 10c0/fb407355f7e6cd523a9383e76e6b455321f0f153a6c9625e21a8827d10c54c2a2341bd2ae8d034358b60e07325e1330c14c224ff582d04612a46a4f0479ff2f2
+  languageName: node
+  linkType: hard
+
 "lodash-es@npm:4.17.23, lodash-es@npm:^4.17.23":
   version: 4.17.23
   resolution: "lodash-es@npm:4.17.23"
   checksum: 10c0/3150fb6660c14c7a6b5f23bd11597d884b140c0e862a17fdb415aaa5ef7741523182904a6b7929f04e5f60a11edb5a79499eb448734381c99ffb3c4734beeddd
-  languageName: node
-  linkType: hard
-
-"lodash-es@npm:^4.17.21":
-  version: 4.17.21
-  resolution: "lodash-es@npm:4.17.21"
-  checksum: 10c0/fb407355f7e6cd523a9383e76e6b455321f0f153a6c9625e21a8827d10c54c2a2341bd2ae8d034358b60e07325e1330c14c224ff582d04612a46a4f0479ff2f2
   languageName: node
   linkType: hard
 
@@ -17344,6 +17389,17 @@ __metadata:
   checksum: 10c0/18b299e230432a156f2535660776406d15ba8bb7817dd3eaadd58004b363756d4ecaabcd658f9949f90b62ea7d3354423be3fdeb7a201ab951ec0e8d6139af86
   languageName: node
   linkType: hard
+
+"logseq-nodebook@workspace:apps/logseq-nodebook":
+  version: 0.0.0-use.local
+  resolution: "logseq-nodebook@workspace:apps/logseq-nodebook"
+  dependencies:
+    "@logseq/libs": "npm:^0.0.17"
+    "@nodebook/dom": "workspace:*"
+    esbuild: "npm:^0.25.12"
+    typescript: "npm:5.9.3"
+  languageName: unknown
+  linkType: soft
 
 "long@npm:^5.3.2":
   version: 5.3.2
@@ -19367,6 +19423,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"path@npm:0.12.7":
+  version: 0.12.7
+  resolution: "path@npm:0.12.7"
+  dependencies:
+    process: "npm:^0.11.1"
+    util: "npm:^0.10.3"
+  checksum: 10c0/f795ce5438a988a590c7b6dfd450ec9baa1c391a8be4c2dea48baa6e0f5b199e56cd83b8c9ebf3991b81bea58236d2c32bdafe2c17a2e70c3a2e4c69891ade59
+  languageName: node
+  linkType: hard
+
 "pathe@npm:^2.0.1, pathe@npm:^2.0.3":
   version: 2.0.3
   resolution: "pathe@npm:2.0.3"
@@ -19845,7 +19911,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"process@npm:^0.11.10":
+"process@npm:^0.11.1, process@npm:^0.11.10":
   version: 0.11.10
   resolution: "process@npm:0.11.10"
   checksum: 10c0/40c3ce4b7e6d4b8c3355479df77aeed46f81b279818ccdc500124e6a5ab882c0cc81ff7ea16384873a95a74c4570b01b120f287abbdd4c877931460eca6084b3
@@ -21641,7 +21707,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"snake-case@npm:^3.0.4":
+"snake-case@npm:3.0.4, snake-case@npm:^3.0.4":
   version: 3.0.4
   resolution: "snake-case@npm:3.0.4"
   dependencies:
@@ -23595,6 +23661,15 @@ __metadata:
   version: 1.0.2
   resolution: "util-deprecate@npm:1.0.2"
   checksum: 10c0/41a5bdd214df2f6c3ecf8622745e4a366c4adced864bc3c833739791aeeeb1838119af7daed4ba36428114b5c67dcda034a79c882e97e43c03e66a4dd7389942
+  languageName: node
+  linkType: hard
+
+"util@npm:^0.10.3":
+  version: 0.10.4
+  resolution: "util@npm:0.10.4"
+  dependencies:
+    inherits: "npm:2.0.3"
+  checksum: 10c0/d29f6893e406b63b088ce9924da03201df89b31490d4d011f1c07a386ea4b3dbe907464c274023c237da470258e1805d806c7e4009a5974cd6b1d474b675852a
   languageName: node
   linkType: hard
 
