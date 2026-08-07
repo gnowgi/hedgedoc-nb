@@ -7,6 +7,13 @@ import { renderNodeBook } from './render'
 import type { NodeBookHandle, NodeBookLayout } from './render'
 import type { NodeBookTheme } from './styles'
 
+// SSR/Node safety: this module must be importable without a DOM (headless
+// rendering is a supported use of the package), so fall back to a dummy base
+// class when HTMLElement does not exist. defineNodeBookElement() guards for
+// real DOM support at call time.
+const ElementBase: typeof HTMLElement =
+  typeof HTMLElement !== 'undefined' ? HTMLElement : (class {} as unknown as typeof HTMLElement)
+
 /**
  * `<nodebook-graph>` custom element. The CNL source comes from the `code`
  * attribute or, more conveniently for multi-line CNL, the element's text
@@ -19,7 +26,7 @@ import type { NodeBookTheme } from './styles'
  * </nodebook-graph>
  * ```
  */
-export class NodeBookGraphElement extends HTMLElement {
+export class NodeBookGraphElement extends ElementBase {
   static observedAttributes = ['code', 'theme', 'layout']
 
   private handle: NodeBookHandle | null = null
@@ -87,6 +94,9 @@ function dedent(text: string): string {
 
 /** Register `<nodebook-graph>` (or a custom tag name) as a custom element. */
 export function defineNodeBookElement(tagName = 'nodebook-graph'): void {
+  if (typeof customElements === 'undefined' || typeof HTMLElement === 'undefined') {
+    throw new Error('@nodebook/dom: defineNodeBookElement requires a DOM environment')
+  }
   if (!customElements.get(tagName)) {
     customElements.define(tagName, NodeBookGraphElement)
   }
