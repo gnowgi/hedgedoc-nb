@@ -3,6 +3,22 @@
   "version": "0.1.0",
   "description": "nodeBook React components - graph visualization, schema display, CodeMirror language",
   "license": "AGPL-3.0-only",
+  "author": "gnowgi and the nodeBook contributors",
+  "homepage": "https://nodebook.co.in",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gnowgi/hedgedoc-nb.git",
+    "directory": "packages/nodebook-react"
+  },
+  "keywords": [
+    "cnl",
+    "knowledge-graph",
+    "concept-map",
+    "react",
+    "cytoscape",
+    "codemirror",
+    "nodebook"
+  ],
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -11,8 +27,25 @@
     "./styles/*": "./src/*.module.scss"
   },
   "files": [
-    "src"
+    "dist",
+    "README.md"
   ],
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./styles.css": "./dist/styles.css"
+    }
+  },
+  "scripts": {
+    "build": "vite build",
+    "prepack": "yarn build"
+  },
   "dependencies": {
     "@nodebook/core": "workspace:*",
     "cytoscape": "^3.30.4",
@@ -31,6 +64,9 @@
   "devDependencies": {
     "@types/cytoscape": "^3.21.8",
     "@types/react": "^18.0.0",
-    "typescript": "5.9.3"
+    "sass": "^1.97.0",
+    "typescript": "5.9.3",
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.4"
   }
 }

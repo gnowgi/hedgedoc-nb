@@ -1,0 +1,58 @@
+# SPDX-FileCopyrightText: 2025 The HedgeDoc developers (see AUTHORS file)
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: Publish nodeBook packages to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Which package(s) to publish'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - '@nodebook/core'
+          - '@nodebook/react'
+      tag:
+        description: 'npm dist-tag'
+        required: true
+        default: 'latest'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup node
+        uses: ./.github/actions/setup-node
+        with:
+          NODEJS_VERSION: '24'
+
+      - name: Test @nodebook/core
+        run: yarn workspace @nodebook/core test
+
+      - name: Build packages
+        run: |
+          yarn workspace @nodebook/core build
+          yarn workspace @nodebook/react build
+
+      - name: Publish @nodebook/core
+        if: ${{ inputs.package == 'both' || inputs.package == '@nodebook/core' }}
+        run: yarn workspace @nodebook/core npm publish --tag "${{ inputs.tag }}" --tolerate-republish
+        env:
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @nodebook/react
+        if: ${{ inputs.package == 'both' || inputs.package == '@nodebook/react' }}
+        run: yarn workspace @nodebook/react npm publish --tag "${{ inputs.tag }}" --tolerate-republish
+        env:
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

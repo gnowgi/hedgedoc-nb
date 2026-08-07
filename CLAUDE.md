@@ -28,7 +28,7 @@ Frontend dev server: port **3001**. Backend: NestJS with Fastify.
 
 ## Architecture
 
-### HedgeDoc Monorepo (8 Yarn workspaces)
+### HedgeDoc Monorepo (11 Yarn workspaces)
 
 | Workspace | Stack | Purpose |
 |-----------|-------|---------|
@@ -40,6 +40,9 @@ Frontend dev server: port **3001**. Backend: NestJS with Fastify.
 | `html-to-react` | domhandler | HTML→React component conversion |
 | `dev-reverse-proxy` | — | Local dev proxy |
 | `docs` | MkDocs | Documentation site |
+| `packages/nodebook-core` | Pure TypeScript | CNL parser, graph engine, inference, schemas (publishable as `@nodebook/core`) |
+| `packages/nodebook-react` | React 18, Cytoscape.js | nodeBook UI components + CodeMirror/hljs language (publishable as `@nodebook/react`) |
+| `apps/nodebook-app` | Vite, Tauri, PWA | Standalone nodeBook editor built on the two packages |
 
 Linting uses **oxlint/oxfmt** (Rust-based), not eslint/prettier. Task orchestration via **Turbo**.
 
@@ -61,17 +64,17 @@ Key base classes in `frontend/src/`:
 
 **Registration flow**: Extensions listed in `all-app-extensions.ts` (essential + external) → loaded via `useMarkdownExtensions()` → dynamic imports with webpack code splitting.
 
-### nodeBook Extension (12 files)
+### nodeBook Packages & Extension
 
-All files use the `nodebook-*` prefix, located in `frontend/src/`:
+The nodeBook engine and UI are standalone workspace packages; the HedgeDoc frontend only carries thin extension glue.
 
-- **Parser** (`extensions/external-lib-app-extensions/nodebook-parser/`): `types.ts`, `schemas.ts`, `cnl-parser.ts` (FNV-1a hash for IDs), `operations-to-graph.ts` (3-pass: nodes→morphs→neighborhood), `morph-registry.ts`, `validate-operations.ts`
-- **UI** (`components/markdown-renderer/extensions/nodebook/`): `nodebook-graph.tsx` (Cytoscape.js component with morph switching + transition simulation), `nodebook-graph.module.scss`
-- **Extension glue**: `nodebook-markdown-extension.ts`, `nodebook-app-extension.ts` (cheatsheet + autocompletion)
-- **Registration**: `external-lib-app-extensions.ts` (modified to include NodeBookAppExtension)
-- **Dependencies**: cytoscape, cytoscape-dagre, cytoscape-svg added to `frontend/package.json`
+- **`packages/nodebook-core`** (`@nodebook/core`): CNL parser (`cnl-parser.ts`, FNV-1a hash for IDs), graph builder (`operations-to-graph.ts`, 3-pass: nodes→morphs→neighborhood), `morph-registry.ts`, `validate-operations.ts`, inference engines (transitive closure + tau-prolog), attribute inheritance, schema system, math evaluator, text analyzer. Pure TS, no DOM/React. Unit tests (vitest) are colocated in `src/*.spec.ts`. Build: tsup → `dist/` (ESM+CJS+d.ts).
+- **`packages/nodebook-react`** (`@nodebook/react`): `nodebook-graph.tsx` (Cytoscape.js with morph switching + transition simulation), schema display, text analyzer, CodeMirror 6 language + completions, hljs language. Build: Vite lib mode → `dist/` incl. compiled `styles.css`.
+- **HedgeDoc glue** (`frontend/src/extensions/external-lib-app-extensions/nodebook/`): `nodebook-markdown-extension.ts`, `nodebook-app-extension.ts` (cheatsheet + autocompletion), sidebar stats; registered in `external-lib-app-extensions.ts`. The frontend consumes package **sources** via `transpilePackages` in `next.config.js`.
 
-The code fence prefix is **`nodeBook`** (not `cnl`). CNL is parsed entirely client-side with no backend needed.
+Both packages carry `publishConfig` overrides: in the monorepo `main` points at `src/index.ts`; the published npm tarball points at `dist/`. Publishing: `.github/workflows/publish-nodebook-packages.yml` (manual dispatch, needs `NPM_TOKEN` secret).
+
+The code fence prefix is **`nodeBook`** (not `cnl`). CNL is parsed entirely client-side with no backend needed. Full syntax: `docs/nodebook-cnl-spec.md`.
 
 ## CNL Syntax Quick Reference
 
