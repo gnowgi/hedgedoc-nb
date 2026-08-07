@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import type { CnlAttribute, CnlEdge, CnlGraphData } from '@nodebook/core'
+import type { CnlAttribute, CnlEdge, CnlGraphData, InferredEdge } from '@nodebook/core'
 import type { ElementDefinition } from 'cytoscape'
 
 export interface BuildElementsOptions {
@@ -119,5 +119,31 @@ export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElemen
     }
   }
 
+  return elements
+}
+
+/**
+ * Convert inferred edges into Cytoscape element definitions. Kept separate
+ * from {@link buildCytoscapeElements} so callers can add them AFTER layout —
+ * the layout should position nodes based on explicit edges only.
+ */
+export function buildInferredEdgeElements(inferredEdges: InferredEdge[], graph: CnlGraphData): ElementDefinition[] {
+  const nodeIds = new Set(graph.nodes.map((n) => n.id))
+  const elements: ElementDefinition[] = []
+  for (const edge of inferredEdges) {
+    if (!nodeIds.has(edge.source_id) || !nodeIds.has(edge.target_id)) continue
+    elements.push({
+      group: 'edges',
+      data: {
+        id: edge.id,
+        source: edge.source_id,
+        target: edge.target_id,
+        label: edge.name,
+        kind: 'inferred-relation',
+        inferenceRule: edge.inferenceRule,
+        proofPath: edge.proofPath.join(' → ')
+      }
+    })
+  }
   return elements
 }

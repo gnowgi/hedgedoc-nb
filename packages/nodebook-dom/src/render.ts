@@ -4,14 +4,16 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import {
+  getMergedSchemas,
   getOperationsFromCnl,
   operationsToGraph,
+  TransitiveClosureEngine,
   validateOperations
 } from '@nodebook/core'
-import type { CnlGraphData, CnlOperation, CnlParseError } from '@nodebook/core'
+import type { CnlGraphData, CnlOperation, CnlParseError, InferredEdge } from '@nodebook/core'
 import cytoscape from 'cytoscape'
 import type { Core, LayoutOptions } from 'cytoscape'
-import { buildCytoscapeElements } from './elements'
+import { buildCytoscapeElements, buildInferredEdgeElements, filterGraphForMorphs } from './elements'
 import { backgroundColor, buildStylesheet } from './styles'
 import type { NodeBookTheme } from './styles'
 import { attachUi } from './ui'
@@ -35,6 +37,12 @@ export interface RenderNodeBookOptions {
   /** Open an inspector panel (details + morph switcher) on node click. Default true. */
   inspector?: boolean
   /**
+   * Derive and display inferred relations (transitive closure, inverse and
+   * symmetric relations, membership inheritance) as dashed purple edges.
+   * Default true.
+   */
+  inference?: boolean
+  /**
    * Run Cytoscape headlessly (no container, no rendering). Useful for tests
    * and server-side graph inspection. When true, `container` may be null.
    */
@@ -52,6 +60,8 @@ export interface NodeBookHandle {
   errors: CnlParseError[]
   /** Advisory schema warnings (unknown types etc.), never fatal. */
   warnings: CnlParseError[]
+  /** Inferred relations for the currently visible (morph-filtered) graph. */
+  getInferredEdges(): InferredEdge[]
   /** Switch a node to one of its morphs (by morph id or morph name) and re-render. */
   setMorph(nodeId: string, morph: string): void
   /** Switch the color theme in place. */
@@ -108,21 +118,51 @@ export function renderNodeBook(
     container.style.backgroundColor = backgroundColor(theme)
   }
 
+  const inferenceEnabled = options.inference ?? true
+  let inferredEdges: InferredEdge[] = []
+  const computeInference = (): void => {
+    if (!inferenceEnabled) return
+    try {
+      const filtered = filterGraphForMorphs(graph, activeMorphs)
+      inferredEdges = new TransitiveClosureEngine().infer(filtered, getMergedSchemas()).inferredEdges
+    } catch {
+      inferredEdges = []
+    }
+  }
+  computeInference()
+
   const elements = buildCytoscapeElements(graph, { activeMorphs, showAttributes })
   const cy = cytoscape({
     ...(headless ? { headless: true, styleEnabled: false } : { container: container as HTMLElement }),
     elements,
     ...(headless ? {} : { style: buildStylesheet(theme) }),
-    layout: headless ? { name: 'null' } : layoutOptions(currentLayout)
+    // Layout runs explicitly below so inferred edges can be added after it.
+    layout: { name: 'preset' }
   })
 
+  // Inferred edges are added AFTER the layout finishes: node positions should
+  // come from explicit structure only, with derived facts arcing over it.
+  const layoutThenInferred = (): void => {
+    const addInferred = (): void => {
+      if (inferredEdges.length > 0 && cy.$('edge[kind = "inferred-relation"]').length === 0) {
+        cy.add(buildInferredEdgeElements(inferredEdges, graph))
+      }
+    }
+    if (headless) {
+      addInferred()
+      return
+    }
+    cy.one('layoutstop', addInferred)
+    cy.layout(layoutOptions(currentLayout)).run()
+  }
+  layoutThenInferred()
+
   const rebuildElements = (): void => {
+    computeInference()
     const next = buildCytoscapeElements(graph, { activeMorphs, showAttributes })
     cy.elements().remove()
     cy.add(next)
-    if (!headless) {
-      cy.layout(layoutOptions(currentLayout)).run()
-    }
+    layoutThenInferred()
   }
 
   const setMorph = (nodeId: string, morph: string): void => {
@@ -161,6 +201,7 @@ export function renderNodeBook(
       currentLayout: () => currentLayout,
       graph,
       activeMorphs,
+      getInferredEdges: () => inferredEdges,
       onMorphSelect: setMorph,
       onFit: () => cy.fit(undefined, 24),
       onRelayout: relayout,
@@ -180,6 +221,7 @@ export function renderNodeBook(
     operations,
     errors,
     warnings,
+    getInferredEdges: () => inferredEdges,
     setMorph,
     setTheme(next: NodeBookTheme): void {
       theme = next

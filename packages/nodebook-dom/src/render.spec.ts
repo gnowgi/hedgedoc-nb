@@ -66,3 +66,47 @@ describe('renderNodeBook (headless)', () => {
     }
   })
 })
+
+describe('inference', () => {
+  const CHAIN = '# Dog [Animal]\n\n# Animal [Creature]'
+
+  it('adds inferred edges as dashed elements after the explicit graph', () => {
+    const handle = renderNodeBook(null, CHAIN, { headless: true })
+    try {
+      const inferred = handle.getInferredEdges()
+      expect(inferred.length).toBeGreaterThanOrEqual(1)
+      expect(inferred.some((e) => e.source_id === 'dog' && e.target_id === 'creature' && e.name === 'is_a')).toBe(true)
+
+      const inferredCy = handle.cy.$('edge[kind = "inferred-relation"]')
+      expect(inferredCy.length).toBe(inferred.length)
+      expect(inferredCy[0].data('inferenceRule')).toBe('transitive_closure')
+    } finally {
+      handle.destroy()
+    }
+  })
+
+  it('can be disabled', () => {
+    const handle = renderNodeBook(null, CHAIN, { headless: true, inference: false })
+    try {
+      expect(handle.getInferredEdges()).toHaveLength(0)
+      expect(handle.cy.$('edge[kind = "inferred-relation"]').length).toBe(0)
+    } finally {
+      handle.destroy()
+    }
+  })
+
+  it('recomputes inferred edges on morph switch', () => {
+    const cnl = ['# Dog [Animal]', '', '# Animal [Creature]', '', '# Rex (Dog)', '', '## sleeping', '    state: asleep;'].join('\n')
+    const handle = renderNodeBook(null, cnl, { headless: true })
+    try {
+      const before = handle.getInferredEdges().length
+      expect(before).toBeGreaterThanOrEqual(1)
+      handle.setMorph('rex', 'sleeping')
+      // membership edges derive from rex's member_of, which lives in the basic
+      // morph — switching away drops those inferences
+      expect(handle.getInferredEdges().length).toBeLessThan(before)
+    } finally {
+      handle.destroy()
+    }
+  })
+})
