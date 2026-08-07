@@ -61,13 +61,25 @@ describe('role synonym normalization', () => {
     }
   )
 
-  it('non-synonym roles are preserved as-is', () => {
-    for (const role of ['Transition', 'Account', 'planet', 'star']) {
+  it('reserved structural roles are preserved as-is without implicit edges', () => {
+    const ops = getOperationsFromCnl('# Thing [Transition]')
+    const node = ops.find((op) => op.type === 'addNode')
+    expect(node).toBeDefined()
+    const options = (node!.payload as { options: { role: string } }).options
+    expect(options.role).toBe('Transition')
+    expect(opsOfType(ops, 'addRelation')).toHaveLength(0)
+  })
+
+  it('non-reserved bracket types become is_a classes; subject role is class', () => {
+    for (const role of ['Account', 'planet', 'star']) {
       const ops = getOperationsFromCnl(`# Thing [${role}]`)
-      const node = ops.find((op) => op.type === 'addNode')
-      expect(node).toBeDefined()
-      const options = (node!.payload as { options: { role: string } }).options
-      expect(options.role).toBe(role)
+      const subject = ops.find((op) => op.type === 'addNode' && op.id === 'thing')
+      expect(subject).toBeDefined()
+      const options = (subject!.payload as { options: { role: string } }).options
+      expect(options.role).toBe('class')
+      const rels = opsOfType(ops, 'addRelation')
+      expect(rels).toHaveLength(1)
+      expect(relPayload(rels[0]).name).toBe('is_a')
     }
   })
 
@@ -367,8 +379,15 @@ describe('getOperationsFromCnl — Node Parsing', () => {
   it('parses type-inside-name edge case: # Bob [Person]', () => {
     const ops = getOperationsFromCnl('# Bob [Person]')
     const nodes = opsOfType(ops, 'addNode')
-    expect(nodes).toHaveLength(1)
-    expect(nodeOptions(nodes[0]).role).toBe('Person')
+    // Bob plus the implicit Person class node from the bracket shorthand
+    expect(nodes).toHaveLength(2)
+    const bob = nodes.find((n) => n.id === 'bob')
+    expect(bob).toBeDefined()
+    expect(nodeOptions(bob!).role).toBe('class')
+    const rels = opsOfType(ops, 'addRelation')
+    expect(rels).toHaveLength(1)
+    expect(relPayload(rels[0]).name).toBe('is_a')
+    expect(relPayload(rels[0]).target).toBe('person')
   })
 
   it('generates deterministic IDs based on cleaned name', () => {
@@ -600,28 +619,28 @@ describe('getOperationsFromCnl — Relations', () => {
 
   it('weighted relation: <inflow> 6 CO2;', () => {
     const ops = getOperationsFromCnl('# Reaction [Event]\n<inflow> 6 CO2;')
-    const rels = opsOfType(ops, 'addRelation')
+    const rels = opsOfType(ops, 'addRelation').filter((r) => relPayload(r).name !== 'is_a')
     expect(rels).toHaveLength(1)
     expect(relPayload(rels[0]).weight).toBe(6)
   })
 
   it('decimal weight: <inflow> 1500.50 Cash;', () => {
     const ops = getOperationsFromCnl('# Sale [Event]\n<inflow> 1500.50 Cash;')
-    const rels = opsOfType(ops, 'addRelation')
+    const rels = opsOfType(ops, 'addRelation').filter((r) => relPayload(r).name !== 'is_a')
     expect(rels).toHaveLength(1)
     expect(relPayload(rels[0]).weight).toBe(1500.5)
   })
 
   it('alias mapping: debit → has post_state', () => {
     const ops = getOperationsFromCnl('# Sale [Transaction]\n<debit> Cash;')
-    const rels = opsOfType(ops, 'addRelation')
+    const rels = opsOfType(ops, 'addRelation').filter((r) => relPayload(r).name !== 'is_a')
     expect(rels).toHaveLength(1)
     expect(relPayload(rels[0]).name).toBe('has post_state')
   })
 
   it('alias mapping: credit → has prior_state', () => {
     const ops = getOperationsFromCnl('# Sale [Transaction]\n<credit> Revenue;')
-    const rels = opsOfType(ops, 'addRelation')
+    const rels = opsOfType(ops, 'addRelation').filter((r) => relPayload(r).name !== 'is_a')
     expect(rels).toHaveLength(1)
     expect(relPayload(rels[0]).name).toBe('has prior_state')
   })
