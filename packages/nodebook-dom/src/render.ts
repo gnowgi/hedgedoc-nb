@@ -213,7 +213,11 @@ export function renderNodeBook(
     const positions = computeProcessPositions(processModel, conceptIds, attributeOwners)
     return {
       name: 'preset',
-      positions: (node: { id(): string }) => positions.get(node.id()) ?? { x: 0, y: 0 },
+      // Compound parents derive their bounds from children; positioning one
+      // would translate its children after they were placed, so return the
+      // parent's current (derived) position as a no-op.
+      positions: (node: { id(): string; isParent(): boolean; position(): { x: number; y: number } }) =>
+        node.isParent() ? node.position() : (positions.get(node.id()) ?? { x: 0, y: 0 }),
       padding: 24,
       fit: true
     } as unknown as LayoutOptions

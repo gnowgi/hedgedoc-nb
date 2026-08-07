@@ -34,6 +34,10 @@ export interface BuildElementsOptions {
 /** Relations expressed as nesting rather than arrows in containment view. */
 export const CONTAINMENT_RELATIONS = new Set(['is_a', 'member_of', 'instance_of'])
 
+/** Synthetic compound ids for the Petri-view Inputs/Outputs grouping boxes. */
+export const PROCESS_INPUT_GROUP = '__nb_inputs__'
+export const PROCESS_OUTPUT_GROUP = '__nb_outputs__'
+
 /**
  * Assign at most one compound parent per node from containment edges,
  * mirroring the React component: is_a parents take precedence over
@@ -131,6 +135,38 @@ export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElemen
   const parentOf = containment
     ? buildContainmentParentMap([...filtered.edges, ...(options.inferredEdges ?? [])])
     : new Map<string, string>()
+
+  // Petri view (when not nesting): group pure-input places into an "Inputs"
+  // box and pure-output places into an "Outputs" box; places that are both
+  // (intermediates in chains/cycles) stay free between the transitions.
+  if ((options.processMode ?? false) && !containment) {
+    const priorPlaces = new Set<string>()
+    const postPlaces = new Set<string>()
+    for (const edge of filtered.edges) {
+      if (edge.negated) continue
+      if (edge.name === 'has prior_state') priorPlaces.add(edge.target_id)
+      if (edge.name === 'has post_state') postPlaces.add(edge.target_id)
+    }
+    for (const placeId of priorPlaces) {
+      if (!postPlaces.has(placeId)) parentOf.set(placeId, PROCESS_INPUT_GROUP)
+    }
+    for (const placeId of postPlaces) {
+      if (!priorPlaces.has(placeId)) parentOf.set(placeId, PROCESS_OUTPUT_GROUP)
+    }
+    const parents = new Set(parentOf.values())
+    if (parents.has(PROCESS_INPUT_GROUP)) {
+      elements.push({
+        group: 'nodes',
+        data: { id: PROCESS_INPUT_GROUP, label: 'Inputs', kind: 'group', groupRole: 'inputs' }
+      })
+    }
+    if (parents.has(PROCESS_OUTPUT_GROUP)) {
+      elements.push({
+        group: 'nodes',
+        data: { id: PROCESS_OUTPUT_GROUP, label: 'Outputs', kind: 'group', groupRole: 'outputs' }
+      })
+    }
+  }
 
   for (const node of filtered.nodes) {
     const morphName =

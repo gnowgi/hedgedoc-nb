@@ -162,3 +162,43 @@ describe('process mode edges', () => {
     expect(labels).toContain('has prior_state ×2')
   })
 })
+
+describe('petri Inputs/Outputs grouping', () => {
+  const BURN = ['# Burn [Transition]', '<has prior_state> 2 Fuel;', '<has prior_state> Oxygen;', '<has post_state> 2 Smoke;'].join('\n')
+
+  it('groups pure-input and pure-output places into dashed boxes', () => {
+    const elements = buildCytoscapeElements(graphFromCnl(BURN), { processMode: true })
+    const byId = new Map(elements.map((e) => [e.data.id, e]))
+
+    expect(byId.get('__nb_inputs__')!.data.label).toBe('Inputs')
+    expect(byId.get('__nb_outputs__')!.data.label).toBe('Outputs')
+    expect(byId.get('__nb_inputs__')!.data.kind).toBe('group')
+
+    expect(byId.get('fuel')!.data.parent).toBe('__nb_inputs__')
+    expect(byId.get('oxygen')!.data.parent).toBe('__nb_inputs__')
+    expect(byId.get('smoke')!.data.parent).toBe('__nb_outputs__')
+    expect(byId.get('burn')!.data.parent).toBeUndefined()
+  })
+
+  it('leaves intermediate places (both consumed and produced) ungrouped', () => {
+    const cnl = [
+      '# Step1 [Transition]', '<has prior_state> A;', '<has post_state> B;', '',
+      '# Step2 [Transition]', '<has prior_state> B;', '<has post_state> C;'
+    ].join('\n')
+    const elements = buildCytoscapeElements(graphFromCnl(cnl), { processMode: true })
+    const byId = new Map(elements.map((e) => [e.data.id, e]))
+    expect(byId.get('a')!.data.parent).toBe('__nb_inputs__')
+    expect(byId.get('b')!.data.parent).toBeUndefined()
+    expect(byId.get('c')!.data.parent).toBe('__nb_outputs__')
+  })
+
+  it('skips grouping when containment view is active', () => {
+    const elements = buildCytoscapeElements(graphFromCnl(BURN), { processMode: true, containment: true })
+    expect(elements.some((e) => e.data.kind === 'group')).toBe(false)
+  })
+
+  it('adds no group boxes outside process mode', () => {
+    const elements = buildCytoscapeElements(graphFromCnl(BURN), { processMode: false })
+    expect(elements.some((e) => e.data.kind === 'group')).toBe(false)
+  })
+})
