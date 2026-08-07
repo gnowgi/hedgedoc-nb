@@ -16,3 +16,12 @@ export { NodeBookGraphElement, defineNodeBookElement } from './web-component'
 
 export { buildInspectorContent, buildToolbar } from './ui'
 export type { InspectorContext, ToolbarAction, ToolbarContext } from './ui'
+
+export {
+  buildProcessModel,
+  fireTransition as fireProcessTransition,
+  isTransitionEnabled,
+  isTransitionRole,
+  placeLabel
+} from './simulation'
+export type { ProcessArc, ProcessModel } from './simulation'

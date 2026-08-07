@@ -135,3 +135,54 @@ describe('containment view (headless)', () => {
     }
   })
 })
+
+describe('token simulation (headless)', () => {
+  const BURN = [
+    '# Burn [Transition]',
+    '<has prior_state> 2 Fuel;',
+    '<has prior_state> Oxygen;',
+    '<has post_state> 2 Smoke;'
+  ].join('\n')
+
+  it('initializes marking, fires via the handle, and resets', () => {
+    const handle = renderNodeBook(null, BURN, { headless: true })
+    try {
+      expect(handle.getMarking()!.get('fuel')).toBe(2)
+      expect(handle.cy.getElementById('fuel').data('label')).toBe('Fuel\n●●')
+      expect(handle.cy.getElementById('burn').data('enabledTransition')).toBe(1)
+
+      expect(handle.fireTransition('burn')).toBe(true)
+      expect(handle.getMarking()!.get('smoke')).toBe(2)
+      expect(handle.cy.getElementById('smoke').data('label')).toBe('Smoke\n●●')
+      expect(handle.cy.getElementById('fuel').data('label')).toBe('Fuel')
+      expect(handle.cy.getElementById('burn').data('enabledTransition')).toBe(0)
+      expect(handle.fireTransition('burn')).toBe(false)
+
+      handle.resetSimulation()
+      expect(handle.getMarking()!.get('fuel')).toBe(2)
+      expect(handle.cy.getElementById('burn').data('enabledTransition')).toBe(1)
+    } finally {
+      handle.destroy()
+    }
+  })
+
+  it('tap on a transition node fires it', () => {
+    const handle = renderNodeBook(null, BURN, { headless: true })
+    try {
+      handle.cy.getElementById('burn').emit('tap')
+      expect(handle.getMarking()!.get('smoke')).toBe(2)
+    } finally {
+      handle.destroy()
+    }
+  })
+
+  it('non-process graphs expose no marking', () => {
+    const handle = renderNodeBook(null, '# Water [Substance]', { headless: true })
+    try {
+      expect(handle.getMarking()).toBeNull()
+      expect(handle.fireTransition('water')).toBe(false)
+    } finally {
+      handle.destroy()
+    }
+  })
+})

@@ -141,6 +141,20 @@ export function buildStylesheet(theme: NodeBookTheme): StylesheetJson {
       }
     },
     {
+      // Enabled transitions in the token simulation: green highlight, ready to fire.
+      selector: 'node[kind = "concept"][enabledTransition = 1]',
+      style: {
+        'border-color': theme === 'dark' ? '#69db7c' : '#2f9e44',
+        'border-width': 3
+      }
+    },
+    {
+      selector: 'node[kind = "concept"][enabledTransition = 0]',
+      style: {
+        opacity: 0.75
+      }
+    },
+    {
       // Compound parents in containment view: translucent box, label on top.
       selector: 'node:parent',
       style: {
