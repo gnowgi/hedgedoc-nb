@@ -6,7 +6,7 @@
 export { renderNodeBook, hydrateNodeBookBlocks } from './render'
 export type { NodeBookHandle, NodeBookLayout, RenderNodeBookOptions, HydrateOptions } from './render'
 
-export { buildCytoscapeElements, filterGraphForMorphs } from './elements'
+export { buildCytoscapeElements, buildInferredEdgeElements, filterGraphForMorphs } from './elements'
 export type { BuildElementsOptions } from './elements'
 
 export { buildStylesheet, backgroundColor } from './styles'

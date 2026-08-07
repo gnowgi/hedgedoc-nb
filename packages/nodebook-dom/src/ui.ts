@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import type { CnlGraphData, CnlNode } from '@nodebook/core'
+import type { CnlGraphData, CnlNode, InferredEdge } from '@nodebook/core'
 import type { Core } from 'cytoscape'
 import { filterGraphForMorphs } from './elements'
 import type { NodeBookTheme } from './styles'
@@ -48,6 +48,7 @@ const UI_CSS = `
 }
 .nb-ui-inspector ul { margin: 0; padding-left: 16px; }
 .nb-ui-inspector .nb-ui-negated { text-decoration: line-through; opacity: 0.75; }
+.nb-ui-inspector .nb-ui-inferred { color: var(--nb-inferred); font-style: italic; }
 .nb-ui-close {
   position: absolute; top: 6px; right: 8px; border: none; background: none;
   color: var(--nb-muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px;
@@ -65,12 +66,12 @@ const UI_CSS = `
 [data-nb-theme='light'] {
   --nb-panel-bg: #ffffff; --nb-text: #22313f; --nb-muted: #7a8894;
   --nb-border: #ccd6df; --nb-accent: #4d8fd1; --nb-accent-text: #ffffff;
-  --nb-badge-bg: #e7f1ff; --nb-badge-text: #1a3350;
+  --nb-badge-bg: #e7f1ff; --nb-badge-text: #1a3350; --nb-inferred: #7c3aed;
 }
 [data-nb-theme='dark'] {
   --nb-panel-bg: #1d2430; --nb-text: #dbe4ee; --nb-muted: #8b99a8;
   --nb-border: #3a4656; --nb-accent: #5c9ded; --nb-accent-text: #10161f;
-  --nb-badge-bg: #1f3a5a; --nb-badge-text: #dbe9f8;
+  --nb-badge-bg: #1f3a5a; --nb-badge-text: #dbe9f8; --nb-inferred: #a78bfa;
 }
 `
 
@@ -87,6 +88,8 @@ export interface InspectorContext {
   graph: CnlGraphData
   /** Current morph selection (node id → morph id). */
   activeMorphs: Record<string, string>
+  /** Inferred relations for the currently visible graph (optional). */
+  inferredEdges?: InferredEdge[]
   /** Called when the user picks a morph in the switcher. */
   onMorphSelect: (nodeId: string, morphId: string) => void
   onClose: () => void
@@ -190,6 +193,25 @@ export function buildInspectorContent(doc: Document, nodeId: string, ctx: Inspec
     panel.appendChild(list)
   }
 
+  const inferred = (ctx.inferredEdges ?? []).filter((e) => e.source_id === node.id || e.target_id === node.id)
+  if (inferred.length > 0) {
+    const heading = doc.createElement('h4')
+    heading.textContent = 'Inferred'
+    panel.appendChild(heading)
+    const list = doc.createElement('ul')
+    for (const edge of inferred) {
+      const item = doc.createElement('li')
+      item.className = 'nb-ui-inferred'
+      item.textContent =
+        edge.source_id === node.id
+          ? `${edge.name} → ${nodeNames.get(edge.target_id) ?? edge.target_id}`
+          : `${nodeNames.get(edge.source_id) ?? edge.source_id} → ${edge.name}`
+      item.title = `${edge.inferenceRule}: ${edge.proofPath.join(' → ')}`
+      list.appendChild(item)
+    }
+    panel.appendChild(list)
+  }
+
   return panel
 }
 
@@ -260,6 +282,7 @@ export interface AttachUiOptions {
   currentLayout: () => NodeBookLayoutName
   graph: CnlGraphData
   activeMorphs: Record<string, string>
+  getInferredEdges?: () => InferredEdge[]
   onMorphSelect: (nodeId: string, morphId: string) => void
   onFit: () => void
   onRelayout: (layout: NodeBookLayoutName) => void
@@ -319,6 +342,7 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
     inspectorEl = buildInspectorContent(doc, nodeId, {
       graph: options.graph,
       activeMorphs: options.activeMorphs,
+      inferredEdges: options.getInferredEdges?.(),
       onMorphSelect: options.onMorphSelect,
       onClose: closeInspector
     })

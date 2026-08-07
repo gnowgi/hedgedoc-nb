@@ -48,6 +48,10 @@ Rendering into a container also attaches (both on by default):
 
 Nodes are draggable and the canvas pans/zooms by default (Cytoscape behavior). The UI follows the `theme` option and `handle.setTheme()`.
 
+## Inferred relations
+
+Derived facts — transitive closure over `is_a`, inverse/symmetric relations, membership inheritance — are computed with `@nodebook/core`'s `TransitiveClosureEngine` and drawn as dashed purple edges, added after layout so node positions reflect explicit structure only. The inspector lists them in an *Inferred* section; hovering shows the inference rule and proof path. Recomputed on every morph switch. Disable with `inference: false`; read programmatically via `handle.getInferredEdges()`.
+
 ## Hydrate markdown-it output
 
 Together with [`@nodebook/markdown-it`](https://www.npmjs.com/package/@nodebook/markdown-it):

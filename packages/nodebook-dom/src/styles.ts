@@ -17,6 +17,8 @@ interface Palette {
   edge: string
   edgeText: string
   negated: string
+  inferred: string
+  inferredText: string
   background: string
 }
 
@@ -31,6 +33,8 @@ const PALETTES: Record<NodeBookTheme, Palette> = {
     edge: '#7a95b3',
     edgeText: '#3d5a77',
     negated: '#c0392b',
+    inferred: '#7c3aed',
+    inferredText: '#4c1d95',
     background: '#ffffff'
   },
   dark: {
@@ -43,6 +47,8 @@ const PALETTES: Record<NodeBookTheme, Palette> = {
     edge: '#6d8aa8',
     edgeText: '#9fb8d0',
     negated: '#e07060',
+    inferred: '#a78bfa',
+    inferredText: '#c4b5fd',
     background: '#14181c'
   }
 }
@@ -132,6 +138,22 @@ export function buildStylesheet(theme: NodeBookTheme): StylesheetJson {
         'line-color': p.negated,
         'target-arrow-color': p.negated,
         color: p.negated
+      }
+    },
+    {
+      selector: 'edge[kind = "inferred-relation"]',
+      style: {
+        'line-style': 'dashed',
+        'line-dash-pattern': [6, 3],
+        'line-color': p.inferred,
+        'target-arrow-color': p.inferred,
+        color: p.inferredText,
+        'curve-style': 'unbundled-bezier',
+        'control-point-distances': [40],
+        'control-point-weights': [0.5],
+        opacity: 0.85,
+        'font-size': 10,
+        width: 1.5
       }
     }
   ]
