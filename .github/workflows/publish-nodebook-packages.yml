@@ -45,14 +45,19 @@ jobs:
           yarn workspace @nodebook/core build
           yarn workspace @nodebook/react build
 
+      # Yarn's default registry is the registry.yarnpkg.com mirror, which
+      # rejects publishes; route them to registry.npmjs.org with the token.
+      - name: Configure npm publish registry
+        run: |
+          yarn config set npmPublishRegistry "https://registry.npmjs.org"
+          yarn config set 'npmRegistries["https://registry.npmjs.org"].npmAuthToken' "${NPM_TOKEN}"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish @nodebook/core
         if: ${{ inputs.package == 'both' || inputs.package == '@nodebook/core' }}
         run: yarn workspace @nodebook/core npm publish --tag "${{ inputs.tag }}" --tolerate-republish
-        env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @nodebook/react
         if: ${{ inputs.package == 'both' || inputs.package == '@nodebook/react' }}
         run: yarn workspace @nodebook/react npm publish --tag "${{ inputs.tag }}" --tolerate-republish
-        env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
