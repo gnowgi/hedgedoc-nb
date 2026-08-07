@@ -232,6 +232,12 @@ function appendDetailRows(doc: Document, panel: HTMLElement, node: CnlNode): voi
   }
 }
 
+export interface ToolbarAction {
+  label: string
+  title?: string
+  onClick: () => void
+}
+
 export interface ToolbarContext {
   layouts: readonly NodeBookLayoutName[]
   currentLayout: () => NodeBookLayoutName
@@ -242,6 +248,8 @@ export interface ToolbarContext {
   hasContainment?: boolean
   isContainmentActive?: () => boolean
   onToggleContainment?: () => void
+  /** Host-provided extra buttons, appended at the end of the toolbar. */
+  extraActions?: ToolbarAction[]
 }
 
 /** Build the toolbar (fit, containment toggle, layout picker, PNG export). Pure DOM. */
@@ -285,6 +293,15 @@ export function buildToolbar(doc: Document, ctx: ToolbarContext): HTMLElement {
   png.addEventListener('click', () => ctx.onExportPng())
   bar.appendChild(png)
 
+  for (const action of ctx.extraActions ?? []) {
+    const btn = doc.createElement('button')
+    btn.className = 'nb-ui-btn'
+    btn.textContent = action.label
+    if (action.title) btn.title = action.title
+    btn.addEventListener('click', () => action.onClick())
+    bar.appendChild(btn)
+  }
+
   return bar
 }
 
@@ -304,6 +321,7 @@ export interface AttachUiOptions {
   onFit: () => void
   onRelayout: (layout: NodeBookLayoutName) => void
   onExportPng: () => void
+  extraActions?: ToolbarAction[]
 }
 
 export interface UiHandle {
@@ -344,7 +362,8 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
       onExportPng: options.onExportPng,
       hasContainment: options.hasContainment,
       isContainmentActive: options.isContainmentActive,
-      onToggleContainment: options.onToggleContainment
+      onToggleContainment: options.onToggleContainment,
+      extraActions: options.extraActions
     })
     isolateFromGraph(toolbarEl)
     container.appendChild(toolbarEl)

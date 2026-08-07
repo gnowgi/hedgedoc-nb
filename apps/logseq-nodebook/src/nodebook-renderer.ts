@@ -93,8 +93,26 @@ export function makeNodeBookRenderer(): (props: { content: string }) => unknown 
       }
       handleRef.current?.destroy()
       containerRef.current.textContent = ''
+      // Our toolbar covers Logseq's own hover actions for flipping back to the
+      // code editor, so provide an explicit Edit button instead: find the
+      // enclosing block and put it into edit mode.
+      const editAction = {
+        label: 'Edit',
+        title: 'Edit the CNL source',
+        onClick: () => {
+          const uuid = containerRef.current?.closest('[blockid]')?.getAttribute('blockid')
+          if (uuid) {
+            void logseq.Editor.editBlock(uuid)
+          } else {
+            console.error('logseq-nodebook: could not locate enclosing block uuid')
+          }
+        }
+      }
       try {
-        handleRef.current = host.NodeBookDom.renderNodeBook(containerRef.current, content, { theme })
+        handleRef.current = host.NodeBookDom.renderNodeBook(containerRef.current, content, {
+          theme,
+          toolbarActions: [editAction]
+        })
       } catch (error) {
         setFailure(`nodeBook: render failed (${String(error)})`)
         return

@@ -22,7 +22,7 @@ import {
 import { backgroundColor, buildStylesheet } from './styles'
 import type { NodeBookTheme } from './styles'
 import { attachUi } from './ui'
-import type { UiHandle } from './ui'
+import type { ToolbarAction, UiHandle } from './ui'
 
 export type NodeBookLayout = 'breadthfirst' | 'cose' | 'grid' | 'circle' | 'concentric'
 
@@ -53,6 +53,11 @@ export interface RenderNodeBookOptions {
    * Default false. Toggleable at runtime via the toolbar or setContainment().
    */
   containment?: boolean
+  /**
+   * Extra host-provided toolbar buttons (e.g. an "Edit source" action in an
+   * editor integration), appended after the built-in ones.
+   */
+  toolbarActions?: ToolbarAction[]
   /**
    * Run Cytoscape headlessly (no container, no rendering). Useful for tests
    * and server-side graph inspection. When true, `container` may be null.
@@ -240,6 +245,7 @@ export function renderNodeBook(
       onMorphSelect: setMorph,
       onFit: () => cy.fit(undefined, 24),
       onRelayout: relayout,
+      extraActions: options.toolbarActions,
       onExportPng: () => {
         const uri = cy.png({ full: true, scale: 2, bg: backgroundColor(theme) })
         const link = container.ownerDocument.createElement('a')
