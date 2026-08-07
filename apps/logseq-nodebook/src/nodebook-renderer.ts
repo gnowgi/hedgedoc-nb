@@ -52,6 +52,25 @@ export function makeNodeBookRenderer(): (props: { content: string }) => unknown 
     }, [])
 
     React.useEffect(() => {
+      // Logseq wraps edit:false fenced renderers in a div whose pointer-down
+      // handler calls preventDefault + stopPropagation (see
+      // hook-ui-fenced-code in components/plugins.cljs). preventDefault on
+      // pointerdown suppresses the derived mousedown/mouseup events Cytoscape
+      // needs for tap and drag. Halting propagation at our container keeps the
+      // event from reaching that wrapper; listeners on the container itself
+      // (Cytoscape's) still fire.
+      const el = containerRef.current
+      if (!el) return
+      const stop = (event: Event): void => event.stopPropagation()
+      el.addEventListener('pointerdown', stop)
+      el.addEventListener('dblclick', stop)
+      return () => {
+        el.removeEventListener('pointerdown', stop)
+        el.removeEventListener('dblclick', stop)
+      }
+    }, [])
+
+    React.useEffect(() => {
       let cancelled = false
       ensureVendorLoaded()
         .then(() => {
