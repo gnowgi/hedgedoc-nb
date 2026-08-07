@@ -62,6 +62,14 @@
         "dist/**"
       ]
     },
+    "obsidian-nodebook#build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
+    },
     "logseq-nodebook#build": {
       "dependsOn": [
         "^build"
