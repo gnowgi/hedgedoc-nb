@@ -364,7 +364,9 @@ describe('operationsToGraph — Full pipeline (parse → convert)', () => {
     const graph = operationsToGraph(ops)
 
     expect(graph.nodes.length).toBeGreaterThanOrEqual(1)
-    expect(graph.edges).toHaveLength(1)
+    // <instance_of> plus the implicit is_a edge from the [Place] bracket
+    expect(graph.edges).toHaveLength(2)
+    expect(graph.edges.map((e) => e.name)).toContain('is_a')
     expect(graph.attributes).toHaveLength(1)
     expect(graph.attributes[0].unit).toBe('kg')
   })
