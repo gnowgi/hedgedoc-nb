@@ -45,6 +45,14 @@ jobs:
           yarn workspace @nodebook/core build
           yarn workspace @nodebook/react build
 
+      - name: Verify npm authentication
+        run: yarn npm whoami --publish
+        working-directory: packages/nodebook-core
+        env:
+          YARN_NPM_PUBLISH_REGISTRY: https://registry.npmjs.org
+          YARN_NPM_ALWAYS_AUTH: 'true'
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish @nodebook/core
         if: ${{ inputs.package == 'both' || inputs.package == '@nodebook/core' }}
         run: yarn workspace @nodebook/core npm publish --tag "${{ inputs.tag }}" --tolerate-republish
