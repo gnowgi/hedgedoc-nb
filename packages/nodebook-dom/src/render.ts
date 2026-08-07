@@ -14,8 +14,12 @@ import type { Core, LayoutOptions } from 'cytoscape'
 import { buildCytoscapeElements } from './elements'
 import { backgroundColor, buildStylesheet } from './styles'
 import type { NodeBookTheme } from './styles'
+import { attachUi } from './ui'
+import type { UiHandle } from './ui'
 
 export type NodeBookLayout = 'breadthfirst' | 'cose' | 'grid' | 'circle' | 'concentric'
+
+const ALL_LAYOUTS: readonly NodeBookLayout[] = ['breadthfirst', 'cose', 'grid', 'circle', 'concentric']
 
 export interface RenderNodeBookOptions {
   /** Color theme. Default 'light'. */
@@ -26,6 +30,10 @@ export interface RenderNodeBookOptions {
   showAttributes?: boolean
   /** Initial active morph per node id (node id → morph id). */
   activeMorphs?: Record<string, string>
+  /** Show the fit / layout / PNG toolbar. Default true. */
+  toolbar?: boolean
+  /** Open an inspector panel (details + morph switcher) on node click. Default true. */
+  inspector?: boolean
   /**
    * Run Cytoscape headlessly (no container, no rendering). Useful for tests
    * and server-side graph inspection. When true, `container` may be null.
@@ -105,8 +113,7 @@ export function renderNodeBook(
     ...(headless ? { headless: true, styleEnabled: false } : { container: container as HTMLElement }),
     elements,
     ...(headless ? {} : { style: buildStylesheet(theme) }),
-    layout: headless ? { name: 'null' } : layoutOptions(currentLayout),
-    wheelSensitivity: 0.2
+    layout: headless ? { name: 'null' } : layoutOptions(currentLayout)
   })
 
   const rebuildElements = (): void => {
@@ -118,25 +125,62 @@ export function renderNodeBook(
     }
   }
 
+  const setMorph = (nodeId: string, morph: string): void => {
+    const node = graph.nodes.find((n) => n.id === nodeId)
+    if (!node) {
+      throw new Error(`@nodebook/dom: unknown node "${nodeId}"`)
+    }
+    const target = node.morphs.find((m) => m.morph_id === morph || m.name === morph)
+    if (!target) {
+      const available = node.morphs.map((m) => m.name).join(', ')
+      throw new Error(`@nodebook/dom: node "${nodeId}" has no morph "${morph}" (available: ${available})`)
+    }
+    activeMorphs[nodeId] = target.morph_id
+    rebuildElements()
+    ui?.refreshInspector()
+  }
+
+  const relayout = (layout?: NodeBookLayout): void => {
+    if (layout) {
+      currentLayout = layout
+    }
+    if (!headless) {
+      cy.layout(layoutOptions(currentLayout)).run()
+    }
+  }
+
+  let ui: UiHandle | null = null
+  const wantToolbar = options.toolbar ?? true
+  const wantInspector = options.inspector ?? true
+  if (!headless && container && (wantToolbar || wantInspector)) {
+    ui = attachUi(cy, container, {
+      toolbar: wantToolbar,
+      inspector: wantInspector,
+      theme,
+      layouts: ALL_LAYOUTS,
+      currentLayout: () => currentLayout,
+      graph,
+      activeMorphs,
+      onMorphSelect: setMorph,
+      onFit: () => cy.fit(undefined, 24),
+      onRelayout: relayout,
+      onExportPng: () => {
+        const uri = cy.png({ full: true, scale: 2, bg: backgroundColor(theme) })
+        const link = container.ownerDocument.createElement('a')
+        link.href = uri
+        link.download = 'nodebook-graph.png'
+        link.click()
+      }
+    })
+  }
+
   return {
     cy,
     graph,
     operations,
     errors,
     warnings,
-    setMorph(nodeId: string, morph: string): void {
-      const node = graph.nodes.find((n) => n.id === nodeId)
-      if (!node) {
-        throw new Error(`@nodebook/dom: unknown node "${nodeId}"`)
-      }
-      const target = node.morphs.find((m) => m.morph_id === morph || m.name === morph)
-      if (!target) {
-        const available = node.morphs.map((m) => m.name).join(', ')
-        throw new Error(`@nodebook/dom: node "${nodeId}" has no morph "${morph}" (available: ${available})`)
-      }
-      activeMorphs[nodeId] = target.morph_id
-      rebuildElements()
-    },
+    setMorph,
     setTheme(next: NodeBookTheme): void {
       theme = next
       if (!headless) {
@@ -145,16 +189,12 @@ export function renderNodeBook(
       if (container) {
         container.style.backgroundColor = backgroundColor(theme)
       }
+      ui?.setTheme(next)
     },
-    relayout(layout?: NodeBookLayout): void {
-      if (layout) {
-        currentLayout = layout
-      }
-      if (!headless) {
-        cy.layout(layoutOptions(currentLayout)).run()
-      }
-    },
+    relayout,
     destroy(): void {
+      ui?.destroy()
+      ui = null
       cy.destroy()
     }
   }

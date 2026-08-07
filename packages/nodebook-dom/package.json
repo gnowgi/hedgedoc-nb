@@ -1,6 +1,6 @@
 {
   "name": "@nodebook/dom",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Framework-agnostic DOM renderer for nodeBook CNL knowledge graphs (Cytoscape.js), with a <nodebook-graph> web component",
   "license": "AGPL-3.0-only",
   "author": "gnowgi and the nodeBook contributors",

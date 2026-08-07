@@ -13,3 +13,6 @@ export { buildStylesheet, backgroundColor } from './styles'
 export type { NodeBookTheme } from './styles'
 
 export { NodeBookGraphElement, defineNodeBookElement } from './web-component'
+
+export { buildInspectorContent, buildToolbar } from './ui'
+export type { InspectorContext, ToolbarContext } from './ui'
