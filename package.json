@@ -15,7 +15,8 @@
     "packages/nodebook-react",
     "packages/nodebook-dom",
     "packages/nodebook-markdown-it",
-    "apps/nodebook-app"
+    "apps/nodebook-app",
+    "apps/logseq-nodebook"
   ],
   "scripts": {
     "build": "dotenv -c production -- turbo run build",

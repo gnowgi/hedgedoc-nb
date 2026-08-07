@@ -62,6 +62,15 @@
         "dist/**"
       ]
     },
+    "logseq-nodebook#build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        "vendors/**"
+      ]
+    },
     "@hedgedoc/frontend#build": {
       "dependsOn": [
         "^build"
