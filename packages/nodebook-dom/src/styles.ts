@@ -141,6 +141,23 @@ export function buildStylesheet(theme: NodeBookTheme): StylesheetJson {
       }
     },
     {
+      // Compound parents in containment view: translucent box, label on top.
+      selector: 'node:parent',
+      style: {
+        shape: 'round-rectangle',
+        'background-color': p.conceptBg,
+        'background-opacity': 0.25,
+        'border-color': p.conceptBorder,
+        'border-width': 1.5,
+        color: p.conceptText,
+        'text-valign': 'top',
+        'text-halign': 'center',
+        'text-margin-y': -4,
+        'font-size': 13,
+        padding: '16px'
+      }
+    },
+    {
       selector: 'edge[kind = "inferred-relation"]',
       style: {
         'line-style': 'dashed',

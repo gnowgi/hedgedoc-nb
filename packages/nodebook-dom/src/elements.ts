@@ -14,6 +14,60 @@ export interface BuildElementsOptions {
   activeMorphs?: Record<string, string>
   /** Render attributes as leaf nodes attached to their owner. Default true. */
   showAttributes?: boolean
+  /**
+   * Containment view: nest children inside compound parents along
+   * is_a / member_of / instance_of edges instead of drawing those edges.
+   * Inferred containment edges passed via `inferredEdges` deepen the nesting.
+   */
+  containment?: boolean
+  /** Inferred edges considered for containment nesting (containment mode only). */
+  inferredEdges?: InferredEdge[]
+}
+
+/** Relations expressed as nesting rather than arrows in containment view. */
+export const CONTAINMENT_RELATIONS = new Set(['is_a', 'member_of', 'instance_of'])
+
+/**
+ * Assign at most one compound parent per node from containment edges,
+ * mirroring the React component: is_a parents take precedence over
+ * member_of / instance_of, explicit edges over inferred (callers order the
+ * input accordingly), and candidates creating a parent-chain cycle are
+ * skipped.
+ */
+export function buildContainmentParentMap(
+  edges: Array<{ source_id: string; target_id: string; name: string }>
+): Map<string, string> {
+  const isaParents = new Map<string, string[]>()
+  const memberParents = new Map<string, string[]>()
+  for (const edge of edges) {
+    if (!CONTAINMENT_RELATIONS.has(edge.name)) continue
+    const bucket = edge.name === 'is_a' ? isaParents : memberParents
+    const list = bucket.get(edge.source_id) ?? []
+    if (!list.includes(edge.target_id)) list.push(edge.target_id)
+    bucket.set(edge.source_id, list)
+  }
+
+  const parentOf = new Map<string, string>()
+  const wouldCreateCycle = (child: string, candidate: string): boolean => {
+    let current: string | undefined = candidate
+    while (current !== undefined) {
+      if (current === child) return true
+      current = parentOf.get(current)
+    }
+    return false
+  }
+  for (const bucket of [isaParents, memberParents]) {
+    for (const [child, candidates] of bucket) {
+      if (parentOf.has(child)) continue
+      for (const candidate of candidates) {
+        if (!wouldCreateCycle(child, candidate)) {
+          parentOf.set(child, candidate)
+          break
+        }
+      }
+    }
+  }
+  return parentOf
 }
 
 /**
@@ -60,21 +114,29 @@ function edgeLabel(edge: CnlEdge): string {
  */
 export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElementsOptions = {}): ElementDefinition[] {
   const showAttributes = options.showAttributes ?? true
+  const containment = options.containment ?? false
   const filtered = options.activeMorphs ? filterGraphForMorphs(graph, options.activeMorphs) : graph
 
   const elements: ElementDefinition[] = []
   const nodeIds = new Set(filtered.nodes.map((n) => n.id))
 
+  // Explicit edges first so they win over inferred ones for parent choice.
+  const parentOf = containment
+    ? buildContainmentParentMap([...filtered.edges, ...(options.inferredEdges ?? [])])
+    : new Map<string, string>()
+
   for (const node of filtered.nodes) {
     const morphName =
       node.morphs.length > 1 ? (node.morphs.find((m) => m.morph_id === node.nbh)?.name ?? null) : null
+    const parent = parentOf.get(node.id)
     elements.push({
       group: 'nodes',
       data: {
         id: node.id,
         label: morphName && morphName !== 'basic' ? `${node.name}\n(${morphName})` : node.name,
         role: node.role,
-        kind: 'concept'
+        kind: 'concept',
+        ...(parent ? { parent } : {})
       }
     })
   }
@@ -83,6 +145,8 @@ export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElemen
     // Skip dangling edges defensively: morph filtering or partial CNL can
     // reference nodes that were never declared.
     if (!nodeIds.has(edge.source_id) || !nodeIds.has(edge.target_id)) continue
+    // Nesting expresses containment relations; skip their arrows.
+    if (containment && CONTAINMENT_RELATIONS.has(edge.name)) continue
     elements.push({
       group: 'edges',
       data: {
@@ -98,12 +162,16 @@ export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElemen
   if (showAttributes) {
     for (const attr of filtered.attributes) {
       if (!nodeIds.has(attr.source_id)) continue
+      // In containment view, attribute leaves sit inside the same compound as
+      // their owner so the box visually contains the node's whole description.
+      const parent = parentOf.get(attr.source_id)
       elements.push({
         group: 'nodes',
         data: {
           id: attr.id,
           label: attributeLabel(attr),
-          kind: 'attribute'
+          kind: 'attribute',
+          ...(parent ? { parent } : {})
         }
       })
       elements.push({

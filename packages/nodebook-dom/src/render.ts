@@ -13,7 +13,12 @@ import {
 import type { CnlGraphData, CnlOperation, CnlParseError, InferredEdge } from '@nodebook/core'
 import cytoscape from 'cytoscape'
 import type { Core, LayoutOptions } from 'cytoscape'
-import { buildCytoscapeElements, buildInferredEdgeElements, filterGraphForMorphs } from './elements'
+import {
+  buildCytoscapeElements,
+  buildInferredEdgeElements,
+  CONTAINMENT_RELATIONS,
+  filterGraphForMorphs
+} from './elements'
 import { backgroundColor, buildStylesheet } from './styles'
 import type { NodeBookTheme } from './styles'
 import { attachUi } from './ui'
@@ -43,6 +48,12 @@ export interface RenderNodeBookOptions {
    */
   inference?: boolean
   /**
+   * Start in containment view: nest nodes inside compound parents along
+   * is_a / member_of / instance_of instead of drawing those edges.
+   * Default false. Toggleable at runtime via the toolbar or setContainment().
+   */
+  containment?: boolean
+  /**
    * Run Cytoscape headlessly (no container, no rendering). Useful for tests
    * and server-side graph inspection. When true, `container` may be null.
    */
@@ -62,6 +73,8 @@ export interface NodeBookHandle {
   warnings: CnlParseError[]
   /** Inferred relations for the currently visible (morph-filtered) graph. */
   getInferredEdges(): InferredEdge[]
+  /** Toggle containment view (compound nesting along is_a/member_of/instance_of). */
+  setContainment(enabled: boolean): void
   /** Switch a node to one of its morphs (by morph id or morph name) and re-render. */
   setMorph(nodeId: string, morph: string): void
   /** Switch the color theme in place. */
@@ -131,7 +144,12 @@ export function renderNodeBook(
   }
   computeInference()
 
-  const elements = buildCytoscapeElements(graph, { activeMorphs, showAttributes })
+  let containment = options.containment ?? false
+
+  const buildExplicit = () =>
+    buildCytoscapeElements(graph, { activeMorphs, showAttributes, containment, inferredEdges })
+
+  const elements = buildExplicit()
   const cy = cytoscape({
     ...(headless ? { headless: true, styleEnabled: false } : { container: container as HTMLElement }),
     elements,
@@ -144,8 +162,11 @@ export function renderNodeBook(
   // come from explicit structure only, with derived facts arcing over it.
   const layoutThenInferred = (): void => {
     const addInferred = (): void => {
-      if (inferredEdges.length > 0 && cy.$('edge[kind = "inferred-relation"]').length === 0) {
-        cy.add(buildInferredEdgeElements(inferredEdges, graph))
+      // In containment view, inferred containment facts are expressed by the
+      // nesting itself — only non-containment inferences get arrows.
+      const visible = containment ? inferredEdges.filter((e) => !CONTAINMENT_RELATIONS.has(e.name)) : inferredEdges
+      if (visible.length > 0 && cy.$('edge[kind = "inferred-relation"]').length === 0) {
+        cy.add(buildInferredEdgeElements(visible, graph))
       }
     }
     if (headless) {
@@ -159,10 +180,21 @@ export function renderNodeBook(
 
   const rebuildElements = (): void => {
     computeInference()
-    const next = buildCytoscapeElements(graph, { activeMorphs, showAttributes })
+    const next = buildExplicit()
     cy.elements().remove()
     cy.add(next)
     layoutThenInferred()
+  }
+
+  const setContainment = (enabled: boolean): void => {
+    if (containment === enabled) return
+    containment = enabled
+    // cose is the compound-aware built-in layout; switch to it when nesting.
+    if (enabled && currentLayout === 'breadthfirst') {
+      currentLayout = 'cose'
+    }
+    rebuildElements()
+    ui?.refreshToolbar()
   }
 
   const setMorph = (nodeId: string, morph: string): void => {
@@ -202,6 +234,9 @@ export function renderNodeBook(
       graph,
       activeMorphs,
       getInferredEdges: () => inferredEdges,
+      hasContainment: graph.edges.some((e) => CONTAINMENT_RELATIONS.has(e.name)),
+      isContainmentActive: () => containment,
+      onToggleContainment: () => setContainment(!containment),
       onMorphSelect: setMorph,
       onFit: () => cy.fit(undefined, 24),
       onRelayout: relayout,
@@ -222,6 +257,7 @@ export function renderNodeBook(
     errors,
     warnings,
     getInferredEdges: () => inferredEdges,
+    setContainment,
     setMorph,
     setTheme(next: NodeBookTheme): void {
       theme = next

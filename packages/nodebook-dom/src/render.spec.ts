@@ -110,3 +110,28 @@ describe('inference', () => {
     }
   })
 })
+
+describe('containment view (headless)', () => {
+  const CHAIN = '# Dog [Animal]\n<likes> Bone;\n\n# Animal [Creature]'
+
+  it('setContainment nests nodes and hides containment arrows', () => {
+    const handle = renderNodeBook(null, CHAIN, { headless: true })
+    try {
+      expect(handle.cy.$('#dog').parent().length).toBe(0)
+      handle.setContainment(true)
+      expect(handle.cy.$('#dog').parent().first().id()).toBe('animal')
+      expect(handle.cy.$('#animal').parent().first().id()).toBe('creature')
+      const labels = handle.cy.edges().map((e) => e.data('label'))
+      expect(labels).not.toContain('is_a')
+      expect(labels).toContain('likes')
+      // inferred containment facts are expressed by nesting, not arrows
+      expect(handle.cy.$('edge[kind = "inferred-relation"]').length).toBe(0)
+
+      handle.setContainment(false)
+      expect(handle.cy.$('#dog').parent().length).toBe(0)
+      expect(handle.cy.edges().map((e) => e.data('label'))).toContain('is_a')
+    } finally {
+      handle.destroy()
+    }
+  })
+})

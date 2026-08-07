@@ -5,7 +5,7 @@
  */
 import { getOperationsFromCnl, operationsToGraph } from '@nodebook/core'
 import type { CnlGraphData } from '@nodebook/core'
-import { buildCytoscapeElements, filterGraphForMorphs } from './elements'
+import { buildContainmentParentMap, buildCytoscapeElements, filterGraphForMorphs } from './elements'
 
 function graphFromCnl(cnl: string): CnlGraphData {
   return operationsToGraph(getOperationsFromCnl(cnl))
@@ -82,5 +82,54 @@ describe('filterGraphForMorphs', () => {
     expect(values).toContain('solid')
     expect(values).not.toContain('liquid')
     expect(filtered.nodes.find((n) => n.id === 'water')!.nbh).toBe(frozen.morph_id)
+  })
+})
+
+describe('containment view', () => {
+  const CHAIN = '# Dog [Animal]\nlegs: 4;\n<likes> Bone;\n\n# Animal [Creature]'
+
+  it('buildContainmentParentMap nests along is_a and avoids cycles', () => {
+    const graph = graphFromCnl(CHAIN)
+    const parents = buildContainmentParentMap(graph.edges)
+    expect(parents.get('dog')).toBe('animal')
+    expect(parents.get('animal')).toBe('creature')
+
+    const cyclic = buildContainmentParentMap([
+      { source_id: 'a', target_id: 'b', name: 'is_a' },
+      { source_id: 'b', target_id: 'a', name: 'is_a' }
+    ])
+    // one direction wins, the reverse is skipped as a cycle
+    expect(cyclic.size).toBe(1)
+  })
+
+  it('nests nodes, drops containment arrows, keeps other relations', () => {
+    const graph = graphFromCnl(CHAIN)
+    const elements = buildCytoscapeElements(graph, { containment: true })
+
+    const dog = elements.find((e) => e.data.id === 'dog')!
+    expect(dog.data.parent).toBe('animal')
+    const animal = elements.find((e) => e.data.id === 'animal')!
+    expect(animal.data.parent).toBe('creature')
+
+    const edgeLabels = elements.filter((e) => e.group === 'edges').map((e) => e.data.label)
+    expect(edgeLabels).not.toContain('is_a')
+    expect(edgeLabels).toContain('likes')
+
+    // the attribute leaf sits inside the same compound as its owner
+    const attr = elements.find((e) => e.data.kind === 'attribute')!
+    expect(attr.data.parent).toBe('animal')
+  })
+
+  it('uses inferred containment edges to deepen nesting', () => {
+    const graph = graphFromCnl('# Rex\n\n# Dog [Animal]')
+    // no explicit parent for rex; give it an inferred member_of
+    const inferred = [
+      {
+        id: 'inf_1', source_id: 'rex', target_id: 'dog', name: 'member_of', weight: 1, morph_ids: [],
+        proofPath: [], inferenceRule: 'membership_inheritance'
+      }
+    ]
+    const elements = buildCytoscapeElements(graph, { containment: true, inferredEdges: inferred })
+    expect(elements.find((e) => e.data.id === 'rex')!.data.parent).toBe('dog')
   })
 })
