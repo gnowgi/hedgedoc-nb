@@ -77,6 +77,10 @@ defineNodeBookElement()  // registers <nodebook-graph>
 
 CNL can also go in the element's content, but note that raw `<relation>` syntax inside HTML is parsed as tags — escape it as `&lt;relation&gt;` (text content decodes entities), or use the `code` attribute as above.
 
+## Containment view
+
+The **Nest** toolbar button (or `containment: true` / `handle.setContainment(true)`) switches to nodeBook's containment view: nodes nest inside compound parent boxes along `is_a` / `member_of` / `instance_of` — including *inferred* containment, so a deep taxonomy nests fully — and those relations' arrows disappear since the nesting expresses them. Other relations keep their arrows; attribute leaves sit inside their owner's box. The layout auto-switches to the compound-aware `cose`.
+
 ## Notes for bundlers
 
 `@nodebook/core` includes the optional tau-prolog inference engine, whose dependency chain references Node builtins (`fs`, `os`, `crypto`, …) behind runtime guards. Browser bundlers should stub or externalize those (esbuild: `--external:fs --external:path --external:os --external:crypto --external:child_process`; Vite/webpack handle this via their usual node-polyfill settings).

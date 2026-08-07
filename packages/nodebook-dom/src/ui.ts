@@ -24,6 +24,7 @@ const UI_CSS = `
   border-radius: 6px; padding: 3px 8px; cursor: pointer; font: inherit;
 }
 .nb-ui-btn:hover { border-color: var(--nb-accent); }
+.nb-ui-btn.nb-ui-active { background: var(--nb-accent); border-color: var(--nb-accent); color: var(--nb-accent-text); }
 .nb-ui-select {
   border: 1px solid var(--nb-border); background: var(--nb-panel-bg); color: var(--nb-text);
   border-radius: 6px; padding: 2px 4px; font: inherit; cursor: pointer;
@@ -237,9 +238,13 @@ export interface ToolbarContext {
   onFit: () => void
   onRelayout: (layout: NodeBookLayoutName) => void
   onExportPng: () => void
+  /** Show a "Nest" toggle for containment view. */
+  hasContainment?: boolean
+  isContainmentActive?: () => boolean
+  onToggleContainment?: () => void
 }
 
-/** Build the toolbar (fit, layout picker, PNG export). Pure DOM. */
+/** Build the toolbar (fit, containment toggle, layout picker, PNG export). Pure DOM. */
 export function buildToolbar(doc: Document, ctx: ToolbarContext): HTMLElement {
   const bar = doc.createElement('div')
   bar.className = 'nb-ui-toolbar'
@@ -250,6 +255,15 @@ export function buildToolbar(doc: Document, ctx: ToolbarContext): HTMLElement {
   fit.title = 'Fit graph to view'
   fit.addEventListener('click', () => ctx.onFit())
   bar.appendChild(fit)
+
+  if (ctx.hasContainment && ctx.onToggleContainment) {
+    const nest = doc.createElement('button')
+    nest.className = 'nb-ui-btn nb-ui-nest' + (ctx.isContainmentActive?.() ? ' nb-ui-active' : '')
+    nest.textContent = 'Nest'
+    nest.title = 'Toggle containment view (nest along is_a / member_of)'
+    nest.addEventListener('click', () => ctx.onToggleContainment!())
+    bar.appendChild(nest)
+  }
 
   const select = doc.createElement('select')
   select.className = 'nb-ui-select'
@@ -283,6 +297,9 @@ export interface AttachUiOptions {
   graph: CnlGraphData
   activeMorphs: Record<string, string>
   getInferredEdges?: () => InferredEdge[]
+  hasContainment?: boolean
+  isContainmentActive?: () => boolean
+  onToggleContainment?: () => void
   onMorphSelect: (nodeId: string, morphId: string) => void
   onFit: () => void
   onRelayout: (layout: NodeBookLayoutName) => void
@@ -293,6 +310,8 @@ export interface UiHandle {
   setTheme(theme: NodeBookTheme): void
   /** Re-render the inspector (after a morph switch or element rebuild). */
   refreshInspector(): void
+  /** Re-render the toolbar (after containment or layout state changes). */
+  refreshToolbar(): void
   destroy(): void
 }
 
@@ -315,16 +334,23 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
   container.dataset.nbTheme = options.theme
 
   let toolbarEl: HTMLElement | null = null
-  if (options.toolbar) {
+  const mountToolbar = (): void => {
+    toolbarEl?.remove()
     toolbarEl = buildToolbar(doc, {
       layouts: options.layouts,
       currentLayout: options.currentLayout,
       onFit: options.onFit,
       onRelayout: options.onRelayout,
-      onExportPng: options.onExportPng
+      onExportPng: options.onExportPng,
+      hasContainment: options.hasContainment,
+      isContainmentActive: options.isContainmentActive,
+      onToggleContainment: options.onToggleContainment
     })
     isolateFromGraph(toolbarEl)
     container.appendChild(toolbarEl)
+  }
+  if (options.toolbar) {
+    mountToolbar()
   }
 
   let inspectorEl: HTMLElement | null = null
@@ -365,6 +391,9 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
     },
     refreshInspector(): void {
       if (inspectedNodeId) openInspector(inspectedNodeId)
+    },
+    refreshToolbar(): void {
+      if (options.toolbar) mountToolbar()
     },
     destroy(): void {
       closeInspector()
