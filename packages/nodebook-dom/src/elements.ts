@@ -5,6 +5,7 @@
  */
 import type { CnlAttribute, CnlEdge, CnlGraphData, InferredEdge } from '@nodebook/core'
 import type { ElementDefinition } from 'cytoscape'
+import { circledNumber } from './simulation'
 
 export interface BuildElementsOptions {
   /**
@@ -22,6 +23,12 @@ export interface BuildElementsOptions {
   containment?: boolean
   /** Inferred edges considered for containment nesting (containment mode only). */
   inferredEdges?: InferredEdge[]
+  /**
+   * Petri-net rendering of prior/post arcs: input arcs draw place → transition
+   * (into the bar), output arcs transition → place, with the relation label
+   * replaced by a circled weight (only when ≠ 1).
+   */
+  processMode?: boolean
 }
 
 /** Relations expressed as nesting rather than arrows in containment view. */
@@ -141,12 +148,29 @@ export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElemen
     })
   }
 
+  const processMode = options.processMode ?? false
   for (const edge of filtered.edges) {
     // Skip dangling edges defensively: morph filtering or partial CNL can
     // reference nodes that were never declared.
     if (!nodeIds.has(edge.source_id) || !nodeIds.has(edge.target_id)) continue
     // Nesting expresses containment relations; skip their arrows.
     if (containment && CONTAINMENT_RELATIONS.has(edge.name)) continue
+    if (processMode && !edge.negated && (edge.name === 'has prior_state' || edge.name === 'has post_state')) {
+      // Petri-net convention: arrows follow token flow, weights are circled,
+      // the relation name is implied by the direction.
+      const isInput = edge.name === 'has prior_state'
+      elements.push({
+        group: 'edges',
+        data: {
+          id: edge.id,
+          source: isInput ? edge.target_id : edge.source_id,
+          target: isInput ? edge.source_id : edge.target_id,
+          label: edge.weight !== 1 ? circledNumber(edge.weight) : '',
+          kind: isInput ? 'process-input' : 'process-output'
+        }
+      })
+      continue
+    }
     elements.push({
       group: 'edges',
       data: {

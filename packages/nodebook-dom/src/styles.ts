@@ -81,12 +81,21 @@ export function buildStylesheet(theme: NodeBookTheme): StylesheetJson {
         height: 'label'
       }
     },
+    // Transition-role nodes render as the classic Petri-net vertical bar with
+    // the label beneath it.
     ...Array.from(TRANSITION_ROLES).map((role) => ({
       selector: `node[kind = "concept"][role @= "${role}"]`,
       style: {
-        shape: 'diamond' as const,
-        'background-color': p.transitionBg,
-        padding: '16px'
+        shape: 'rectangle' as const,
+        width: 14,
+        height: 52,
+        'background-color': theme === 'dark' ? '#2b8a3e' : '#2f9e44',
+        'border-color': theme === 'dark' ? '#69db7c' : '#1d7a37',
+        'border-width': 1.5,
+        color: p.conceptText,
+        'text-valign': 'bottom' as const,
+        'text-margin-y': 6,
+        padding: '0px'
       }
     })),
     {
@@ -141,17 +150,49 @@ export function buildStylesheet(theme: NodeBookTheme): StylesheetJson {
       }
     },
     {
-      // Enabled transitions in the token simulation: green highlight, ready to fire.
+      // Enabled transitions in the token simulation: bright bar, ready to fire.
       selector: 'node[kind = "concept"][enabledTransition = 1]',
       style: {
-        'border-color': theme === 'dark' ? '#69db7c' : '#2f9e44',
-        'border-width': 3
+        'background-color': theme === 'dark' ? '#40c057' : '#2f9e44',
+        'border-color': theme === 'dark' ? '#8ce99a' : '#1d7a37',
+        'border-width': 2.5
       }
     },
     {
+      // Disabled transitions dim to gray.
       selector: 'node[kind = "concept"][enabledTransition = 0]',
       style: {
-        opacity: 0.75
+        'background-color': theme === 'dark' ? '#495057' : '#adb5bd',
+        'border-color': theme === 'dark' ? '#5c636a' : '#868e96',
+        opacity: 0.85
+      }
+    },
+    {
+      // Input arcs (place → transition): blue, straight, weight-only label.
+      selector: 'edge[kind = "process-input"]',
+      style: {
+        'curve-style': 'straight',
+        width: 2.5,
+        'line-color': theme === 'dark' ? '#4dabf7' : '#2b6cb0',
+        'target-arrow-color': theme === 'dark' ? '#4dabf7' : '#2b6cb0',
+        color: theme === 'dark' ? '#74c0fc' : '#2b6cb0',
+        'font-size': 14,
+        'text-rotation': 'none',
+        'text-background-opacity': 0
+      }
+    },
+    {
+      // Output arcs (transition → place): green.
+      selector: 'edge[kind = "process-output"]',
+      style: {
+        'curve-style': 'straight',
+        width: 2.5,
+        'line-color': theme === 'dark' ? '#69db7c' : '#2f9e44',
+        'target-arrow-color': theme === 'dark' ? '#69db7c' : '#2f9e44',
+        color: theme === 'dark' ? '#8ce99a' : '#1d7a37',
+        'font-size': 14,
+        'text-rotation': 'none',
+        'text-background-opacity': 0
       }
     },
     {

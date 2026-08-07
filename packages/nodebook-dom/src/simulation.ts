@@ -110,3 +110,93 @@ export function placeLabel(name: string, tokenCount: number): string {
   if (tokenCount <= 3) return `${name}\n${'●'.repeat(tokenCount)}`
   return `${name}\n${tokenCount}`
 }
+
+/** Circled Unicode digit ①-⑳ for arc weights, parenthesized beyond 20. */
+export function circledNumber(n: number): string {
+  if (Number.isInteger(n) && n >= 1 && n <= 20) return String.fromCodePoint(0x245f + n)
+  return `(${n})`
+}
+
+/**
+ * Layered left-to-right positions for process graphs: input places →
+ * transition bars → output places, following the token-flow direction.
+ * BFS layering from the pure-input places; cycles are broken by restarting
+ * from an unvisited node, so reaction cycles still get sensible columns.
+ * Non-process nodes go in an extra column; attribute leaves sit below their
+ * owner.
+ */
+export function computeProcessPositions(
+  model: ProcessModel,
+  conceptNodeIds: string[],
+  attributeOwners: Map<string, string>,
+  spacing: { dx: number; dy: number } = { dx: 190, dy: 95 }
+): Map<string, { x: number; y: number }> {
+  const successors = new Map<string, string[]>()
+  const indegree = new Map<string, number>()
+  const inProcess = new Set<string>([...model.placeIds, ...model.transitionIds])
+  for (const id of inProcess) {
+    successors.set(id, [])
+    indegree.set(id, 0)
+  }
+  for (const [transitionId, arcs] of model.priorArcs) {
+    for (const arc of arcs) {
+      successors.get(arc.placeId)!.push(transitionId)
+      indegree.set(transitionId, (indegree.get(transitionId) ?? 0) + 1)
+    }
+  }
+  for (const [transitionId, arcs] of model.postArcs) {
+    for (const arc of arcs) {
+      successors.get(transitionId)!.push(arc.placeId)
+      indegree.set(arc.placeId, (indegree.get(arc.placeId) ?? 0) + 1)
+    }
+  }
+
+  // Layer = flow depth. Each node is finalized once (first dequeue); pending
+  // nodes take the deepest proposed layer before that, so chains order
+  // correctly and cycles terminate (restart seeds any stranded subgraph).
+  const layerOf = new Map<string, number>()
+  const pending = new Set(inProcess)
+  const queue: string[] = [...inProcess].filter((id) => (indegree.get(id) ?? 0) === 0)
+  for (const id of queue) layerOf.set(id, 0)
+  while (pending.size > 0) {
+    if (queue.length === 0) {
+      const restart = [...pending][0]
+      layerOf.set(restart, 0)
+      queue.push(restart)
+    }
+    const id = queue.shift()!
+    if (!pending.has(id)) continue
+    pending.delete(id)
+    for (const next of successors.get(id) ?? []) {
+      if (!pending.has(next)) continue
+      const candidate = (layerOf.get(id) ?? 0) + 1
+      if (candidate > (layerOf.get(next) ?? -1)) layerOf.set(next, candidate)
+      if (!queue.includes(next)) queue.push(next)
+    }
+  }
+
+  const maxLayer = Math.max(0, ...layerOf.values())
+  for (const id of conceptNodeIds) {
+    if (!layerOf.has(id)) layerOf.set(id, maxLayer + 1)
+  }
+
+  const byLayer = new Map<number, string[]>()
+  for (const id of conceptNodeIds) {
+    const layer = layerOf.get(id)!
+    const list = byLayer.get(layer) ?? []
+    list.push(id)
+    byLayer.set(layer, list)
+  }
+
+  const positions = new Map<string, { x: number; y: number }>()
+  for (const [layer, ids] of byLayer) {
+    ids.forEach((id, index) => {
+      positions.set(id, { x: layer * spacing.dx, y: (index - (ids.length - 1) / 2) * spacing.dy })
+    })
+  }
+  for (const [attrId, ownerId] of attributeOwners) {
+    const owner = positions.get(ownerId)
+    if (owner) positions.set(attrId, { x: owner.x, y: owner.y + spacing.dy * 0.65 })
+  }
+  return positions
+}
