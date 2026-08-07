@@ -13,6 +13,8 @@
     "markdown-it-plugins",
     "packages/nodebook-core",
     "packages/nodebook-react",
+    "packages/nodebook-dom",
+    "packages/nodebook-markdown-it",
     "apps/nodebook-app"
   ],
   "scripts": {

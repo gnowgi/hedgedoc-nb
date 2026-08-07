@@ -48,6 +48,20 @@
         "dist/**"
       ]
     },
+    "@nodebook/dom#build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
+    },
+    "@nodebook/markdown-it#build": {
+      "dependsOn": [],
+      "outputs": [
+        "dist/**"
+      ]
+    },
     "@hedgedoc/frontend#build": {
       "dependsOn": [
         "^build"

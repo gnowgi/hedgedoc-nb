@@ -10,12 +10,14 @@ on:
       package:
         description: 'Which package(s) to publish'
         required: true
-        default: 'both'
+        default: 'all'
         type: choice
         options:
-          - both
+          - all
           - '@nodebook/core'
           - '@nodebook/react'
+          - '@nodebook/dom'
+          - '@nodebook/markdown-it'
       tag:
         description: 'npm dist-tag'
         required: true
@@ -37,13 +39,18 @@ jobs:
         with:
           NODEJS_VERSION: '24'
 
-      - name: Test @nodebook/core
-        run: yarn workspace @nodebook/core test
+      - name: Test packages
+        run: |
+          yarn workspace @nodebook/core test
+          yarn workspace @nodebook/dom test
+          yarn workspace @nodebook/markdown-it test
 
       - name: Build packages
         run: |
           yarn workspace @nodebook/core build
           yarn workspace @nodebook/react build
+          yarn workspace @nodebook/dom build
+          yarn workspace @nodebook/markdown-it build
 
       - name: Verify npm authentication
         run: yarn npm whoami --publish
@@ -53,20 +60,21 @@ jobs:
           YARN_NPM_ALWAYS_AUTH: 'true'
           YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish @nodebook/core
-        if: ${{ inputs.package == 'both' || inputs.package == '@nodebook/core' }}
-        run: yarn workspace @nodebook/core npm publish --tag "${{ inputs.tag }}" --tolerate-republish
+      - name: Publish
+        run: |
+          if [ "${{ inputs.package }}" = "all" ]; then
+            packages="@nodebook/core @nodebook/react @nodebook/dom @nodebook/markdown-it"
+          else
+            packages="${{ inputs.package }}"
+          fi
+          for pkg in $packages; do
+            echo "::group::Publishing $pkg"
+            yarn workspace "$pkg" npm publish --tag "${{ inputs.tag }}" --tolerate-republish
+            echo "::endgroup::"
+          done
         env:
           # Yarn's default registry is the read-only registry.yarnpkg.com
           # mirror; publishes must go to registry.npmjs.org.
-          YARN_NPM_PUBLISH_REGISTRY: https://registry.npmjs.org
-          YARN_NPM_ALWAYS_AUTH: 'true'
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @nodebook/react
-        if: ${{ inputs.package == 'both' || inputs.package == '@nodebook/react' }}
-        run: yarn workspace @nodebook/react npm publish --tag "${{ inputs.tag }}" --tolerate-republish
-        env:
           YARN_NPM_PUBLISH_REGISTRY: https://registry.npmjs.org
           YARN_NPM_ALWAYS_AUTH: 'true'
           YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
