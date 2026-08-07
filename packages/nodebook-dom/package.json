@@ -1,0 +1,61 @@
+{
+  "name": "@nodebook/dom",
+  "version": "0.1.0",
+  "description": "Framework-agnostic DOM renderer for nodeBook CNL knowledge graphs (Cytoscape.js), with a <nodebook-graph> web component",
+  "license": "AGPL-3.0-only",
+  "author": "gnowgi and the nodeBook contributors",
+  "homepage": "https://nodebook.co.in",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gnowgi/hedgedoc-nb.git",
+    "directory": "packages/nodebook-dom"
+  },
+  "keywords": [
+    "cnl",
+    "knowledge-graph",
+    "concept-map",
+    "cytoscape",
+    "web-component",
+    "nodebook"
+  ],
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:ci": "vitest run",
+    "prepack": "yarn build"
+  },
+  "dependencies": {
+    "@nodebook/core": "workspace:*",
+    "cytoscape": "^3.30.4"
+  },
+  "devDependencies": {
+    "@types/cytoscape": "^3.21.8",
+    "jsdom": "^25.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

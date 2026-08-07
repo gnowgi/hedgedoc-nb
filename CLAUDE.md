@@ -28,7 +28,7 @@ Frontend dev server: port **3001**. Backend: NestJS with Fastify.
 
 ## Architecture
 
-### HedgeDoc Monorepo (11 Yarn workspaces)
+### HedgeDoc Monorepo (13 Yarn workspaces)
 
 | Workspace | Stack | Purpose |
 |-----------|-------|---------|
@@ -40,9 +40,11 @@ Frontend dev server: port **3001**. Backend: NestJS with Fastify.
 | `html-to-react` | domhandler | HTML→React component conversion |
 | `dev-reverse-proxy` | — | Local dev proxy |
 | `docs` | MkDocs | Documentation site |
-| `packages/nodebook-core` | Pure TypeScript | CNL parser, graph engine, inference, schemas (publishable as `@nodebook/core`) |
-| `packages/nodebook-react` | React 18, Cytoscape.js | nodeBook UI components + CodeMirror/hljs language (publishable as `@nodebook/react`) |
-| `apps/nodebook-app` | Vite, Tauri, PWA | Standalone nodeBook editor built on the two packages |
+| `packages/nodebook-core` | Pure TypeScript | CNL parser, graph engine, inference, schemas (npm: `@nodebook/core`) |
+| `packages/nodebook-react` | React 18, Cytoscape.js | nodeBook UI components + CodeMirror/hljs language (npm: `@nodebook/react`) |
+| `packages/nodebook-dom` | TypeScript, Cytoscape.js | Framework-agnostic renderer + `<nodebook-graph>` web component (npm: `@nodebook/dom`) |
+| `packages/nodebook-markdown-it` | TypeScript | markdown-it fence plugin emitting hydratable placeholders (npm: `@nodebook/markdown-it`) |
+| `apps/nodebook-app` | Vite, Tauri, PWA | Standalone nodeBook editor built on the packages |
 
 Linting uses **oxlint/oxfmt** (Rust-based), not eslint/prettier. Task orchestration via **Turbo**.
 
@@ -72,7 +74,10 @@ The nodeBook engine and UI are standalone workspace packages; the HedgeDoc front
 - **`packages/nodebook-react`** (`@nodebook/react`): `nodebook-graph.tsx` (Cytoscape.js with morph switching + transition simulation), schema display, text analyzer, CodeMirror 6 language + completions, hljs language. Build: Vite lib mode → `dist/` incl. compiled `styles.css`.
 - **HedgeDoc glue** (`frontend/src/extensions/external-lib-app-extensions/nodebook/`): `nodebook-markdown-extension.ts`, `nodebook-app-extension.ts` (cheatsheet + autocompletion), sidebar stats; registered in `external-lib-app-extensions.ts`. The frontend consumes package **sources** via `transpilePackages` in `next.config.js`.
 
-Both packages carry `publishConfig` overrides: in the monorepo `main` points at `src/index.ts`; the published npm tarball points at `dist/`. Publishing: `.github/workflows/publish-nodebook-packages.yml` (manual dispatch, needs `NPM_TOKEN` secret).
+- **`packages/nodebook-dom`** (`@nodebook/dom`): framework-agnostic renderer — `renderNodeBook(el, cnl, opts)` (Cytoscape, morphs, themes), `hydrateNodeBookBlocks`, `<nodebook-graph>` web component. Build: tsup. Tests: vitest (headless Cytoscape + jsdom).
+- **`packages/nodebook-markdown-it`** (`@nodebook/markdown-it`): zero-dep markdown-it plugin turning ` ```nodeBook ` fences into `<div data-nodebook="...">` placeholders for hydration.
+
+All nodeBook packages carry `publishConfig` overrides: in the monorepo `main` points at `src/index.ts`; the published npm tarball points at `dist/`. Publishing: `.github/workflows/publish-nodebook-packages.yml` (manual dispatch, needs `NPM_TOKEN` secret; publish steps must target registry.npmjs.org via env vars, not yarn's default mirror).
 
 The code fence prefix is **`nodeBook`** (not `cnl`). CNL is parsed entirely client-side with no backend needed. Full syntax: `docs/nodebook-cnl-spec.md`.
 
