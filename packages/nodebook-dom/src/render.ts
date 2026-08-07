@@ -21,6 +21,13 @@ import {
 } from './elements'
 import { backgroundColor, buildStylesheet } from './styles'
 import type { NodeBookTheme } from './styles'
+import {
+  buildProcessModel,
+  fireTransition as fireProcessTransition,
+  isTransitionEnabled,
+  placeLabel
+} from './simulation'
+import type { ProcessModel } from './simulation'
 import { attachUi } from './ui'
 import type { ToolbarAction, UiHandle } from './ui'
 
@@ -80,6 +87,12 @@ export interface NodeBookHandle {
   getInferredEdges(): InferredEdge[]
   /** Toggle containment view (compound nesting along is_a/member_of/instance_of). */
   setContainment(enabled: boolean): void
+  /** Current token marking (place id → tokens), or null when the graph has no process. */
+  getMarking(): Map<string, number> | null
+  /** Fire a transition by node id. Returns false when disabled or not a transition. */
+  fireTransition(transitionId: string): boolean
+  /** Reset the token marking to its initial state. */
+  resetSimulation(): void
   /** Switch a node to one of its morphs (by morph id or morph name) and re-render. */
   setMorph(nodeId: string, morph: string): void
   /** Switch the color theme in place. */
@@ -183,13 +196,68 @@ export function renderNodeBook(
   }
   layoutThenInferred()
 
+  // Token-game process simulation (prior/post-state arcs on transition-role
+  // nodes). Rebuilt alongside the elements so morph switches stay consistent.
+  let processModel: ProcessModel | null = null
+  let marking = new Map<string, number>()
+  const rebuildProcessModel = (): void => {
+    processModel = buildProcessModel(filterGraphForMorphs(graph, activeMorphs))
+    marking = processModel ? new Map(processModel.initialMarking) : new Map()
+  }
+
+  const applySimulationState = (): void => {
+    if (!processModel) return
+    cy.batch(() => {
+      for (const placeId of processModel!.placeIds) {
+        const node = cy.getElementById(placeId)
+        if (node.empty()) continue
+        const base = (node.data('baseLabel') as string | undefined) ?? (node.data('label') as string)
+        node.data('baseLabel', base)
+        node.data('label', placeLabel(base, marking.get(placeId) ?? 0))
+      }
+      for (const transitionId of processModel!.transitionIds) {
+        const node = cy.getElementById(transitionId)
+        if (node.empty()) continue
+        node.data('enabledTransition', isTransitionEnabled(processModel!, marking, transitionId) ? 1 : 0)
+      }
+    })
+  }
+
+  const fireTransition = (transitionId: string): boolean => {
+    if (!processModel || !processModel.transitionIds.includes(transitionId)) return false
+    const next = fireProcessTransition(processModel, marking, transitionId)
+    if (!next) return false
+    marking = next
+    applySimulationState()
+    return true
+  }
+
+  const resetSimulation = (): void => {
+    if (!processModel) return
+    marking = new Map(processModel.initialMarking)
+    applySimulationState()
+  }
+
   const rebuildElements = (): void => {
     computeInference()
     const next = buildExplicit()
     cy.elements().remove()
     cy.add(next)
+    rebuildProcessModel()
+    applySimulationState()
     layoutThenInferred()
   }
+
+  rebuildProcessModel()
+  applySimulationState()
+
+  // Tapping an enabled transition fires it (the inspector skips these nodes).
+  cy.on('tap', 'node[kind = "concept"]', (event) => {
+    const id = event.target.id() as string
+    if (processModel && processModel.transitionIds.includes(id)) {
+      fireTransition(id)
+    }
+  })
 
   const setContainment = (enabled: boolean): void => {
     if (containment === enabled) return
@@ -242,6 +310,9 @@ export function renderNodeBook(
       hasContainment: graph.edges.some((e) => CONTAINMENT_RELATIONS.has(e.name)),
       isContainmentActive: () => containment,
       onToggleContainment: () => setContainment(!containment),
+      hasSimulation: processModel !== null,
+      onResetSimulation: resetSimulation,
+      suppressInspectorFor: (nodeId) => processModel !== null && processModel.transitionIds.includes(nodeId),
       onMorphSelect: setMorph,
       onFit: () => cy.fit(undefined, 24),
       onRelayout: relayout,
@@ -264,6 +335,9 @@ export function renderNodeBook(
     warnings,
     getInferredEdges: () => inferredEdges,
     setContainment,
+    getMarking: () => (processModel ? new Map(marking) : null),
+    fireTransition,
+    resetSimulation,
     setMorph,
     setTheme(next: NodeBookTheme): void {
       theme = next

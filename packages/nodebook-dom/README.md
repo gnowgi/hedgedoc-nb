@@ -81,6 +81,17 @@ CNL can also go in the element's content, but note that raw `<relation>` syntax 
 
 The **Nest** toolbar button (or `containment: true` / `handle.setContainment(true)`) switches to nodeBook's containment view: nodes nest inside compound parent boxes along `is_a` / `member_of` / `instance_of` — including *inferred* containment, so a deep taxonomy nests fully — and those relations' arrows disappear since the nesting expresses them. Other relations keep their arrows; attribute leaves sit inside their owner's box. The layout auto-switches to the compound-aware `cose`.
 
+## Process representation & token simulation
+
+When a graph contains transition-role nodes (`[Transition]`, `[Transaction]`, `[Function]`) with `has prior_state` / `has post_state` arcs (the parser's `credit`/`debit` and flow synonyms normalize to these), the renderer runs a token game:
+
+- Prior places start with tokens (max incoming arc weight), shown as dots (●●●) or a count in the node label.
+- Enabled transitions get a green highlight — **click one to fire it**: tokens are consumed from prior places and produced into post places by arc weight.
+- A **Reset** toolbar button restores the initial marking.
+- Programmatic API: `handle.getMarking()`, `handle.fireTransition(id)`, `handle.resetSimulation()`.
+
+This models reaction networks, metabolic pathways, ecological flows — any process where states transform. (HedgeDoc's accounting mode and Function evaluation are not included here.)
+
 ## Notes for bundlers
 
 `@nodebook/core` includes the optional tau-prolog inference engine, whose dependency chain references Node builtins (`fs`, `os`, `crypto`, …) behind runtime guards. Browser bundlers should stub or externalize those (esbuild: `--external:fs --external:path --external:os --external:crypto --external:child_process`; Vite/webpack handle this via their usual node-polyfill settings).

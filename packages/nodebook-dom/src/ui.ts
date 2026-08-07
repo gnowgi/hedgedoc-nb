@@ -248,6 +248,9 @@ export interface ToolbarContext {
   hasContainment?: boolean
   isContainmentActive?: () => boolean
   onToggleContainment?: () => void
+  /** Show a "Reset" button for the token simulation. */
+  hasSimulation?: boolean
+  onResetSimulation?: () => void
   /** Host-provided extra buttons, appended at the end of the toolbar. */
   extraActions?: ToolbarAction[]
 }
@@ -286,6 +289,15 @@ export function buildToolbar(doc: Document, ctx: ToolbarContext): HTMLElement {
   select.addEventListener('change', () => ctx.onRelayout(select.value as NodeBookLayoutName))
   bar.appendChild(select)
 
+  if (ctx.hasSimulation && ctx.onResetSimulation) {
+    const reset = doc.createElement('button')
+    reset.className = 'nb-ui-btn nb-ui-reset'
+    reset.textContent = 'Reset'
+    reset.title = 'Reset the token simulation to its initial marking'
+    reset.addEventListener('click', () => ctx.onResetSimulation!())
+    bar.appendChild(reset)
+  }
+
   const png = doc.createElement('button')
   png.className = 'nb-ui-btn'
   png.textContent = 'PNG'
@@ -317,6 +329,10 @@ export interface AttachUiOptions {
   hasContainment?: boolean
   isContainmentActive?: () => boolean
   onToggleContainment?: () => void
+  hasSimulation?: boolean
+  onResetSimulation?: () => void
+  /** Nodes for which the inspector should NOT open on tap (e.g. fireable transitions). */
+  suppressInspectorFor?: (nodeId: string) => boolean
   onMorphSelect: (nodeId: string, morphId: string) => void
   onFit: () => void
   onRelayout: (layout: NodeBookLayoutName) => void
@@ -363,6 +379,8 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
       hasContainment: options.hasContainment,
       isContainmentActive: options.isContainmentActive,
       onToggleContainment: options.onToggleContainment,
+      hasSimulation: options.hasSimulation,
+      onResetSimulation: options.onResetSimulation,
       extraActions: options.extraActions
     })
     isolateFromGraph(toolbarEl)
@@ -397,7 +415,9 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
 
   if (options.inspector) {
     cy.on('tap', 'node[kind = "concept"]', (event) => {
-      openInspector(event.target.id() as string)
+      const nodeId = event.target.id() as string
+      if (options.suppressInspectorFor?.(nodeId)) return
+      openInspector(nodeId)
     })
     cy.on('tap', (event) => {
       if (event.target === cy) closeInspector()
