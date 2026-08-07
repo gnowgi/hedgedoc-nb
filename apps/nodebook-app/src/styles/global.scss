@@ -1,0 +1,101 @@
+/*
+ * SPDX-FileCopyrightText: 2025 The HedgeDoc developers (see AUTHORS file)
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+:root {
+  --nb-bg: #ffffff;
+  --nb-bg-secondary: #f6f8fa;
+  --nb-text: #24292f;
+  --nb-text-muted: #57606a;
+  --nb-border: #d0d7de;
+  --nb-accent: #0969da;
+  --nb-accent-hover: #0550ae;
+  --nb-danger: #cf222e;
+  --nb-code-bg: #f6f8fa;
+  --nb-toolbar-bg: #f6f8fa;
+  --nb-header-bg: #1a1a2e;
+  --nb-header-text: #ffffff;
+  --nb-sidebar-width: 280px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --nb-bg: #0d1117;
+    --nb-bg-secondary: #161b22;
+    --nb-text: #c9d1d9;
+    --nb-text-muted: #8b949e;
+    --nb-border: #30363d;
+    --nb-accent: #58a6ff;
+    --nb-accent-hover: #79c0ff;
+    --nb-danger: #f85149;
+    --nb-code-bg: #161b22;
+    --nb-toolbar-bg: #161b22;
+  }
+}
+
+[data-theme='dark'] {
+  --nb-bg: #0d1117;
+  --nb-bg-secondary: #161b22;
+  --nb-text: #c9d1d9;
+  --nb-text-muted: #8b949e;
+  --nb-border: #30363d;
+  --nb-accent: #58a6ff;
+  --nb-accent-hover: #79c0ff;
+  --nb-danger: #f85149;
+  --nb-code-bg: #161b22;
+  --nb-toolbar-bg: #161b22;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--nb-text);
+  background: var(--nb-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--nb-border);
+  border-radius: 4px;
+
+  &:hover {
+    background: var(--nb-text-muted);
+  }
+}

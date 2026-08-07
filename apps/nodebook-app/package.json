@@ -1,0 +1,42 @@
+{
+  "name": "@nodebook/app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "nodeBook - standalone CNL knowledge graph editor (PWA)",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "6.18.4",
+    "@codemirror/commands": "6.7.1",
+    "@codemirror/language": "6.10.8",
+    "@codemirror/state": "6.4.1",
+    "@codemirror/view": "6.34.3",
+    "@lezer/highlight": "1.2.1",
+    "@nodebook/core": "workspace:*",
+    "@nodebook/react": "workspace:*",
+    "@tauri-apps/api": "^2.10.1",
+    "@uiw/react-codemirror": "4.23.8",
+    "markdown-it": "14.1.1",
+    "react": "18.3.1",
+    "react-bootstrap-icons": "1.11.6",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1",
+    "@types/react": "18.3.27",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.5.2",
+    "sass": "1.97.0",
+    "typescript": "5.9.3",
+    "vite": "6.3.5",
+    "vite-plugin-pwa": "0.21.1"
+  }
+}
