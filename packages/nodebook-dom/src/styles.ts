@@ -196,8 +196,41 @@ export function buildStylesheet(theme: NodeBookTheme): StylesheetJson {
       }
     },
     {
+      // Petri-view Inputs/Outputs grouping boxes: dashed, tinted, label on top.
+      selector: 'node[kind = "group"]',
+      style: {
+        shape: 'round-rectangle',
+        label: 'data(label)',
+        'border-style': 'dashed',
+        'border-width': 1.5,
+        'background-opacity': 0.1,
+        'text-valign': 'top',
+        'text-halign': 'center',
+        'text-margin-y': -6,
+        'font-size': 12,
+        padding: '18px'
+      }
+    },
+    {
+      selector: 'node[kind = "group"][groupRole = "inputs"]',
+      style: {
+        'background-color': theme === 'dark' ? '#4dabf7' : '#2b6cb0',
+        'border-color': theme === 'dark' ? '#4dabf7' : '#2b6cb0',
+        color: theme === 'dark' ? '#74c0fc' : '#2b6cb0'
+      }
+    },
+    {
+      selector: 'node[kind = "group"][groupRole = "outputs"]',
+      style: {
+        'background-color': theme === 'dark' ? '#69db7c' : '#2f9e44',
+        'border-color': theme === 'dark' ? '#69db7c' : '#2f9e44',
+        color: theme === 'dark' ? '#8ce99a' : '#1d7a37'
+      }
+    },
+    {
       // Compound parents in containment view: translucent box, label on top.
-      selector: 'node:parent',
+      // (Petri grouping boxes are styled above via their own kind.)
+      selector: 'node:parent[kind != "group"]',
       style: {
         shape: 'round-rectangle',
         'background-color': p.conceptBg,

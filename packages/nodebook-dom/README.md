@@ -85,6 +85,7 @@ The **Nest** toolbar button (or `containment: true` / `handle.setContainment(tru
 
 When a graph contains transition-role nodes (`[Transition]`, `[Transaction]`, `[Function]`) with `has prior_state` / `has post_state` arcs (the parser's `credit`/`debit` and flow synonyms normalize to these), the renderer runs a token game:
 
+- Pure-input places gather in a dashed "Inputs" box and pure-output places in an "Outputs" box (intermediates stay free); the boxes disappear in containment view.
 - Rendered in classic Petri-net notation: transitions are vertical bars, input arcs flow place → bar (blue) and output arcs bar → place (green), arc weights appear as circled numbers (only when ≠ 1), and the layered `process` layout arranges inputs → transitions → outputs left to right.
 - Prior places start with tokens (max incoming arc weight), shown as dots (●●●) or a count in the node label.
 - Enabled transitions get a green highlight — **click one to fire it**: tokens are consumed from prior places and produced into post places by arc weight.
