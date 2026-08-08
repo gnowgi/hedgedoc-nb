@@ -79,8 +79,8 @@ export function buildStylesheet(theme: NodeBookTheme): StylesheetJson {
         'text-justification': 'left',
         'font-size': 13,
         padding: '10px',
-        width: 'label',
-        height: 'label'
+        width: 'data(w)',
+        height: 'data(h)'
       }
     },
     // Transition-role nodes render as the classic Petri-net vertical bar with
@@ -113,8 +113,8 @@ export function buildStylesheet(theme: NodeBookTheme): StylesheetJson {
         'text-halign': 'center',
         'font-size': 11,
         padding: '6px',
-        width: 'label',
-        height: 'label'
+        width: 'data(w)',
+        height: 'data(h)'
       }
     },
     {
