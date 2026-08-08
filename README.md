@@ -43,7 +43,24 @@ We are currently working on HedgeDoc 2, a complete rewrite of HedgeDoc. Please n
 
 ## nodeBook Extension
 
-This fork includes the **nodeBook** extension, which renders Controlled Natural Language (CNL) knowledge graphs inline within markdown documents. Users write structured text inside ` ```nodeBook ` code fences and see interactive graph visualizations powered by Cytoscape.js — with support for typed nodes, weighted relations, polymorphic morphs, schema validation, transitive inference, Prolog queries, and a 9-category scoring rubric. All parsing and rendering is client-side with no backend changes required. See the [nodeBook README](frontend/src/extensions/external-lib-app-extensions/nodebook/README.md) for full documentation.
+This fork includes the **nodeBook** extension, which renders Controlled Natural Language (CNL) knowledge graphs inline within markdown documents. Users write structured text inside ` ```nodeBook ` code fences and see interactive graph visualizations powered by Cytoscape.js — with support for typed nodes, weighted relations, polymorphic morphs, schema validation, transitive inference, Prolog queries, and a 9-category scoring rubric. All parsing and rendering is client-side with no backend changes required. See the [nodeBook README](frontend/src/extensions/external-lib-app-extensions/nodebook/README.md) for full documentation, and try it live with the guided tutorial at [nodebook.co.in](https://nodebook.co.in/n/tutorial).
+
+### nodeBook beyond HedgeDoc
+
+The nodeBook engine and renderer are published as standalone npm packages, so any editor or site can embed CNL knowledge graphs:
+
+| Package | Purpose |
+|---------|---------|
+| [`@nodebook/core`](https://www.npmjs.com/package/@nodebook/core) | CNL parser, graph engine, inference (transitive closure + Prolog), schemas |
+| [`@nodebook/dom`](https://www.npmjs.com/package/@nodebook/dom) | Framework-agnostic interactive renderer (Cytoscape.js) + `<nodebook-graph>` web component |
+| [`@nodebook/react`](https://www.npmjs.com/package/@nodebook/react) | Full-featured React components (used by this frontend) |
+| [`@nodebook/markdown-it`](https://www.npmjs.com/package/@nodebook/markdown-it) | markdown-it plugin turning ```nodeBook fences into hydratable placeholders |
+
+Editor plugins built on these packages:
+
+- **Logseq** — install *nodeBook* from the Logseq Marketplace ([source](https://github.com/gnowgi/logseq-nodebook), monorepo dev copy in `apps/logseq-nodebook`)
+- **Obsidian** — [gnowgi/obsidian-nodebook](https://github.com/gnowgi/obsidian-nodebook) (monorepo dev copy in `apps/obsidian-nodebook`)
+- **Standalone app** — `apps/nodebook-app`, a Vite + Tauri + PWA editor
 
 ## Development
 Information for setting up a local development environment can be found in the [developer documentation](https://docs.hedgedoc.dev/how-to/develop/setup/)

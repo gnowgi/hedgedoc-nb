@@ -41,6 +41,10 @@ Obsidian → Settings → Community plugins → enable **nodeBook** (turn on com
 
 `registerMarkdownCodeBlockProcessor('nodeBook', …)` hands each fence's source to `renderNodeBook`; a `MarkdownRenderChild` ties the Cytoscape instance's lifetime to the block so re-renders and closed panes clean up properly. Editing needs no special affordance: in Live Preview, click beside the block to flip it back to source.
 
+## Learning the CNL
+
+The public [nodeBook tutorial](https://nodebook.co.in/n/tutorial) walks through the whole language in 17 guided lessons — nodes, relations, attributes, morphs, inference, and process simulation — with live examples you can copy into any fence.
+
 ## License
 
 AGPL-3.0-only.

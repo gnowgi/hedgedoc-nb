@@ -53,6 +53,10 @@ To iterate on the plugin: `yarn workspace logseq-nodebook dev` (rebuild on chang
 | `src/vendor-entry.ts` | **host page** | exposes `window.NodeBookDom.renderNodeBook` from `@nodebook/dom` |
 | `build.mjs` | build | esbuild: `dist/main.js` (sandbox) + `vendors/nodebook-dom.js` (host) |
 
+## Learning the CNL
+
+The public [nodeBook tutorial](https://nodebook.co.in/n/tutorial) walks through the whole language in 17 guided lessons — nodes, relations, attributes, morphs, inference, and process simulation — with live examples you can copy into any fence.
+
 ## License
 
 AGPL-3.0-only.
