@@ -1,6 +1,6 @@
 {
   "name": "@nodebook/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "nodeBook CNL parser, graph engine, inference, and schema system",
   "license": "AGPL-3.0-only",
   "author": "gnowgi and the nodeBook contributors",
