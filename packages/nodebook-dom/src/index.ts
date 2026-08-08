@@ -6,8 +6,10 @@
 export { renderNodeBook, hydrateNodeBookBlocks } from './render'
 export type { NodeBookHandle, NodeBookLayout, RenderNodeBookOptions, HydrateOptions } from './render'
 
-export { buildCytoscapeElements, buildInferredEdgeElements, filterGraphForMorphs } from './elements'
-export type { BuildElementsOptions } from './elements'
+export { buildCytoscapeElements, buildInferredEdgeElements, buildInlineNodeLabel, filterGraphForMorphs } from './elements'
+export type { AttributeDisplay, BuildElementsOptions } from './elements'
+
+export { mathStyle, strikeThrough } from './text-style'
 
 export { buildStylesheet, backgroundColor } from './styles'
 export type { NodeBookTheme } from './styles'

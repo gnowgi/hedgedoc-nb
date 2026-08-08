@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { build, context } from 'esbuild'
-import { cpSync, mkdirSync } from 'node:fs'
+import { cpSync, mkdirSync , readFileSync, writeFileSync } from 'node:fs'
 
 const watch = process.argv.includes('--watch')
 
@@ -42,4 +42,16 @@ if (watch) {
   console.log('watching…')
 } else {
   await Promise.all([build(vendorConfig), build(mainConfig)])
+  stripStrict('vendors/nodebook-dom.js')
+}
+
+// tau-prolog (bundled via @nodebook/dom) relies on sloppy-mode implicit
+// globals; the workspace tsconfig's alwaysStrict makes esbuild hoist
+// "use strict" to the bundle top, which would turn those assignments into
+// ReferenceErrors. Strip the top-level directive after building.
+function stripStrict(file) {
+  let code = readFileSync(file, 'utf8')
+  if (code.startsWith('"use strict";')) {
+    writeFileSync(file, code.slice('"use strict";'.length))
+  }
 }

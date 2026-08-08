@@ -272,6 +272,10 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
   const [showQueryPanel, setShowQueryPanel] = useState(true)
   const [showSource, setShowSource] = useState(false)
   const [showContainment, setShowContainment] = useState(false)
+  // Cytoscape built-in layout chosen from the toolbar dropdown; null keeps the
+  // mode-derived default (ELK / petri / mindmap). Users can switch because
+  // different layouts expose different structure in the same graph.
+  const [layoutOverride, setLayoutOverride] = useState<string | null>(null)
   // When true, the graph shows ONLY explicitly stated relations and attributes —
   // all derived facts (inferred/inverse/transitive/membership edges and inherited
   // attributes) are suspended. Requested so users can see exactly what they wrote.
@@ -1826,6 +1830,28 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
     explicitOnly
   ])
 
+  // Apply the toolbar's layout-override dropdown to the live instance. Null
+  // re-runs the mode-derived default layout.
+  useEffect(() => {
+    const cy = cyRef.current
+    if (!cy) return
+    const opts = layoutOverride
+      ? ({
+          name: layoutOverride,
+          animate: false,
+          padding: 24,
+          nodeDimensionsIncludeLabels: true,
+          ...(layoutOverride === 'breadthfirst' ? { directed: true, spacingFactor: 1.2 } : {})
+        } as cytoscape.LayoutOptions)
+      : (layoutConfig as cytoscape.LayoutOptions)
+    try {
+      cy.layout(opts).run()
+    } catch (error) {
+      log.error('Layout override failed', error)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutOverride])
+
   // Update Cytoscape node data when marking or placeValues change (without full re-render)
   useEffect(() => {
     if (!cyRef.current || graphMode !== 'petri-net') return
@@ -2140,6 +2166,18 @@ export const NodeBookGraph: React.FC<NodeBookGraphProps> = ({ code, printMode = 
           <button onClick={handleFitGraph} title='Fit graph to view'>
             <IconFit size={14} />
           </button>
+          <select
+            value={layoutOverride ?? 'auto'}
+            onChange={(e) => setLayoutOverride(e.target.value === 'auto' ? null : e.target.value)}
+            className={styles['layout-select']}
+            title='Graph layout — different layouts expose different structure'>
+            <option value='auto'>auto</option>
+            <option value='breadthfirst'>breadthfirst</option>
+            <option value='cose'>cose</option>
+            <option value='grid'>grid</option>
+            <option value='circle'>circle</option>
+            <option value='concentric'>concentric</option>
+          </select>
           <button
             onClick={toggleFullscreen}
             className={isFullscreen ? styles['toggle-active'] : undefined}

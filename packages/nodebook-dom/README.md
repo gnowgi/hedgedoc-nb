@@ -28,7 +28,7 @@ boiling_point: 100 *C*;
 
 ## frozen
     state: solid;
-`, { theme: 'dark', layout: 'breadthfirst' })
+`, { theme: 'dark' })
 
 handle.setMorph('water', 'frozen')  // switch a node's polymorphic state
 handle.setTheme('light')
@@ -38,6 +38,10 @@ handle.destroy()
 ```
 
 The handle exposes the live Cytoscape instance as `handle.cy` for anything beyond the built-in API.
+
+## Attributes in the node box
+
+Attributes render inside the node under a divider - name, value, units in math-italic - exactly like HedgeDoc, including *inherited* attributes in italic with a "(from Ancestor)" tag. Options: `attributeDisplay: 'inline' | 'leaf' | 'hidden'` (default `'inline'`).
 
 ## Built-in UI
 
@@ -50,7 +54,7 @@ Nodes are draggable and the canvas pans/zooms by default (Cytoscape behavior). T
 
 ## Inferred relations
 
-Derived facts — transitive closure over `is_a`, inverse/symmetric relations, membership inheritance — are computed with `@nodebook/core`'s `TransitiveClosureEngine` and drawn as dashed purple edges, added after layout so node positions reflect explicit structure only. The inspector lists them in an *Inferred* section; hovering shows the inference rule and proof path. Recomputed on every morph switch. Disable with `inference: false`; read programmatically via `handle.getInferredEdges()`.
+Derived facts — transitive closure over `is_a`, inverse/symmetric relations, membership inheritance — are computed in two stages - the synchronous `TransitiveClosureEngine` first, upgraded by the Prolog engine (inverse/symmetric relations, richer rules) when it resolves - and drawn as dashed purple edges. Hover one for a styled tooltip with the inference rule and proof; an **Inferred** toolbar toggle shows/hides them (`handle.setInferredVisible`), added after layout so node positions reflect explicit structure only. The inspector lists them in an *Inferred* section; hovering shows the inference rule and proof path. Recomputed on every morph switch. Disable with `inference: false`; read programmatically via `handle.getInferredEdges()`.
 
 ## Hydrate markdown-it output
 

@@ -18,10 +18,11 @@ describe('renderNodeBook (headless)', () => {
         'Unknown relation type "part of"'
       ])
       expect(handle.graph.nodes.map((n) => n.id)).toEqual(expect.arrayContaining(['water', 'substance', 'ocean']))
-      // 3 concepts + 1 attribute leaf
-      expect(handle.cy.nodes().length).toBe(4)
-      // is_a + part-of + attribute edge
-      expect(handle.cy.edges().length).toBe(3)
+      // 3 concepts; attributes render inline in the node label by default
+      expect(handle.cy.nodes().length).toBe(3)
+      expect(String(handle.cy.getElementById('water').data('label'))).toContain('boiling_point: 100')
+      // is_a + part-of
+      expect(handle.cy.edges().length).toBe(2)
     } finally {
       handle.destroy()
     }
@@ -181,6 +182,39 @@ describe('token simulation (headless)', () => {
     try {
       expect(handle.getMarking()).toBeNull()
       expect(handle.fireTransition('water')).toBe(false)
+    } finally {
+      handle.destroy()
+    }
+  })
+})
+
+describe('inferred visibility toggle (headless)', () => {
+  it('setInferredVisible removes and restores derived edges', () => {
+    const handle = renderNodeBook(null, '# Dog [Animal]\n\n# Animal [Creature]', { headless: true })
+    try {
+      expect(handle.cy.$('edge[kind = "inferred-relation"]').length).toBeGreaterThan(0)
+      handle.setInferredVisible(false)
+      expect(handle.cy.$('edge[kind = "inferred-relation"]').length).toBe(0)
+      handle.setInferredVisible(true)
+      expect(handle.cy.$('edge[kind = "inferred-relation"]').length).toBeGreaterThan(0)
+    } finally {
+      handle.destroy()
+    }
+  })
+})
+
+describe('Prolog inference upgrade (headless)', () => {
+  it('replaces transitive-closure results with Prolog results (inverse relations)', async () => {
+    const handle = renderNodeBook(null, '# Sun [Star]\n\n# Earth [Planet]\n<orbits> Sun;', { headless: true })
+    try {
+      // TC alone finds nothing here; the async Prolog stage derives inverses.
+      await vi.waitFor(
+        () => {
+          expect(handle.getInferredEdges().some((e) => e.name === 'has_subtype')).toBe(true)
+        },
+        { timeout: 8000 }
+      )
+      expect(handle.cy.$('edge[kind = "inferred-relation"]').length).toBeGreaterThan(0)
     } finally {
       handle.destroy()
     }

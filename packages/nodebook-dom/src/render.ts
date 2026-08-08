@@ -7,6 +7,7 @@ import {
   getMergedSchemas,
   getOperationsFromCnl,
   operationsToGraph,
+  PrologInferenceEngine,
   TransitiveClosureEngine,
   validateOperations
 } from '@nodebook/core'
@@ -19,6 +20,7 @@ import {
   CONTAINMENT_RELATIONS,
   filterGraphForMorphs
 } from './elements'
+import type { AttributeDisplay } from './elements'
 import { backgroundColor, buildStylesheet } from './styles'
 import type { NodeBookTheme } from './styles'
 import {
@@ -39,9 +41,15 @@ const ALL_LAYOUTS: readonly NodeBookLayout[] = ['breadthfirst', 'cose', 'grid', 
 export interface RenderNodeBookOptions {
   /** Color theme. Default 'light'. */
   theme?: NodeBookTheme
-  /** Cytoscape layout name. Default 'breadthfirst'. */
+  /** Cytoscape layout name. Default 'cose' ('process' for process graphs). */
   layout?: NodeBookLayout
-  /** Render attributes as leaf nodes. Default true. */
+  /**
+   * How to render attributes: 'inline' (default) lists them inside the node
+   * box under a divider like HedgeDoc (including inherited attributes in
+   * italic), 'leaf' draws separate small nodes, 'hidden' omits them.
+   */
+  attributeDisplay?: AttributeDisplay
+  /** @deprecated use attributeDisplay; false maps to 'hidden'. */
   showAttributes?: boolean
   /** Initial active morph per node id (node id → morph id). */
   activeMorphs?: Record<string, string>
@@ -86,6 +94,8 @@ export interface NodeBookHandle {
   warnings: CnlParseError[]
   /** Inferred relations for the currently visible (morph-filtered) graph. */
   getInferredEdges(): InferredEdge[]
+  /** Show or hide the inferred (derived) relations. */
+  setInferredVisible(visible: boolean): void
   /** Toggle containment view (compound nesting along is_a/member_of/instance_of). */
   setContainment(enabled: boolean): void
   /** Current token marking (place id → tokens), or null when the graph has no process. */
@@ -138,8 +148,9 @@ export function renderNodeBook(
   const errors = graph.errors
 
   let theme: NodeBookTheme = options.theme ?? 'light'
-  let currentLayout: NodeBookLayout = options.layout ?? 'breadthfirst'
-  const showAttributes = options.showAttributes ?? true
+  let currentLayout: NodeBookLayout = options.layout ?? 'cose'
+  const attributeDisplay: AttributeDisplay =
+    options.attributeDisplay ?? (options.showAttributes === false ? 'hidden' : 'inline')
   const activeMorphs: Record<string, string> = { ...options.activeMorphs }
 
   if (container) {
@@ -153,14 +164,37 @@ export function renderNodeBook(
 
   const inferenceEnabled = options.inference ?? true
   let inferredEdges: InferredEdge[] = []
+  let inferenceToken = 0
+  // Two-stage inference, matching the HedgeDoc component: the synchronous
+  // transitive-closure engine gives instant results, then the Prolog engine
+  // (inverse/symmetric relations and richer rules) replaces them when it
+  // resolves. A token discards stale async results after morph switches.
   const computeInference = (): void => {
     if (!inferenceEnabled) return
+    const filtered = filterGraphForMorphs(graph, activeMorphs)
     try {
-      const filtered = filterGraphForMorphs(graph, activeMorphs)
       inferredEdges = new TransitiveClosureEngine().infer(filtered, getMergedSchemas()).inferredEdges
     } catch {
       inferredEdges = []
     }
+    const token = ++inferenceToken
+    void new PrologInferenceEngine()
+      .inferAsync(filtered, getMergedSchemas(), [])
+      .then((result) => {
+        if (result.errors.length > 0) {
+          console.debug('@nodebook/dom: Prolog inference reported errors', result.errors)
+        }
+        if (token !== inferenceToken || destroyed) return
+        inferredEdges = result.inferredEdges
+        cy.$('edge[kind = "inferred-relation"]').remove()
+        addInferred()
+        ui?.refreshToolbar()
+        ui?.refreshInspector()
+      })
+      .catch((error: unknown) => {
+        // keep the transitive-closure results
+        console.debug('@nodebook/dom: Prolog inference unavailable, using transitive closure', error)
+      })
   }
   computeInference()
 
@@ -183,7 +217,7 @@ export function renderNodeBook(
   const buildExplicit = () =>
     buildCytoscapeElements(graph, {
       activeMorphs,
-      showAttributes,
+      attributeDisplay,
       containment,
       inferredEdges,
       processMode: processModel !== null
@@ -223,17 +257,33 @@ export function renderNodeBook(
     } as unknown as LayoutOptions
   }
 
+  // User-facing show/hide of derived facts (the toolbar "Inferred" toggle).
+  let inferredVisible = true
+
   // Inferred edges are added AFTER the layout finishes: node positions should
   // come from explicit structure only, with derived facts arcing over it.
-  const layoutThenInferred = (): void => {
-    const addInferred = (): void => {
-      // In containment view, inferred containment facts are expressed by the
-      // nesting itself — only non-containment inferences get arrows.
-      const visible = containment ? inferredEdges.filter((e) => !CONTAINMENT_RELATIONS.has(e.name)) : inferredEdges
-      if (visible.length > 0 && cy.$('edge[kind = "inferred-relation"]').length === 0) {
-        cy.add(buildInferredEdgeElements(visible, graph))
-      }
+  const addInferred = (): void => {
+    if (!inferredVisible) return
+    // In containment view, inferred containment facts are expressed by the
+    // nesting itself — only non-containment inferences get arrows.
+    const visible = containment ? inferredEdges.filter((e) => !CONTAINMENT_RELATIONS.has(e.name)) : inferredEdges
+    if (visible.length > 0 && cy.$('edge[kind = "inferred-relation"]').length === 0) {
+      cy.add(buildInferredEdgeElements(visible, graph))
     }
+  }
+
+  const setInferredVisible = (visible: boolean): void => {
+    if (inferredVisible === visible) return
+    inferredVisible = visible
+    if (visible) {
+      addInferred()
+    } else {
+      cy.$('edge[kind = "inferred-relation"]').remove()
+    }
+    ui?.refreshToolbar()
+  }
+
+  const layoutThenInferred = (): void => {
     if (headless) {
       addInferred()
       return
@@ -399,6 +449,9 @@ export function renderNodeBook(
       graph,
       activeMorphs,
       getInferredEdges: () => inferredEdges,
+      hasInferredToggle: () => inferenceEnabled && inferredEdges.length > 0,
+      isInferredVisible: () => inferredVisible,
+      onToggleInferred: () => setInferredVisible(!inferredVisible),
       hasContainment: graph.edges.some((e) => CONTAINMENT_RELATIONS.has(e.name)),
       isContainmentActive: () => containment,
       onToggleContainment: () => setContainment(!containment),
@@ -429,6 +482,7 @@ export function renderNodeBook(
     errors,
     warnings,
     getInferredEdges: () => inferredEdges,
+    setInferredVisible,
     setContainment,
     getMarking: () => (processModel ? new Map(marking) : null),
     fireTransition,

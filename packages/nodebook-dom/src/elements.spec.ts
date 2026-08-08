@@ -14,7 +14,7 @@ function graphFromCnl(cnl: string): CnlGraphData {
 const WATER = '# Water [Substance]\nboiling_point: 100 *C*;\n<part of> Ocean;'
 
 describe('buildCytoscapeElements', () => {
-  it('builds concept nodes, relation edges, and attribute leaves', () => {
+  it('builds concept nodes with inline attributes under a divider (default)', () => {
     const elements = buildCytoscapeElements(graphFromCnl(WATER))
     const nodes = elements.filter((e) => e.group === 'nodes')
     const edges = elements.filter((e) => e.group === 'edges')
@@ -22,19 +22,44 @@ describe('buildCytoscapeElements', () => {
     const conceptIds = nodes.filter((n) => n.data.kind === 'concept').map((n) => n.data.id)
     expect(conceptIds).toEqual(expect.arrayContaining(['water', 'substance', 'ocean']))
 
-    const attributeNodes = nodes.filter((n) => n.data.kind === 'attribute')
-    expect(attributeNodes).toHaveLength(1)
-    expect(attributeNodes[0].data.label).toBe('boiling_point: 100 C')
+    // attributes render inside the node box, HedgeDoc-style, not as leaves
+    expect(nodes.some((n) => n.data.kind === 'attribute')).toBe(false)
+    const water = nodes.find((n) => n.data.id === 'water')!
+    const label = String(water.data.label)
+    expect(label.startsWith('Water\n────────\n')).toBe(true)
+    expect(label).toContain('boiling_point: 100')
+    // unit in math-italic (C → 𝘊)
+    expect(label).toContain('𝘊')
 
     const edgeLabels = edges.map((e) => e.data.label)
     expect(edgeLabels).toContain('is_a')
     expect(edgeLabels).toContain('part of')
   })
 
-  it('omits attribute leaves when showAttributes is false', () => {
-    const elements = buildCytoscapeElements(graphFromCnl(WATER), { showAttributes: false })
-    expect(elements.some((e) => e.data.kind === 'attribute')).toBe(false)
-    expect(elements.some((e) => e.data.kind === 'attribute-edge')).toBe(false)
+  it("renders attribute leaves in 'leaf' mode", () => {
+    const elements = buildCytoscapeElements(graphFromCnl(WATER), { attributeDisplay: 'leaf' })
+    const attributeNodes = elements.filter((e) => e.data.kind === 'attribute')
+    expect(attributeNodes).toHaveLength(1)
+    expect(attributeNodes[0].data.label).toBe('boiling_point: 100 C')
+    expect(String(elements.find((e) => e.data.id === 'water')!.data.label)).toBe('Water')
+  })
+
+  it("omits attributes entirely in 'hidden' mode (showAttributes: false compat)", () => {
+    for (const options of [{ attributeDisplay: 'hidden' as const }, { showAttributes: false }]) {
+      const elements = buildCytoscapeElements(graphFromCnl(WATER), options)
+      expect(elements.some((e) => e.data.kind === 'attribute')).toBe(false)
+      expect(String(elements.find((e) => e.data.id === 'water')!.data.label)).toBe('Water')
+    }
+  })
+
+  it('shows inherited attributes in italic with their source', () => {
+    const cnl = ['# Dog [Animal]', '', '# Animal [Creature]', 'legs: 4;'].join('\n')
+    const elements = buildCytoscapeElements(graphFromCnl(cnl))
+    const dog = elements.find((e) => e.data.id === 'dog')!
+    const label = String(dog.data.label)
+    // inherited "legs: 4 (from Animal)" rendered in math-italic
+    expect(label).toContain('𝘭𝘦𝘨𝘴')
+    expect(label).toContain('𝘧𝘳𝘰𝘮')
   })
 
   it('marks negated relations and prefixes their label', () => {
@@ -115,9 +140,8 @@ describe('containment view', () => {
     expect(edgeLabels).not.toContain('is_a')
     expect(edgeLabels).toContain('likes')
 
-    // the attribute leaf sits inside the same compound as its owner
-    const attr = elements.find((e) => e.data.kind === 'attribute')!
-    expect(attr.data.parent).toBe('animal')
+    // inline attributes ride along inside the node label
+    expect(String(dog.data.label)).toContain('legs: 4')
   })
 
   it('uses inferred containment edges to deepen nesting', () => {

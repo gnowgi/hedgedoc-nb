@@ -25,12 +25,32 @@ interface TauAnswer {
   links: Record<string, { id: string; toJavaScript: () => unknown }>
 }
 
+// tau-prolog's core.js assigns several module-level names without declaring
+// them (sloppy-mode implicit globals: `tau_file_system = {...}`). Bundlers
+// that wrap CommonJS in strict mode (esbuild IIFE/CJS output) turn those
+// assignments into ReferenceErrors. Predefining the names as global
+// properties makes the assignments resolve in strict mode too.
+const TAU_IMPLICIT_GLOBALS = [
+  'tau_file_system',
+  'tau_user_input',
+  'tau_user_output',
+  'tau_user_error',
+  'nodejs_file_system',
+  'nodejs_user_input',
+  'nodejs_user_output',
+  'nodejs_user_error'
+]
+
 /**
  * Lazily load and cache the tau-prolog module.
  * Uses dynamic import for code splitting.
  */
 async function getTauProlog(): Promise<typeof plInstance> {
   if (plInstance) return plInstance
+  const globals = globalThis as unknown as Record<string, unknown>
+  for (const name of TAU_IMPLICIT_GLOBALS) {
+    if (!(name in globals)) globals[name] = undefined
+  }
   const mod = await import('tau-prolog')
   plInstance = mod.default as unknown as typeof plInstance
   return plInstance
