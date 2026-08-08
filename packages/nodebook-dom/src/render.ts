@@ -114,12 +114,19 @@ export interface NodeBookHandle {
   destroy(): void
 }
 
+// All layouts run synchronously (animate: false). Animated layouts (cose's
+// default) depend on requestAnimationFrame, which hosts throttle or suspend
+// for offscreen/virtualized blocks — the animation then never completes and
+// nodes stay clustered at their random starting positions with the edges
+// buried underneath.
 function layoutOptions(name: NodeBookLayout): LayoutOptions {
   switch (name) {
     case 'breadthfirst':
-      return { name, directed: true, spacingFactor: 1.2, padding: 24 } as LayoutOptions
+      return { name, directed: true, spacingFactor: 1.2, padding: 24, animate: false } as LayoutOptions
+    case 'cose':
+      return { name, padding: 24, animate: false, nodeDimensionsIncludeLabels: true } as LayoutOptions
     default:
-      return { name, padding: 24 } as LayoutOptions
+      return { name, padding: 24, animate: false } as LayoutOptions
   }
 }
 
