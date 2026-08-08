@@ -124,6 +124,31 @@ function attributeLabel(attr: CnlAttribute): string {
   return `${negation}${attr.name}: ${attr.value}${unit}`
 }
 
+// Cytoscape's width/height: 'label' sizing resolves label dimensions only
+// during a render pass, so the FIRST layout runs with default ~30px nodes and
+// clumps everything (and offscreen hosts may never render at all). Measure
+// labels ourselves and give nodes explicit data(w)/data(h) instead.
+let measureCtx: CanvasRenderingContext2D | null | undefined
+function measureLine(text: string, fontPx: number): number {
+  if (measureCtx === undefined) {
+    measureCtx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null
+  }
+  if (measureCtx) {
+    measureCtx.font = `${fontPx}px "Helvetica Neue", Helvetica, sans-serif`
+    return measureCtx.measureText(text).width
+  }
+  // Headless fallback: average glyph-width heuristic.
+  return text.length * fontPx * 0.6
+}
+
+/** Explicit node dimensions for a (possibly multi-line) label. */
+export function labelDimensions(label: string, fontPx: number): { w: number; h: number } {
+  const lines = label.split('\n')
+  const w = Math.max(fontPx, ...lines.map((line) => measureLine(line, fontPx)))
+  const h = lines.length * fontPx * 1.18
+  return { w: Math.ceil(w) + 4, h: Math.ceil(h) + 2 }
+}
+
 // One attribute line inside a node box, HedgeDoc-style: name: [modality]
 // value [unit] [adverb] with the extras in math-italic; negated lines are
 // struck and prefixed ¬.
@@ -221,11 +246,14 @@ export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElemen
       label = buildInlineNodeLabel(displayName, own, inherited)
     }
     const parent = parentOf.get(node.id)
+    const dims = labelDimensions(label, 13)
     elements.push({
       group: 'nodes',
       data: {
         id: node.id,
         label,
+        w: dims.w,
+        h: dims.h,
         role: node.role,
         kind: 'concept',
         ...(parent ? { parent } : {})
@@ -274,11 +302,15 @@ export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElemen
       // In containment view, attribute leaves sit inside the same compound as
       // their owner so the box visually contains the node's whole description.
       const parent = parentOf.get(attr.source_id)
+      const attrLabel = attributeLabel(attr)
+      const attrDims = labelDimensions(attrLabel, 11)
       elements.push({
         group: 'nodes',
         data: {
           id: attr.id,
-          label: attributeLabel(attr),
+          label: attrLabel,
+          w: attrDims.w,
+          h: attrDims.h,
           kind: 'attribute',
           ...(parent ? { parent } : {})
         }
