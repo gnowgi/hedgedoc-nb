@@ -3,9 +3,13 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { getInheritedAttributes } from '@nodebook/core'
 import type { CnlAttribute, CnlEdge, CnlGraphData, InferredEdge } from '@nodebook/core'
 import type { ElementDefinition } from 'cytoscape'
 import { circledNumber } from './simulation'
+import { mathStyle, strikeThrough } from './text-style'
+
+export type AttributeDisplay = 'inline' | 'leaf' | 'hidden'
 
 export interface BuildElementsOptions {
   /**
@@ -13,7 +17,14 @@ export interface BuildElementsOptions {
    * (`node.nbh`), mirroring the behavior of the full React graph component.
    */
   activeMorphs?: Record<string, string>
-  /** Render attributes as leaf nodes attached to their owner. Default true. */
+  /**
+   * How to render attributes. 'inline' (default) lists them inside the node
+   * box under a divider, exactly like the HedgeDoc component — including
+   * inherited attributes in italic with a "(from Ancestor)" tag. 'leaf' draws
+   * them as separate small nodes; 'hidden' omits them.
+   */
+  attributeDisplay?: AttributeDisplay
+  /** @deprecated use attributeDisplay; false maps to 'hidden'. */
   showAttributes?: boolean
   /**
    * Containment view: nest children inside compound parents along
@@ -113,6 +124,36 @@ function attributeLabel(attr: CnlAttribute): string {
   return `${negation}${attr.name}: ${attr.value}${unit}`
 }
 
+// One attribute line inside a node box, HedgeDoc-style: name: [modality]
+// value [unit] [adverb] with the extras in math-italic; negated lines are
+// struck and prefixed ¬.
+function inlineAttributeLine(attr: CnlAttribute): string {
+  let line = `${attr.name}: `
+  if (attr.modality) line += `${mathStyle(attr.modality, 'italic')} `
+  line += attr.value
+  if (attr.unit) line += ` ${mathStyle(attr.unit, 'italic')}`
+  if (attr.adverb) line += ` ${mathStyle(attr.adverb, 'italic')}`
+  return attr.negated ? `¬ ${strikeThrough(line)}` : line
+}
+
+/**
+ * Node box label with the (morph-filtered) attributes listed under a divider,
+ * matching the HedgeDoc component — inherited attributes render fully in
+ * italic with a "(from Ancestor)" tag.
+ */
+export function buildInlineNodeLabel(
+  displayName: string,
+  own: CnlAttribute[],
+  inherited: Array<{ name: string; value: string; unit: string | null; inheritedFrom: string }>
+): string {
+  if (own.length === 0 && inherited.length === 0) return displayName
+  const ownLines = own.map(inlineAttributeLine)
+  const inheritedLines = inherited.map((ia) =>
+    mathStyle(`${ia.name}: ${ia.value}${ia.unit ? ` ${ia.unit}` : ''} (from ${ia.inheritedFrom})`, 'italic')
+  )
+  return `${displayName}\n${'─'.repeat(8)}\n${[...ownLines, ...inheritedLines].join('\n')}`
+}
+
 function edgeLabel(edge: CnlEdge): string {
   const negation = edge.negated ? '¬ ' : ''
   const weight = edge.weight !== 1 ? ` ×${edge.weight}` : ''
@@ -124,7 +165,8 @@ function edgeLabel(edge: CnlEdge): string {
  * definitions. Pure function — no DOM required.
  */
 export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElementsOptions = {}): ElementDefinition[] {
-  const showAttributes = options.showAttributes ?? true
+  const attributeDisplay: AttributeDisplay =
+    options.attributeDisplay ?? (options.showAttributes === false ? 'hidden' : 'inline')
   const containment = options.containment ?? false
   const filtered = options.activeMorphs ? filterGraphForMorphs(graph, options.activeMorphs) : graph
 
@@ -171,12 +213,19 @@ export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElemen
   for (const node of filtered.nodes) {
     const morphName =
       node.morphs.length > 1 ? (node.morphs.find((m) => m.morph_id === node.nbh)?.name ?? null) : null
+    const displayName = morphName && morphName !== 'basic' ? `${node.name}\n(${morphName})` : node.name
+    let label = displayName
+    if (attributeDisplay === 'inline') {
+      const own = filtered.attributes.filter((a) => a.source_id === node.id)
+      const inherited = getInheritedAttributes(node.id, filtered)
+      label = buildInlineNodeLabel(displayName, own, inherited)
+    }
     const parent = parentOf.get(node.id)
     elements.push({
       group: 'nodes',
       data: {
         id: node.id,
-        label: morphName && morphName !== 'basic' ? `${node.name}\n(${morphName})` : node.name,
+        label,
         role: node.role,
         kind: 'concept',
         ...(parent ? { parent } : {})
@@ -219,7 +268,7 @@ export function buildCytoscapeElements(graph: CnlGraphData, options: BuildElemen
     })
   }
 
-  if (showAttributes) {
+  if (attributeDisplay === 'leaf') {
     for (const attr of filtered.attributes) {
       if (!nodeIds.has(attr.source_id)) continue
       // In containment view, attribute leaves sit inside the same compound as

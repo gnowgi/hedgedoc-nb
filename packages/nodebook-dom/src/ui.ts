@@ -70,6 +70,18 @@ const UI_CSS = `
 .nb-ui-morph-btn.nb-ui-active {
   background: var(--nb-accent); border-color: var(--nb-accent); color: var(--nb-accent-text);
 }
+.nb-ui-tooltip {
+  position: absolute; z-index: 20; pointer-events: none;
+  max-width: 280px; padding: 6px 10px;
+  background: var(--nb-panel-bg); color: var(--nb-text);
+  border: 1px solid var(--nb-inferred); border-radius: 6px;
+  font: 11px/1.5 system-ui, sans-serif;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+}
+.nb-ui-tooltip .nb-ui-tooltip-rule {
+  color: var(--nb-inferred); font-weight: 600; text-transform: uppercase;
+  font-size: 10px; letter-spacing: 0.05em; display: block; margin-bottom: 2px;
+}
 [data-nb-theme='light'] {
   --nb-panel-bg: #ffffff; --nb-text: #22313f; --nb-muted: #7a8894;
   --nb-border: #ccd6df; --nb-accent: #4d8fd1; --nb-accent-text: #ffffff;
@@ -254,6 +266,10 @@ export interface ToolbarContext {
   hasContainment?: boolean
   isContainmentActive?: () => boolean
   onToggleContainment?: () => void
+  /** Show an "Inferred" toggle for derived relations. */
+  hasInferredToggle?: boolean
+  isInferredVisible?: () => boolean
+  onToggleInferred?: () => void
   /** Show a "Reset" button for the token simulation. */
   hasSimulation?: boolean
   onResetSimulation?: () => void
@@ -295,6 +311,15 @@ export function buildToolbar(doc: Document, ctx: ToolbarContext): HTMLElement {
   select.addEventListener('change', () => ctx.onRelayout(select.value as NodeBookLayoutName))
   bar.appendChild(select)
 
+  if (ctx.hasInferredToggle && ctx.onToggleInferred) {
+    const inferred = doc.createElement('button')
+    inferred.className = 'nb-ui-btn nb-ui-inferred-toggle' + ((ctx.isInferredVisible?.() ?? true) ? ' nb-ui-active' : '')
+    inferred.textContent = 'Inferred'
+    inferred.title = 'Show or hide derived relations (transitive closure, inheritance)'
+    inferred.addEventListener('click', () => ctx.onToggleInferred!())
+    bar.appendChild(inferred)
+  }
+
   if (ctx.hasSimulation && ctx.onResetSimulation) {
     const reset = doc.createElement('button')
     reset.className = 'nb-ui-btn nb-ui-reset'
@@ -332,6 +357,9 @@ export interface AttachUiOptions {
   graph: CnlGraphData
   activeMorphs: Record<string, string>
   getInferredEdges?: () => InferredEdge[]
+  hasInferredToggle?: () => boolean
+  isInferredVisible?: () => boolean
+  onToggleInferred?: () => void
   hasContainment?: boolean
   isContainmentActive?: () => boolean
   onToggleContainment?: () => void
@@ -385,6 +413,9 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
       hasContainment: options.hasContainment,
       isContainmentActive: options.isContainmentActive,
       onToggleContainment: options.onToggleContainment,
+      hasInferredToggle: options.hasInferredToggle?.(),
+      isInferredVisible: options.isInferredVisible,
+      onToggleInferred: options.onToggleInferred,
       hasSimulation: options.hasSimulation,
       onResetSimulation: options.onResetSimulation,
       extraActions: options.extraActions
@@ -430,6 +461,42 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
     })
   }
 
+  // Styled hover tooltip for inferred edges: inference rule + proof chain.
+  let tooltipEl: HTMLElement | null = null
+  const hideTooltip = (): void => {
+    tooltipEl?.remove()
+    tooltipEl = null
+  }
+  cy.on('mouseover', 'edge[kind = "inferred-relation"]', (event) => {
+    hideTooltip()
+    tooltipEl = doc.createElement('div')
+    tooltipEl.className = 'nb-ui-tooltip'
+    const rule = doc.createElement('span')
+    rule.className = 'nb-ui-tooltip-rule'
+    rule.textContent = String(event.target.data('inferenceRule') ?? 'inferred')
+    tooltipEl.appendChild(rule)
+    tooltipEl.appendChild(doc.createTextNode(String(event.target.data('proofPath') ?? '')))
+    // Prefer the pointer's own position (present on real mouse events); fall
+    // back to the edge midpoint, which may be missing before a render frame.
+    const rendered = (event as { renderedPosition?: { x: number; y: number } }).renderedPosition
+    let x = rendered?.x
+    let y = rendered?.y
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      const mid = (event.target as { midpoint?: () => { x: number; y: number } | undefined }).midpoint?.()
+      if (mid && typeof mid.x === 'number') {
+        const pan = cy.pan()
+        const zoom = cy.zoom()
+        x = mid.x * zoom + pan.x
+        y = mid.y * zoom + pan.y
+      }
+    }
+    tooltipEl.style.left = `${Math.max(4, (x ?? 0) + 12)}px`
+    tooltipEl.style.top = `${Math.max(4, (y ?? 0) + 12)}px`
+    container.appendChild(tooltipEl)
+  })
+  cy.on('mouseout', 'edge[kind = "inferred-relation"]', hideTooltip)
+  cy.on('pan zoom', hideTooltip)
+
   return {
     setTheme(theme: NodeBookTheme): void {
       container.dataset.nbTheme = theme
@@ -442,6 +509,7 @@ export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOpti
     },
     destroy(): void {
       closeInspector()
+      hideTooltip()
       toolbarEl?.remove()
       toolbarEl = null
     }

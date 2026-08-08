@@ -75,6 +75,8 @@ export function buildStylesheet(theme: NodeBookTheme): StylesheetJson {
         'text-wrap': 'wrap',
         'text-valign': 'center',
         'text-halign': 'center',
+        // Multi-line attribute lists read left-aligned, like HedgeDoc's boxes.
+        'text-justification': 'left',
         'font-size': 13,
         padding: '10px',
         width: 'label',
