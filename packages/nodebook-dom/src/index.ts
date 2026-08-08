@@ -29,3 +29,6 @@ export {
   placeLabel
 } from './simulation'
 export type { ProcessArc, ProcessModel } from './simulation'
+
+export { parseSchemaTexts, registerSchemaSource, renderNodeBookSchema, unregisterSchemaSource } from './schemas'
+export type { NodeBookSchemaHandle, RenderSchemaOptions } from './schemas'

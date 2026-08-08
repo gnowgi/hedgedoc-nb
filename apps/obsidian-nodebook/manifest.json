@@ -1,7 +1,7 @@
 {
   "id": "nodebook",
   "name": "nodeBook",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "minAppVersion": "1.4.0",
   "description": "Render nodeBook CNL knowledge graphs from nodeBook code fences: interactive concept maps, morphs, inference, containment view, and Petri-net token simulation.",
   "author": "gnowgi",

@@ -53,8 +53,11 @@ export type { InheritedAttribute } from './inheritance'
 export { nodeTypes, relationTypes, attributeTypes, transitionTypes, functionTypes } from './schemas'
 
 // Schema store
-export { setUserSchemas, getUserSchemas, getStoreVersion, getMergedSchemas } from './schema-store'
+export { setUserSchemas, getUserSchemas, getStoreVersion, getMergedSchemas, getMergedSchemasWith } from './schema-store'
 export type { ParsedUserSchemas, MergedSchemas } from './schema-store'
+
+// Schema serializer
+export { serializeSchemas } from './serialize-schemas'
 
 // Schema parser
 export { parseSchemaBlock, mergeSchemaResults } from './schema-parser'

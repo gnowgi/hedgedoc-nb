@@ -82,6 +82,23 @@ const UI_CSS = `
   color: var(--nb-inferred); font-weight: 600; text-transform: uppercase;
   font-size: 10px; letter-spacing: 0.05em; display: block; margin-bottom: 2px;
 }
+.nb-schema-panel {
+  border: 1px solid var(--nb-border); border-radius: 8px; padding: 10px 12px;
+  background: var(--nb-panel-bg); color: var(--nb-text);
+  font: 12px/1.6 system-ui, sans-serif;
+}
+.nb-schema-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--nb-muted); margin-bottom: 6px;
+}
+.nb-schema-row { margin: 3px 0; }
+.nb-schema-category { color: var(--nb-muted); margin-right: 6px; }
+.nb-schema-chip {
+  display: inline-block; margin: 1px 3px 1px 0; padding: 0 8px;
+  border: 1px solid var(--nb-border); border-radius: 999px;
+  background: var(--nb-badge-bg); color: var(--nb-badge-text); font-size: 11px;
+}
+.nb-schema-errors { color: #c0392b; margin: 6px 0 0; padding-left: 16px; }
 [data-nb-theme='light'] {
   --nb-panel-bg: #ffffff; --nb-text: #22313f; --nb-muted: #7a8894;
   --nb-border: #ccd6df; --nb-accent: #4d8fd1; --nb-accent-text: #ffffff;
@@ -94,7 +111,7 @@ const UI_CSS = `
 }
 `
 
-function ensureStylesInjected(doc: Document): void {
+export function ensureNodeBookUiStyles(doc: Document): void {
   if (!doc.getElementById(STYLE_ELEMENT_ID)) {
     const style = doc.createElement('style')
     style.id = STYLE_ELEMENT_ID
@@ -398,7 +415,7 @@ function isolateFromGraph(el: HTMLElement): void {
 /** Wire the toolbar and click-to-inspect panel onto a rendered graph. */
 export function attachUi(cy: Core, container: HTMLElement, options: AttachUiOptions): UiHandle {
   const doc = container.ownerDocument
-  ensureStylesInjected(doc)
+  ensureNodeBookUiStyles(doc)
   container.dataset.nbTheme = options.theme
 
   let toolbarEl: HTMLElement | null = null

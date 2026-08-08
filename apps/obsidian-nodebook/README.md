@@ -41,6 +41,24 @@ Obsidian → Settings → Community plugins → enable **nodeBook** (turn on com
 
 `registerMarkdownCodeBlockProcessor('nodeBook', …)` hands each fence's source to `renderNodeBook`; a `MarkdownRenderChild` ties the Cytoscape instance's lifetime to the block so re-renders and closed panes clean up properly. Editing needs no special affordance: in Live Preview, click beside the block to flip it back to source.
 
+## Schemas: your own type system
+
+nodeBook validates and infers against a type system you can extend three ways:
+
+1. **The schema store page** — on first run the plugin creates the note `nodebook/schemas.md` seeded with the built-in (factory) schemas as an editable ```nodeBook-schema block. Edit or extend it: your version of a definition wins by name, and every open graph refreshes live.
+2. **Inline schema fences** — any ```nodeBook-schema block renders as a summary panel and contributes its definitions while visible.
+3. **Per-graph links** — start a nodeBook fence with `schemas: [[Physics Types]], [[Chemistry Types]];` to merge those pages' schema fences over the store for that graph only (later pages win by name).
+
+Schema syntax (full reference in the [CNL specification](https://github.com/gnowgi/hedgedoc-nb/blob/main/docs/nodebook-cnl-spec.md)):
+
+````
+```nodeBook-schema
+nodeType: Planet, A celestial body orbiting a star, parent: Object
+relationType: orbits, One body orbits another, domain: Planet, range: Star, inverse: is orbited by
+attributeType: diameter, float, Size measurement, unit: km, domain: Planet
+```
+````
+
 ## Learning the CNL
 
 The public [nodeBook tutorial](https://nodebook.co.in/n/tutorial) walks through the whole language in 17 guided lessons — nodes, relations, attributes, morphs, inference, and process simulation — with live examples you can copy into any fence.
