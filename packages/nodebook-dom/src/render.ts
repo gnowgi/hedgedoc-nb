@@ -238,10 +238,64 @@ export function renderNodeBook(
       addInferred()
       return
     }
+    // A detached or zero-sized container (Obsidian hands elements over before
+    // attaching them) makes viewport-scaled layouts collapse or throw. Skip —
+    // the watchers below run the first real layout once the container is sized.
+    if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+      return
+    }
     cy.one('layoutstop', addInferred)
-    cy.layout(resolveLayout()).run()
+    try {
+      cy.layout(resolveLayout()).run()
+      initialLayoutDone = true
+    } catch (error) {
+      console.error('@nodebook/dom: layout failed', error)
+      addInferred()
+    }
   }
+  let initialLayoutDone = headless
+  let destroyed = false
   layoutThenInferred()
+
+  // Re-run the layout from scratch: inferred edges come back out so the
+  // layout positions nodes on explicit structure only, then re-add.
+  const rerunLayout = (): void => {
+    cy.$('edge[kind = "inferred-relation"]').remove()
+    layoutThenInferred()
+  }
+
+  // Hosts like Obsidian hand us a container BEFORE attaching it to the
+  // document, so the initial layout can't run (see above) — and fit() would
+  // be a no-op on the cached zero size. Recover with both a ResizeObserver
+  // (also keeps Cytoscape in sync with later resizes) and a bounded poller,
+  // because ResizeObserver delivery depends on render frames, which some
+  // embedded webviews suspend while hidden.
+  const recoverIfSized = (): void => {
+    if (destroyed || !container) return
+    if (container.clientWidth === 0 || container.clientHeight === 0) return
+    cy.resize()
+    if (!initialLayoutDone) {
+      rerunLayout()
+    }
+  }
+  let resizeObserver: ResizeObserver | null = null
+  if (!headless && container) {
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(recoverIfSized)
+      resizeObserver.observe(container)
+    }
+    if (!initialLayoutDone) {
+      let attempts = 0
+      const poll = (): void => {
+        if (destroyed || initialLayoutDone) return
+        recoverIfSized()
+        if (!initialLayoutDone && ++attempts < 150) {
+          setTimeout(poll, 200)
+        }
+      }
+      setTimeout(poll, 50)
+    }
+  }
 
   const applySimulationState = (): void => {
     if (!processModel) return
@@ -327,7 +381,8 @@ export function renderNodeBook(
       currentLayout = layout
     }
     if (!headless) {
-      cy.layout(resolveLayout()).run()
+      cy.resize()
+      rerunLayout()
     }
   }
 
@@ -351,7 +406,10 @@ export function renderNodeBook(
       onResetSimulation: resetSimulation,
       suppressInspectorFor: (nodeId) => processModel !== null && processModel.transitionIds.includes(nodeId),
       onMorphSelect: setMorph,
-      onFit: () => cy.fit(undefined, 24),
+      onFit: () => {
+        cy.resize()
+        cy.fit(undefined, 24)
+      },
       onRelayout: relayout,
       extraActions: options.toolbarActions,
       onExportPng: () => {
@@ -390,6 +448,9 @@ export function renderNodeBook(
     destroy(): void {
       ui?.destroy()
       ui = null
+      destroyed = true
+      resizeObserver?.disconnect()
+      resizeObserver = null
       cy.destroy()
     }
   }
