@@ -220,3 +220,38 @@ describe('Prolog inference upgrade (headless)', () => {
     }
   })
 })
+
+describe('schemas in rendering (headless)', () => {
+  it('per-block schemaTexts silence warnings and drive inference', async () => {
+    const cnl = '# Falcon [Rocket]\nthrust: 7607 *kN*;\n<launches> Starlink;'
+    const plain = renderNodeBook(null, cnl, { headless: true })
+    const withSchemas = renderNodeBook(null, cnl, {
+      headless: true,
+      schemaTexts: [
+        'nodeType: Rocket, A launch vehicle\nrelationType: launches, Sends a payload up, transitive: false\nattributeType: thrust, float, Engine thrust, unit: kN'
+      ]
+    })
+    try {
+      expect(plain.warnings.map((w) => w.message)).toContain('Unknown relation type "launches"')
+      expect(withSchemas.warnings.map((w) => w.message)).not.toContain('Unknown relation type "launches"')
+      expect(withSchemas.warnings.map((w) => w.message)).not.toContain('Unknown attribute type "thrust"')
+    } finally {
+      plain.destroy()
+      withSchemas.destroy()
+    }
+  })
+
+  it('refreshSchemas picks up store changes (live warnings)', async () => {
+    const { setUserSchemas, parseSchemaBlock } = await import('@nodebook/core')
+    const handle = renderNodeBook(null, '# Falcon [Rocket]\n<launches> Starlink;', { headless: true })
+    try {
+      expect(handle.warnings.map((w) => w.message)).toContain('Unknown relation type "launches"')
+      setUserSchemas(parseSchemaBlock('relationType: launches, Sends a payload up').schemas)
+      handle.refreshSchemas()
+      expect(handle.warnings.map((w) => w.message)).not.toContain('Unknown relation type "launches"')
+    } finally {
+      setUserSchemas(null)
+      handle.destroy()
+    }
+  })
+})

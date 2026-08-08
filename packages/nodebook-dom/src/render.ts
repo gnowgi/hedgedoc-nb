@@ -4,14 +4,15 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import {
-  getMergedSchemas,
+  getMergedSchemasWith,
+  getStoreVersion,
   getOperationsFromCnl,
   operationsToGraph,
   PrologInferenceEngine,
   TransitiveClosureEngine,
   validateOperations
 } from '@nodebook/core'
-import type { CnlGraphData, CnlOperation, CnlParseError, InferredEdge } from '@nodebook/core'
+import type { CnlGraphData, CnlOperation, CnlParseError, InferredEdge, ParsedUserSchemas } from '@nodebook/core'
 import cytoscape from 'cytoscape'
 import type { Core, LayoutOptions } from 'cytoscape'
 import {
@@ -31,6 +32,7 @@ import {
   placeLabel
 } from './simulation'
 import type { ProcessModel } from './simulation'
+import { parseSchemaTexts } from './schemas'
 import { attachUi } from './ui'
 import type { ToolbarAction, UiHandle } from './ui'
 
@@ -75,6 +77,12 @@ export interface RenderNodeBookOptions {
    */
   toolbarActions?: ToolbarAction[]
   /**
+   * Raw ```nodeBook-schema block texts applying to THIS graph only, merged on
+   * top of the shared store (later texts win by name). Used by editor plugins
+   * to resolve schema pages linked from the fence.
+   */
+  schemaTexts?: string[]
+  /**
    * Run Cytoscape headlessly (no container, no rendering). Useful for tests
    * and server-side graph inspection. When true, `container` may be null.
    */
@@ -90,8 +98,10 @@ export interface NodeBookHandle {
   operations: CnlOperation[]
   /** Parse errors. Rendering proceeds on best effort. */
   errors: CnlParseError[]
-  /** Advisory schema warnings (unknown types etc.), never fatal. */
-  warnings: CnlParseError[]
+  /** Advisory schema warnings (unknown types etc.), never fatal. Updates live when schemas change. */
+  readonly warnings: CnlParseError[]
+  /** Re-run validation and inference against the current schemas. */
+  refreshSchemas(): void
   /** Inferred relations for the currently visible (morph-filtered) graph. */
   getInferredEdges(): InferredEdge[]
   /** Show or hide the inferred (derived) relations. */
@@ -150,9 +160,16 @@ export function renderNodeBook(
   }
 
   const operations = getOperationsFromCnl(code)
-  const warnings = validateOperations(operations)
   const graph = operationsToGraph(operations)
   const errors = graph.errors
+
+  // Per-block schemas (linked schema pages) merge over the shared store.
+  let blockSchemas: ParsedUserSchemas | null = null
+  if (options.schemaTexts && options.schemaTexts.length > 0) {
+    blockSchemas = parseSchemaTexts(options.schemaTexts).schemas
+  }
+  const effectiveSchemas = () => getMergedSchemasWith(blockSchemas)
+  let warnings = validateOperations(operations, effectiveSchemas())
 
   let theme: NodeBookTheme = options.theme ?? 'light'
   let currentLayout: NodeBookLayout = options.layout ?? 'cose'
@@ -180,13 +197,13 @@ export function renderNodeBook(
     if (!inferenceEnabled) return
     const filtered = filterGraphForMorphs(graph, activeMorphs)
     try {
-      inferredEdges = new TransitiveClosureEngine().infer(filtered, getMergedSchemas()).inferredEdges
+      inferredEdges = new TransitiveClosureEngine().infer(filtered, effectiveSchemas()).inferredEdges
     } catch {
       inferredEdges = []
     }
     const token = ++inferenceToken
     void new PrologInferenceEngine()
-      .inferAsync(filtered, getMergedSchemas(), [])
+      .inferAsync(filtered, effectiveSchemas(), [])
       .then((result) => {
         if (result.errors.length > 0) {
           console.debug('@nodebook/dom: Prolog inference reported errors', result.errors)
@@ -387,6 +404,29 @@ export function renderNodeBook(
     applySimulationState()
   }
 
+  // Re-run validation and inference when schemas change (schema page edited,
+  // a schema block appearing/disappearing, or a manual call).
+  const refreshSchemas = (): void => {
+    warnings = validateOperations(operations, effectiveSchemas())
+    computeInference()
+    cy.$('edge[kind = "inferred-relation"]').remove()
+    addInferred()
+    ui?.refreshToolbar()
+    ui?.refreshInspector()
+  }
+  let lastStoreVersion = getStoreVersion()
+  let schemaWatchTimer: ReturnType<typeof setInterval> | null = null
+  if (!headless) {
+    schemaWatchTimer = setInterval(() => {
+      if (destroyed) return
+      const version = getStoreVersion()
+      if (version !== lastStoreVersion) {
+        lastStoreVersion = version
+        refreshSchemas()
+      }
+    }, 1200)
+  }
+
   const rebuildElements = (): void => {
     computeInference()
     const next = buildExplicit()
@@ -487,7 +527,10 @@ export function renderNodeBook(
     graph,
     operations,
     errors,
-    warnings,
+    get warnings() {
+      return warnings
+    },
+    refreshSchemas,
     getInferredEdges: () => inferredEdges,
     setInferredVisible,
     setContainment,
@@ -510,6 +553,10 @@ export function renderNodeBook(
       ui?.destroy()
       ui = null
       destroyed = true
+      if (schemaWatchTimer) {
+        clearInterval(schemaWatchTimer)
+        schemaWatchTimer = null
+      }
       resizeObserver?.disconnect()
       resizeObserver = null
       cy.destroy()

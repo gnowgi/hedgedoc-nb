@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import '@logseq/libs'
-import { makeNodeBookRenderer } from './nodebook-renderer'
+import { makeNodeBookRenderer, makeSchemaRenderer } from './nodebook-renderer'
+import { initSchemasPage } from './schema-page'
 
 const TEMPLATE = [
   '```nodeBook',
@@ -28,10 +29,27 @@ function main(): void {
     }
   }
 
+  // Schema definition fences (```nodeBook-schema). Logseq matches fence
+  // languages lowercased, so 'nodebook-schema' is the effective key.
+  for (const language of ['nodebook-schema', 'nodeBook-schema']) {
+    try {
+      logseq.Experiments.registerFencedCodeRenderer(language, {
+        edit: false,
+        render: makeSchemaRenderer()
+      })
+    } catch (error) {
+      console.error(`logseq-nodebook: failed to register schema renderer for "${language}"`, error)
+    }
+  }
+
   // Show up in the `/` command palette with a starter graph.
   logseq.Editor.registerSlashCommand('nodeBook graph', async () => {
     await logseq.Editor.insertAtEditingCursor(TEMPLATE)
   })
+
+  // User-editable schema store: the nodebook/schemas page (seeded from the
+  // factory schemas on first run, watched for edits).
+  void initSchemasPage().catch((error) => console.error('logseq-nodebook: schema page init failed', error))
 }
 
 logseq.ready(main).catch(console.error)

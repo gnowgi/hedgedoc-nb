@@ -61,6 +61,23 @@ function mergeByName<T extends { name: string }>(defaults: T[], user: T[]): T[] 
   return Array.from(map.values())
 }
 
+/**
+ * Merge additional user schemas on top of the current merged view (defaults +
+ * store), with the extra definitions winning by name. Used for per-block
+ * schema references (e.g. a graph fence linking schema pages).
+ */
+export function getMergedSchemasWith(extra: ParsedUserSchemas | null | undefined): MergedSchemas {
+  const base = getMergedSchemas()
+  if (!extra) return base
+  return {
+    nodeTypes: mergeByName(base.nodeTypes, extra.nodeTypes),
+    relationTypes: mergeByName(base.relationTypes, extra.relationTypes),
+    attributeTypes: mergeByName(base.attributeTypes, extra.attributeTypes),
+    transitionTypes: mergeByName(base.transitionTypes, extra.transitionTypes),
+    functionTypes: mergeByName(base.functionTypes, extra.functionTypes)
+  }
+}
+
 export function getMergedSchemas(): MergedSchemas {
   if (!currentUserSchemas) {
     return {

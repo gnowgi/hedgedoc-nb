@@ -1,6 +1,6 @@
 {
   "name": "logseq-nodebook",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Render nodeBook CNL knowledge graphs from ```nodeBook code fences in Logseq",
   "license": "AGPL-3.0-only",
   "author": "gnowgi and the nodeBook contributors",
